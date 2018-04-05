@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+    <head>
+        <title>CSS3DRenderer</title>
+        <meta charset="utf-8" />
+  
+        <script src="../build/C3R.standalone.js"></script>
+        
+        <style>
+        
+			body {
+				margin: 0px;
+				background-color: #000000;
+				overflow: hidden;
+			}
+        
+        </style>
+        
+        <script>
+        
+        var container, cube_node;
+        
+        function init() {
+            
+            // Create a container for the scene
+            container = new C3R.Container();
+            document.body.appendChild(container.domElement);
+            
+            // The vertex and camera data, from which we would like to construct the scene
+            
+            var cam_inv_world = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -400, 1];
+            
+            var positions = new Float32Array([100, 100, 100, 100, 100, -100, 100, -100, 100, 100, -100, -100, -100, 100, -100, -100, 100, 100, -100, -100, -100, -100, -100, 100, -100, 100, -100, 100, 100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, -100, -100, -100, 100, -100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, 100, 100, -100, -100, 100, -100, 100, -100, -100, -100, -100, -100]);
+            var indices = new Int32Array([0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21]);
+            var uvs = new Float32Array([0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0]);
+            
+            // Create a Group node for the cube
+            
+            cube_node = new C3R.Group();
+            container.root.addChild(cube_node);
+            
+            // Iterate over the indices
+            for(let i=0; i<indices.length; i+=3) {
+            
+                let i1 = indices[i+0];
+                let i2 = indices[i+1];
+                let i3 = indices[i+2];
+                
+                let p1 = vec3.fromValues(positions[i1*3+0], positions[i1*3+1], positions[i1*3+2]);
+                let p2 = vec3.fromValues(positions[i2*3+0], positions[i2*3+1], positions[i2*3+2]);
+                let p3 = vec3.fromValues(positions[i3*3+0], positions[i3*3+1], positions[i3*3+2]);
+                
+                let t1 = vec2.fromValues(uvs[i1*2+0], uvs[i1*2+1]);
+                let t2 = vec2.fromValues(uvs[i2*2+0], uvs[i2*2+1]);
+                let t3 = vec2.fromValues(uvs[i3*2+0], uvs[i3*2+1]);
+                
+                // If you call pushPolygon instead of addPolygon, then multiple polygons can be merged into one ( for example two triangles to a quad )
+                cube_node.pushPolygon([
+                    new C3R.Vertex(p1, t1),
+                    new C3R.Vertex(p2, t2),
+                    new C3R.Vertex(p3, t3)
+                ]);
+                
+            }
+            
+            // Call flush if you added the triangles with pushPolygon
+            cube_node.flushPolygons();
+            
+            // Create a material with a crate texture
+            cube_node.material = new C3R.Material();
+            cube_node.material.backgroundImageSrc = "textures/crate.jpg";
+            //cube_node.material.backgroundColor = [1,0,0, 1];
+            cube_node.updateMaterial();
+                
+            // Update camera
+            container.camera.matrix = cam_inv_world;
+            container.updateCamera();
+            
+            
+        }
+        
+        var animate = function() {
+            
+            // Rotate object
+            
+            //cube_node.matrix = mat4.fromRotation( ... );
+            mat4.fromRotation( cube_node.matrix, Date.now()/1000.0, [1,1,1] );
+            
+            // Call updateMatrix if the transformation was changed
+            cube_node.updateMatrix();
+            
+            requestAnimationFrame(animate);
+            
+        };
+        
+        //
+        window.addEventListener("load", function(event) {
+        
+            init();
+            animate();
+            
+        });
+        
+        </script>
+        
+    </head>
+    
+    <body>
+        
+        
+        
+    </body>
+</html>

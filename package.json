@@ -1,0 +1,27 @@
+{
+  "name": "c3r",
+  "version": "0.1.0",
+  "description": "CSS 3D Renderer",
+  "main": "build/C3R.min.js",
+  "scripts": {
+    "build": "rollup -c",
+    "build-uglify": "rollup -c && uglifyjs build/C3R.js -c -m --comments \"/license/i\" -o build/C3R.min.js",
+    "build-standalone": "rollup -c && uglifyjs node_modules/gl-matrix/dist/gl-matrix-min.js build/C3R.js -c -m --comments \"/license/i\" -o build/C3R.standalone.js"
+  },
+  "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babelrc-rollup": "^3.0.0",
+    "rollup": "^0.57.1",
+    "rollup-plugin-babel": "^3.0.3",
+    "rollup-plugin-license": "^0.6.0",
+    "uglify-js": "^3.3.18"
+  },
+  "dependencies": {
+    "gl-matrix": "^2.4.0",
+    "npm": "^5.8.0"
+  }
+}
