@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "CSS 3D Renderer",
   "main": "build/C3R.min.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com:deadmanswitch/CSS3D-Renderer.git"
+  },
   "scripts": {
     "build": "rollup -c",
     "build-uglify": "rollup -c && uglifyjs build/C3R.js -c -m --comments \"/license/i\" -o build/C3R.min.js",
@@ -10,6 +14,12 @@
   },
   "author": "Adam Kecskes <kecskes.adam@outlook.com>",
   "license": "MIT",
+  "keywords": [
+    "javascript",
+    "css",
+    "css3d",
+    "renderer"
+  ],
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-plugin-external-helpers": "^6.22.0",
