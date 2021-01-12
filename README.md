@@ -8,6 +8,6 @@ Just include `C3R.standalone.js` to your project, or include both `C3R.min.js` a
 
 ## Examples
 
-Some simple examples can be found in the *examples* directory
+The example projects be found in the *examples* directory. You can try them out live [here](https://k-adam.github.io/CSS3D-Renderer/examples/) 
 
-I replaced the original CSS3D renderer of Three.js with a **C3R.js** based implementation, which supports buffergeometry and textures too.
+I replaced the original CSS3D renderer of Three.js with a **C3R.js** based implementation, which supports buffergeometry and textures as well. It can be found at *examples/js/renderers/CSS3DRenderer.js*
