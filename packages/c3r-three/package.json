@@ -17,13 +17,20 @@
     "license": "MIT",
     "author": "Adam Kecskes <kecskes.adam@outlook.com>",
     "type": "module",
-    "exports": "./dist/c3r-three.js",
+    "exports": {
+        ".": {
+            "types": "./dist/C3RRenderer.d.ts",
+            "default": "./dist/c3r-three.js"
+        }
+    },
     "main": "dist/c3r-three.js",
+    "types": "dist/C3RRenderer.d.ts",
     "files": [
-        "dist"
+        "dist",
+        "!dist/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && tsc -b",
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
@@ -34,6 +41,7 @@
         "three": ">=0.160.0"
     },
     "devDependencies": {
+        "@types/three": "^0.186.0",
         "three": "^0.186.1",
         "vite": "^8.3.5"
     }

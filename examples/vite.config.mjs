@@ -8,8 +8,8 @@ export default defineConfig({
     base: "./",
     resolve: {
         alias: {
-            c3r: here("../packages/c3r/src/C3R.js"),
-            "c3r-three": here("../packages/c3r-three/src/C3RRenderer.js"),
+            c3r: here("../packages/c3r/src/C3R.ts"),
+            "c3r-three": here("../packages/c3r-three/src/C3RRenderer.ts"),
         },
     },
     build: {

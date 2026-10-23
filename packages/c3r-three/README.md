@@ -2,7 +2,7 @@
 
 A CSS renderer for three.js, built on [C3R](https://www.npmjs.com/package/c3r). Like three's own `CSS3DRenderer` it renders `CSS3DObject` and `CSS3DSprite`, but it also renders meshes and sprites with colors and textures.
 
-Requires three.js r160 or newer.
+Requires three.js r160 or newer. TypeScript declarations are included; install `@types/three` alongside.
 
 ## Usage
 
