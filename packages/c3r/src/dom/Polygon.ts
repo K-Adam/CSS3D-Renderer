@@ -1,4 +1,4 @@
-import { mat2, mat3, vec2, vec3, type ReadonlyVec2 } from "gl-matrix";
+import { mat2, mat3, vec2, vec3, type ReadonlyVec2, type ReadonlyVec3 } from "gl-matrix";
 
 import { CSSClass } from "../css/CSSClass.js";
 import { Object3D } from "./Object3D.js";
@@ -40,6 +40,33 @@ const convexHull = (points: ReadonlyVec2[]): ReadonlyVec2[] => {
     return [...chain(sorted), ...chain(sorted.slice().reverse())];
 };
 
+const MITER_LIMIT = 4;
+
+// Offsets every edge outward by d
+const dilate = (points: ReadonlyVec2[], d: number): vec2[] => {
+    const n = points.length;
+    const area = points.reduce((s, p, i) => s + cross2(p, points[(i + 1) % n], [0, 0]), 0);
+    const sign = Math.sign(area);
+
+    const normal = (a: ReadonlyVec2, b: ReadonlyVec2) => {
+        const e = vec2.normalize(vec2.create(), vec2.sub(vec2.create(), b, a));
+        return vec2.fromValues(e[1] * sign, -e[0] * sign);
+    };
+
+    return points.map((p, i) => {
+        const n1 = normal(points[(i + n - 1) % n], p);
+        const n2 = normal(p, points[(i + 1) % n]);
+
+        const m = vec2.add(vec2.create(), n1, n2);
+        vec2.scale(m, m, d / Math.max(1 + vec2.dot(n1, n2), 1e-6));
+
+        const len = vec2.len(m);
+        if (len > MITER_LIMIT * d) vec2.scale(m, m, (MITER_LIMIT * d) / len);
+
+        return vec2.add(m, m, p);
+    });
+};
+
 export class Polygon extends Object3D {
     vertices: Vertex[]; // vertices in CCW
     readonly contentElement: HTMLElement;
@@ -51,12 +78,14 @@ export class Polygon extends Object3D {
     // Avoid scaling issues. If the content element is initially too small, the result will be blurry
     getDomSize: (size: number) => number = (size) => Math.max(250, Math.min(size, 1200));
 
-    #clipPath: ReadonlyVec2[] = []; // path of the polygon on a rectangular element
+    // Outward offset of the edges in DOM pixels, hides the anti-aliasing seams between neighbours
+    edgeOverlap = 1;
+
+    #clipPath: ReadonlyVec2[] = []; // path of the dilated polygon on a rectangular element
+    #vertexPoints: ReadonlyVec2[] = [];
 
     #blockWidth = 0;
     #blockHeight = 0;
-
-    #maxi = 0; // Index of the longest side, triangles only
 
     static getClass: () => CSSClass = CSSClass.lazy({
         width: "var(--width, 0px)",
@@ -142,9 +171,7 @@ export class Polygon extends Object3D {
     #fitTriangle(tri: Triangle): void {
         const ln = tri.calculateEdgeLengths();
 
-        this.#maxi = ln.indexOf(Math.max(...ln));
-
-        const ai = this.#maxi;
+        const ai = ln.indexOf(Math.max(...ln));
         const bi = (ai + 1) % 3;
         const ci = (ai + 2) % 3;
 
@@ -157,21 +184,12 @@ export class Polygon extends Object3D {
 
         const scale = this.getDomSize(a) / a;
 
-        this.#blockWidth = a * scale;
-        this.#blockHeight = Ay * scale;
+        const points: vec2[] = [];
+        points[ai] = vec2.fromValues(0, 0);
+        points[bi] = vec2.fromValues(a * scale, 0);
+        points[ci] = vec2.fromValues(Ax * scale, Ay * scale);
 
-        // Where the longest side is split into two by the height-line
-        this.#clipPath = [vec2.fromValues(0, 0), vec2.fromValues(1, 0), vec2.fromValues(Ax / a, 1)];
-
-        const triV = [
-            vec3.fromValues(0, 0, 0),
-            vec3.fromValues(this.#blockWidth, 0, 0),
-            vec3.fromValues(Ax * scale, this.#blockHeight, 0),
-        ];
-
-        this.matrix = new Triangle(triV[ai], triV[bi], triV[ci], [0, 0, 1]).getTransformationTo(
-            tri,
-        );
+        this.#layout(points, tri, [0, 0, 1]);
     }
 
     #fitPolygon(tri: Triangle): void {
@@ -230,18 +248,30 @@ export class Polygon extends Object3D {
         const longest = Math.max(boxWidth, boxHeight);
         const scale = this.getDomSize(longest) / longest;
 
-        this.#blockWidth = boxWidth * scale;
-        this.#blockHeight = boxHeight * scale;
-
-        const clipPoints = points2d.map((p) => {
+        const points = points2d.map((p) => {
             const t = vec2.transformMat2(vec2.create(), p, minTI);
-            return vec2.fromValues(t[0] - xmin, t[1] - ymin);
+            return vec2.fromValues((t[0] - xmin) * scale, (t[1] - ymin) * scale);
         });
 
-        this.#clipPath = clipPoints.map(([x, y]) => vec2.fromValues(x / boxWidth, y / boxHeight));
+        this.#layout(points, tri);
+    }
 
-        const [c0, c1, c2] = clipPoints.map(([x, y]) => vec3.fromValues(x * scale, y * scale, 0));
-        this.matrix = new Triangle(c0, c1, c2).getTransformationTo(tri);
+    // Fits the element around the dilated polygon
+    #layout(points: ReadonlyVec2[], tri: Triangle, norm?: ReadonlyVec3): void {
+        const dilated = dilate(points, this.edgeOverlap);
+
+        const [xmin, xmax, ymin, ymax] = bounds(dilated);
+        this.#blockWidth = xmax - xmin;
+        this.#blockHeight = ymax - ymin;
+
+        const fit = ([x, y]: ReadonlyVec2) =>
+            vec2.fromValues((x - xmin) / this.#blockWidth, (y - ymin) / this.#blockHeight);
+
+        this.#clipPath = dilated.map(fit);
+        this.#vertexPoints = points.map(fit);
+
+        const [c0, c1, c2] = points.map(([x, y]) => vec3.fromValues(x - xmin, y - ymin, 0));
+        this.matrix = new Triangle(c0, c1, c2, norm).getTransformationTo(tri);
     }
 
     updateContent(): void {
@@ -250,20 +280,35 @@ export class Polygon extends Object3D {
             return vec2.add(uv, uv, this.uvOffset);
         });
 
-        const [txmin, txmax, tymin, tymax] = bounds(uvs);
-
-        const xsize = txmax - txmin;
-        const ysize = tymax - tymin;
-
         const { style } = this.contentElement;
 
         // No texture mapping without a UV area (e.g. a mesh without uvs), show the plain color
-        if (!(xsize > 0 && ysize > 0)) {
+        const [uxmin, uxmax, uymin, uymax] = bounds(uvs);
+        if (!(uxmax - uxmin > 0 && uymax - uymin > 0)) {
             style.removeProperty("background-position");
             style.removeProperty("background-size");
             style.removeProperty("transform");
             return;
         }
+
+        type Point = [number, number, number];
+        const point = ([x, y]: ReadonlyVec2): Point => [x, y, 1];
+
+        const [p0, p1, p2] = this.#vertexPoints;
+        const TB = mat3.fromValues(...point(p0), ...point(p1), ...point(p2));
+
+        // Extend the UV area to cover the dilated clip path
+        const TBI = mat3.invert(mat3.create(), TB);
+        if (!TBI) throw new Error("Degenerate polygon");
+
+        const UV = mat3.fromValues(...point(uvs[0]), ...point(uvs[1]), ...point(uvs[2]));
+        const toUV = mat3.mul(TBI, UV, TBI);
+        const clipUVs = this.#clipPath.map((p) => vec2.transformMat3(vec2.create(), p, toUV));
+
+        const [txmin, txmax, tymin, tymax] = bounds([...uvs, ...clipUVs]);
+
+        const xsize = txmax - txmin;
+        const ysize = tymax - tymin;
 
         const scx = 1 / xsize;
         const scy = 1 / ysize;
@@ -271,15 +316,8 @@ export class Polygon extends Object3D {
         style.backgroundPosition = `calc(var(--width) * ${-txmin * scx}) calc(var(--height) * ${1 + tymin * scy})`;
         style.backgroundSize = `${100 * scx}% ${100 * scy}%`;
 
-        // use the longest side as base if it is a triangle
-        const ai = this.vertices.length === 3 ? this.#maxi : 0;
-
-        type Point = [number, number, number];
         const uvPoint = ([u, v]: vec2): Point => [(u - txmin) * scx, 1 - (v - tymin) * scy, 1];
         const TA = mat3.fromValues(...uvPoint(uvs[0]), ...uvPoint(uvs[1]), ...uvPoint(uvs[2]));
-
-        const clipPoint = (i: number): Point => [...this.#clipPath[i % 3], 1] as Point;
-        const TB = mat3.fromValues(...clipPoint(ai), ...clipPoint(ai + 1), ...clipPoint(ai + 2));
 
         const TAI = mat3.invert(TA, TA);
         if (!TAI) throw new Error("Degenerate polygon");
