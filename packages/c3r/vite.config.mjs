@@ -19,7 +19,7 @@ const min = { minify: true, comments: false };
 // Two passes, because gl-matrix is external in one and bundled in the other
 export default defineConfig(({ mode }) => ({
     build: {
-        lib: { entry: "src/C3R.js" },
+        lib: { entry: "src/C3R.ts" },
         minify: false,
         emptyOutDir: mode !== "standalone",
         rolldownOptions:
@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => ({
                 : {
                       external: ["gl-matrix"],
                       output: [
-                          { format: "es", entryFileNames: "C3R.module.js", postBanner },
+                          { format: "es", entryFileNames: "C3R.mjs", postBanner },
                           { ...umd, entryFileNames: "C3R.js" },
                           { ...umd, ...min, entryFileNames: "C3R.min.js" },
                       ],

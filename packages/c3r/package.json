@@ -3,7 +3,7 @@
     "version": "0.2.0",
     "description": "CSS 3D Renderer",
     "keywords": [
-        "javascript",
+        "typescript",
         "css",
         "css3d",
         "renderer"
@@ -16,14 +16,23 @@
     },
     "license": "MIT",
     "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+    "exports": {
+        ".": {
+            "types": "./dist/C3R.d.ts",
+            "import": "./dist/C3R.mjs",
+            "default": "./dist/C3R.js"
+        }
+    },
     "main": "dist/C3R.js",
-    "module": "dist/C3R.module.js",
+    "module": "dist/C3R.mjs",
+    "types": "dist/C3R.d.ts",
     "unpkg": "dist/C3R.standalone.js",
     "files": [
-        "dist"
+        "dist",
+        "!dist/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "vite build && vite build --mode standalone",
+        "build": "vite build && vite build --mode standalone && tsc -b",
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
