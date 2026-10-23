@@ -1,6 +1,9 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 permissions:
   contents: read
@@ -18,5 +21,3 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build
-      - name: Check dist is up to date
-        run: git status --porcelain && git diff --stat --exit-code && test -z "$(git status --porcelain)"

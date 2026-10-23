@@ -1,1 +1,10 @@
-{ "name": "c3r-examples", "private": true }
+{
+    "name": "c3r-examples",
+    "private": true,
+    "scripts": {
+        "dev": "vite .. --open /examples/"
+    },
+    "devDependencies": {
+        "vite": "^8.3.5"
+    }
+}

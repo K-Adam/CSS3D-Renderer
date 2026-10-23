@@ -12,13 +12,14 @@ Try the examples live [here](https://k-adam.github.io/CSS3D-Renderer/examples/).
 
 ## Development
 
-Requires Node 20.19+.
+Requires Node 20.19+ or 22.12+.
 
 ```sh
 npm install
 npm run build   # packages/*/dist
+npm run dev     # build and serve the examples
 npm run lint
 npm run format
 ```
 
-The built `dist/` folders are committed, so GitHub Pages can serve the examples. To view them locally, serve the repository root with any static server.
+`dist/` is not committed; `v*` tags publish a GitHub Release and deploy the examples to Pages.
