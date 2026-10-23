@@ -1,3 +1,4 @@
+import { vec2 } from 'gl-matrix';
 
 import { Group } from './Group.js';
 import { Object3D } from './Object3D.js';

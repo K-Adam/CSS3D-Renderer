@@ -43,6 +43,8 @@ THREE.CSS3DSprite.prototype.constructor = THREE.CSS3DSprite;
 // CSS Renderer
 
 THREE.CSS3DRenderer = function (parameters) {
+	const { mat4, vec2, vec3, vec4 } = glMatrix;
+
 
 	console.log('THREE.CSS3DRenderer', THREE.REVISION);
 

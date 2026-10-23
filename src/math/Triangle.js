@@ -1,3 +1,4 @@
+import { mat4, vec3 } from 'gl-matrix';
 
 // 3D triangle, represented by 3 points
 export class Triangle {

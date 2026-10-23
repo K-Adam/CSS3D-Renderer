@@ -4,7 +4,8 @@
         <title>CSS3DRenderer</title>
         <meta charset="utf-8" />
   
-        <script src="../build/C3R.standalone.js"></script>
+        <script src="js/libs/gl-matrix-min.js"></script>
+        <script src="../build/C3R.min.js"></script>
         
         <style>
         
@@ -18,6 +19,8 @@
         
         <script>
         
+        const { mat4, vec2, vec3 } = glMatrix;
+
         var container, cube_node;
         
         function init() {

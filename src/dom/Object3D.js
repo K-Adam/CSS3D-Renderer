@@ -1,6 +1,5 @@
+import { mat4 } from 'gl-matrix';
 
-import { CSSClass } from '../css/CSSClass.js';
-import { Material } from '../css/Material.js';
 
 export class Object3D {
     

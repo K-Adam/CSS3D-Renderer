@@ -1,12 +1,8 @@
+import { mat2, mat3, vec2, vec3 } from 'gl-matrix';
 
 import { CSSClass } from '../css/CSSClass.js';
 import { Object3D } from './Object3D.js';
 import { Triangle } from '../math/Triangle.js';
-
-var isWebKit = 'WebkitAppearance' in document.documentElement.style;
-
-var css_mask = CSS.supports("mask-image: var(--background-image, none)");
-var css_webkit_mask = CSS.supports("-webkit-mask-image: var(--background-image, none)");
 
 var css_clip_path = CSS.supports("clip-path: polygon(50% 0%, 0% 100%, 100% 100%)");
 var css_webkit_clip_path = CSS.supports("-webkit-clip-path: polygon(50% 0%, 0% 100%, 100% 100%)");
@@ -214,7 +210,6 @@ export class Polygon extends Object3D {
             let min_area = Number.POSITIVE_INFINITY;
             //let corners = [];
             let min_bounds = [];
-            let min_T = mat2.create();
             let min_TI = mat2.create();
             
             for(var i=0; i<hull.length; i++) {
@@ -260,7 +255,7 @@ export class Polygon extends Object3D {
             let box_width = min_bounds[1]-min_bounds[0];
             let box_height = min_bounds[3]-min_bounds[2];
             
-            let scale_ratio = 1;
+            let scale_ratio;
             
             // scale the element, to avoid blurry texture
             if(box_width > box_height) {
@@ -443,18 +438,6 @@ export class Polygon extends Object3D {
                 "transform-origin": "0 0"
             });
             
-            /*
-            if(css_mask) {
-                css_content_class.setProperties({
-                    'mask-image': 'var(--background-image, none)',
-                    'mask-size': '100% 100%'
-                });
-            } else if(css_webkit_mask) {
-                css_content_class.setProperties({
-                    '-webkit-mask-image': 'var(--background-image, none)',
-                    '-webkit-mask-size': '100% 100%'
-                });
-            }*/
             
             css_content_class.update();
             css_content_class.init();

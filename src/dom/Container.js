@@ -73,8 +73,8 @@ export class Container {
     }
     
     resetSize() {
-        this.domElement.style.removeProperty("--viewport-width", width+"px");
-        this.domElement.style.removeProperty("--viewport-height", height+"px");
+        this.domElement.style.removeProperty("--viewport-width");
+        this.domElement.style.removeProperty("--viewport-height");
     }
     
     static getClass() {
