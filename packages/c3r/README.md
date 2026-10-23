@@ -18,4 +18,4 @@ Or with script tags: include `dist/C3R.standalone.js` (gl-matrix bundled), or in
 
 > **0.2.0:** builds are untranspiled ES2015+, live in `dist/` (was `build/`), and gl-matrix is now v3. `C3R.standalone.js` no longer exposes `mat4`/`vec3`/… globals; load gl-matrix yourself and use `glMatrix.mat4` etc. The three.js renderer moved to the [`c3r-three`](https://www.npmjs.com/package/c3r-three) package.
 
-See the [examples](https://k-adam.github.io/CSS3D-Renderer/examples/).
+See the [examples](https://k-adam.github.io/CSS3D-Renderer/).

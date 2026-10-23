@@ -1,23 +1,25 @@
 # c3r-three
 
-A drop-in replacement for the three.js `CSS3DRenderer`, built on [C3R](https://www.npmjs.com/package/c3r). Besides `CSS3DObject` and `CSS3DSprite`, it renders meshes (`BufferGeometry` and `Geometry`) with textures.
+A CSS renderer for three.js, built on [C3R](https://www.npmjs.com/package/c3r). Like three's own `CSS3DRenderer` it renders `CSS3DObject` and `CSS3DSprite`, but it also renders meshes and sprites with colors and textures.
 
-Supports three.js r90 up to r124.
+Requires three.js r160 or newer.
 
 ## Usage
 
 ```sh
-npm install c3r-three three@0.90
+npm install c3r-three three
 ```
 
 ```js
-import { CSS3DRenderer, CSS3DObject } from "c3r-three";
+import { C3RRenderer, CSS3DObject } from "c3r-three";
 
-const renderer = new CSS3DRenderer();
+const renderer = new C3RRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+renderer.render(scene, camera);
 ```
 
-Or with script tags, after three.js, gl-matrix and `C3R.min.js`: include `dist/c3r-three.js`, which adds `THREE.CSS3DRenderer`, `THREE.CSS3DObject` and `THREE.CSS3DSprite`.
+`CSS3DObject` and `CSS3DSprite` are re-exported from `three/addons`, so their elements receive pointer events as with three's renderer.
 
-See the [examples](https://k-adam.github.io/CSS3D-Renderer/examples/).
+See the [examples](https://k-adam.github.io/CSS3D-Renderer/).

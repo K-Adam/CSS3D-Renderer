@@ -8,7 +8,7 @@
         "css3d",
         "renderer"
     ],
-    "homepage": "https://k-adam.github.io/CSS3D-Renderer/examples/",
+    "homepage": "https://k-adam.github.io/CSS3D-Renderer/",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
