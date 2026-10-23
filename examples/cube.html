@@ -4,8 +4,6 @@
         <title>CSS3DRenderer</title>
         <meta charset="utf-8" />
   
-        <script src="js/libs/gl-matrix-min.js"></script>
-        <script src="../packages/c3r/dist/C3R.min.js"></script>
         
         <style>
         
@@ -17,9 +15,9 @@
         
         </style>
         
-        <script>
-        
-        const { mat4, vec2, vec3 } = glMatrix;
+        <script type="module">
+        import * as C3R from "c3r";
+        import { mat4, vec2, vec3 } from "gl-matrix";
 
         var container, cube_node;
         
@@ -97,12 +95,8 @@
         };
         
         //
-        window.addEventListener("load", function(event) {
-        
-            init();
-            animate();
-            
-        });
+        init();
+        animate();
         
         </script>
         

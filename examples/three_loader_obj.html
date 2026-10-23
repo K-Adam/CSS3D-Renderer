@@ -31,16 +31,10 @@
 		<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - OBJLoader test
 		</div>
 
-		<script src="js/libs/three.min.js"></script>
-        
-		<script src="js/libs/gl-matrix-min.js"></script>
-		<script src="../packages/c3r/dist/C3R.min.js"></script>
-
-		<script src="../packages/c3r-three/dist/c3r-three.js"></script>
-        
-		<script src="js/loaders/OBJLoader.js"></script>
-
-		<script>
+		<script type="module">
+		import * as THREE from "three";
+		import { C3RRenderer } from "c3r-three";
+		import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
 			var container;
 
@@ -51,10 +45,8 @@
 			var windowHalfX = window.innerWidth / 2;
 			var windowHalfY = window.innerHeight / 2;
 
-
 			init();
 			animate();
-
 
 			function init() {
 
@@ -99,7 +91,7 @@
 				var onError = function ( xhr ) {
 				};
 
-				var loader = new THREE.OBJLoader( manager );
+				var loader = new OBJLoader( manager );
 				loader.load( 'models/obj/suzanne/suzanne.obj', function ( object ) {
 
 					object.traverse( function ( child ) {
@@ -113,17 +105,16 @@
 					} );
 
 					object.position.y = 0;
-                    
+
 					object.scale.x = object.scale.y = object.scale.z = 50;
-                    
+
 					scene.add( object );
 
 				}, onProgress, onError );
 
 				//
 
-				renderer = new THREE.CSS3DRenderer();
-				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer = new C3RRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );
 

@@ -21,8 +21,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - uses: actions/jekyll-build-pages@v1
       - uses: actions/upload-pages-artifact@v3
+        with:
+          path: examples/dist
       - run: gh release create "$GITHUB_REF_NAME" packages/c3r/dist/* packages/c3r-three/dist/* --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}

@@ -32,18 +32,13 @@
 	<div id="info">Ammo.js physics soft body rope demo<br>Press Q or A to move the arm.</div>
         <div id="container"><br /><br /><br /><br /><br />Loading...</div>
 
-	<script src="js/libs/three.min.js"></script>
-    
-    <script src="js/libs/gl-matrix-min.js"></script>
-    <script src="../packages/c3r/dist/C3R.min.js"></script>
-
-    <script src="../packages/c3r-three/dist/c3r-three.js"></script>
-        
 	<script src="js/libs/ammo.js"></script>
-	<script src="js/controls/OrbitControls.js"></script>
-	<script src="js/libs/stats.min.js"></script>
 
-        <script>
+        <script type="module">
+        import * as THREE from "three";
+        import { C3RRenderer } from "c3r-three";
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+        import Stats from "three/addons/libs/stats.module.js";
 
 		// - Global variables -
 
@@ -51,7 +46,7 @@
 		var container, stats;
 		var camera, controls, scene, renderer;
 		var textureLoader;
-		var clock = new THREE.Clock();
+		var timer = new THREE.Timer();
 
 		// Physics variables
 		var gravityConstant = -9.8;
@@ -74,7 +69,6 @@
 
 		init();
 		animate();
-
 
 		// - Functions -
 
@@ -101,16 +95,13 @@
 
 			camera.position.set( -7, 5, 8 );
 
-			controls = new THREE.OrbitControls( camera );
+			renderer = new C3RRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+			controls = new OrbitControls( camera, renderer.domElement );
 			controls.target.set( 0, 2, 0 );
 			controls.update();
 
-			//renderer = new THREE.WebGLRenderer();
-			renderer = new THREE.CSS3DRenderer();
-			renderer.setPixelRatio( window.devicePixelRatio );
-			renderer.setSize( window.innerWidth, window.innerHeight );
-			renderer.shadowMap.enabled = true;
-            
 			textureLoader = new THREE.TextureLoader();
 
 			var ambientLight = new THREE.AmbientLight( 0x404040 );
@@ -133,15 +124,14 @@
 
 			scene.add( light );
 
-
 			container.innerHTML = "";
 
 			container.appendChild( renderer.domElement );
 
 			stats = new Stats();
-			stats.domElement.style.position = 'absolute';
-			stats.domElement.style.top = '0px';
-			container.appendChild( stats.domElement );
+			stats.dom.style.position = 'absolute';
+			stats.dom.style.top = '0px';
+			container.appendChild( stats.dom );
 
 			//
 
@@ -183,12 +173,11 @@
 				ground.material.needsUpdate = true;
 			} );
 
-
 			// Ball
 			var ballMass = 1.2;
 			var ballRadius = 0.6;
 
-			var ball = new THREE.Mesh( new THREE.SphereBufferGeometry( ballRadius, 8, 6 ), new THREE.MeshPhongMaterial( { color: 0x202020 } ) );
+			var ball = new THREE.Mesh( new THREE.SphereGeometry( ballRadius, 8, 6 ), new THREE.MeshPhongMaterial( { color: 0x202020 } ) );
 			ball.castShadow = true;
 			ball.receiveShadow = true;
 			var ballShape = new Ammo.btSphereShape( ballRadius );
@@ -266,7 +255,7 @@
 			}
 
 			ropeGeometry.setIndex( new THREE.BufferAttribute( new Uint16Array( ropeIndices ), 1 ) );
-			ropeGeometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( ropePositions ), 3 ) );
+			ropeGeometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( ropePositions ), 3 ) );
 			ropeGeometry.computeBoundingSphere();
 			rope = new THREE.LineSegments( ropeGeometry, ropeMaterial );
 			rope.castShadow = true;
@@ -319,21 +308,20 @@
 			hinge = new Ammo.btHingeConstraint( pylon.userData.physicsBody, arm.userData.physicsBody, pivotA, pivotB, axis, axis, true );
 			physicsWorld.addConstraint( hinge, true );
 
-
 		}
 
 		function createParalellepiped( sx, sy, sz, mass, pos, quat, material, scale ) {
-            
+
             scale = scale || 1;
-            
-			var threeObject = new THREE.Mesh( new THREE.BoxBufferGeometry( sx*scale, sy*scale, sz*scale, 1, 1, 1 ), material );
+
+			var threeObject = new THREE.Mesh( new THREE.BoxGeometry( sx*scale, sy*scale, sz*scale, 1, 1, 1 ), material );
 			var shape = new Ammo.btBoxShape( new Ammo.btVector3( sx * 0.5, sy * 0.5, sz * 0.5 ) );
 			shape.setMargin( margin );
 
 			createRigidBody( threeObject, shape, mass, pos, quat );
-            
+
             threeObject.scale.set(1/scale,1/scale,1/scale);
-            
+
 			return threeObject;
 
 		}
@@ -424,7 +412,7 @@
 
 		function render() {
 
-			var deltaTime = clock.getDelta();
+			var deltaTime = timer.update().getDelta();
 
 			updatePhysics( deltaTime );
 

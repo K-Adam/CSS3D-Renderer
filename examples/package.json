@@ -1,10 +1,14 @@
 {
     "name": "c3r-examples",
     "private": true,
+    "type": "module",
     "scripts": {
-        "dev": "vite .. --open /examples/"
+        "dev": "vite --open",
+        "build": "vite build"
     },
     "devDependencies": {
+        "gl-matrix": "^3.4.4",
+        "three": "^0.186.1",
         "vite": "^8.3.5"
     }
 }

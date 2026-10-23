@@ -10,7 +10,7 @@
     },
     "scripts": {
         "build": "npm run build --workspaces --if-present",
-        "dev": "npm run build && npm run dev -w c3r-examples",
+        "dev": "npm run dev -w c3r-examples",
         "lint": "eslint",
         "format": "prettier --write .",
         "format:check": "prettier --check ."

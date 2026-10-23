@@ -43,16 +43,10 @@
 		</div>
 		<canvas id="drawing-canvas" height="128" width="128"></canvas>
 
-		<script src="js/libs/three.min.js"></script>
+		<script type="module">
+		import * as THREE from "three";
+		import { C3RRenderer } from "c3r-three";
 
-		<script src="js/libs/gl-matrix-min.js"></script>
-		<script src="../packages/c3r/dist/C3R.min.js"></script>
-
-		<script src="../packages/c3r-three/dist/c3r-three.js"></script>
-        
-		<script>
-
-			
 			var camera, scene, renderer, mesh, material;
 			var drawStartPos = new THREE.Vector2();
 
@@ -69,11 +63,10 @@
 
 				material = new THREE.MeshBasicMaterial();
 
-				mesh = new THREE.Mesh( new THREE.BoxBufferGeometry( 200, 200, 200 ), material );
+				mesh = new THREE.Mesh( new THREE.BoxGeometry( 200, 200, 200 ), material );
 				scene.add( mesh );
 
-				renderer = new THREE.CSS3DRenderer();
-				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer = new C3RRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
 

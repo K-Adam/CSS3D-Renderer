@@ -15,17 +15,10 @@
 	</head>
 	<body>
 
-		<script src="js/libs/three.min.js"></script>
-
-		<script src="js/libs/gl-matrix-min.js"></script>
-		<script src="../packages/c3r/dist/C3R.min.js"></script>
-        
-		<script src="../packages/c3r-three/dist/c3r-three.js"></script>
-		<script src="js/renderers/Projector.js"></script>
-
-		<script src="js/libs/stats.min.js"></script>
-
-		<script>
+		<script type="module">
+		import * as THREE from "three";
+		import { C3RRenderer } from "c3r-three";
+		import Stats from "three/addons/libs/stats.module.js";
 
 			var container, stats;
 
@@ -65,11 +58,10 @@
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xf0f0f0 );
 
-
 				// Cube
 
 				var geometry = new THREE.BoxGeometry( 200, 200, 200 );
-                
+
                 var material = [];
 				for ( var i = 0; i < 6; i++) {
 
@@ -84,16 +76,15 @@
 
 				// Plane
 
-				var geometry = new THREE.PlaneBufferGeometry( 200, 200 );
+				var geometry = new THREE.PlaneGeometry( 200, 200 );
 				geometry.rotateX( - Math.PI / 2 );
-                
+
 				var material = new THREE.MeshBasicMaterial( { color: 0xe0e0e0 } );
 
 				plane = new THREE.Mesh( geometry, material );
 				scene.add( plane );
 
-				renderer = new THREE.CSS3DRenderer();
-				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer = new C3RRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );
 

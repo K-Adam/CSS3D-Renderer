@@ -100,14 +100,6 @@
 		</style>
 	</head>
 	<body>
-        <script src="js/libs/three.min.js"></script>
-
-        <script src="js/libs/gl-matrix-min.js"></script>
-        <script src="../packages/c3r/dist/C3R.min.js"></script>
-
-        <script src="../packages/c3r-three/dist/c3r-three.js"></script>
-		<script src="js/libs/tween.min.js"></script>
-		<script src="js/controls/TrackballControls.js"></script>
 
 		<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js css3d</a> - periodic table. <a href="https://plus.google.com/113862800338869870683/posts/QcFk5HrWran" target="_blank" rel="noopener">info</a>.</div>
 		<div id="container"></div>
@@ -118,7 +110,11 @@
 			<button id="grid">GRID</button>
 		</div>
 
-		<script>
+		<script type="module">
+		import * as THREE from "three";
+		import { C3RRenderer, CSS3DObject } from "c3r-three";
+		import { TrackballControls } from "three/addons/controls/TrackballControls.js";
+		import * as TWEEN from "three/addons/libs/tween.module.js";
 
 			var table = [
 				"H", "Hydrogen", "1.00794", 1, 1,
@@ -280,7 +276,7 @@
 					details.innerHTML = table[ i + 1 ] + '<br>' + table[ i + 2 ];
 					element.appendChild( details );
 
-					var object = new THREE.CSS3DObject( element );
+					var object = new CSS3DObject( element );
 					object.position.x = Math.random() * 4000 - 2000;
 					object.position.y = Math.random() * 4000 - 2000;
 					object.position.z = Math.random() * 4000 - 2000;
@@ -364,13 +360,13 @@
 
 				//
 
-				renderer = new THREE.CSS3DRenderer();
+				renderer = new C3RRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.getElementById( 'container' ).appendChild( renderer.domElement );
 
 				//
 
-				controls = new THREE.TrackballControls( camera, renderer.domElement );
+				controls = new TrackballControls( camera, renderer.domElement );
 				controls.rotateSpeed = 0.5;
 				controls.minDistance = 500;
 				controls.maxDistance = 6000;

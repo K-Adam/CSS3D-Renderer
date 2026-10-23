@@ -10,20 +10,16 @@
 				margin:0;
 				font-weight: bold;
 				overflow:hidden;
+				background:#000;
 			}
 		</style>
 	</head>
 
 	<body>
-    
-        <script src="js/libs/three.min.js"></script>
 
-        <script src="js/libs/gl-matrix-min.js"></script>
-        <script src="../packages/c3r/dist/C3R.min.js"></script>
-
-        <script src="../packages/c3r-three/dist/c3r-three.js"></script>
-
-		<script>
+		<script type="module">
+		import * as THREE from "three";
+		import { C3RRenderer } from "c3r-three";
 
 			var camera, scene, renderer;
 			var cameraOrtho, sceneOrtho;
@@ -104,11 +100,8 @@
 
 				// renderer
 
-				renderer = new THREE.CSS3DRenderer();
-				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer = new C3RRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
-                renderer.setClearColor(new THREE.Color( 0x000000 ));
-				renderer.autoClear = false; // To allow render overlay on top of sprited sphere
 
 				document.body.appendChild( renderer.domElement );
 
@@ -121,7 +114,7 @@
 			function createHUDSprites ( texture ) {
 
 				var material = new THREE.SpriteMaterial( { map: texture } );
-                
+
 				var width = material.map.image.width;
 				var height = material.map.image.height;
 
@@ -191,7 +184,7 @@
 
 				requestAnimationFrame( animate );
 				render();
-                
+
 			}
 
 			function render() {
@@ -229,9 +222,7 @@
 				group.rotation.y = time * 0.75;
 				group.rotation.z = time * 1.0;
 
-				renderer.clear();
 				renderer.render( scene, camera );
-				renderer.clearDepth();
 				renderer.render( sceneOrtho, cameraOrtho );
 
 			}

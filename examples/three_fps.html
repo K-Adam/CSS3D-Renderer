@@ -30,27 +30,21 @@
 	<body>
 
 		<div id="container"></div>
-		<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - platformer demo. cubemap by <a href="http://www.zfight.com/" target="_blank" rel="noopener">Jochum Skoglund</a>.<br />Use arrow keys to look around, WASD to move and SPACE to jump.</div>
+		<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - platformer demo. cubemap by <a href="http://www.zfight.com/" target="_blank" rel="noopener">Jochum Skoglund</a>.<br />Click to look around with the mouse, WASD to move, SHIFT to run and SPACE to jump.</div>
 
-        <script src="js/libs/three.min.js"></script>
-
-        <script src="js/libs/gl-matrix-min.js"></script>
-        <script src="../packages/c3r/dist/C3R.min.js"></script>
-
-        <script src="../packages/c3r-three/dist/c3r-three.js"></script>
-    
-		<script>
+		<script type="module">
+		import * as THREE from "three";
+		import { C3RRenderer } from "c3r-three";
 
 			// player motion parameters
 
 			var motion = {
 				airborne : false,
 				position : new THREE.Vector3(), velocity : new THREE.Vector3(),
-				rotation : new THREE.Vector2(), spinning : new THREE.Vector2()
+				rotation : new THREE.Vector2()
 			};
 
 			motion.position.y = -150;
-
 
 			// game systems code
 
@@ -63,14 +57,14 @@
 
 			var keyboardControls = (function() {
 
-				var keys = { SP : 32, W : 87, A : 65, S : 83, D : 68, UP : 38, LT : 37, DN : 40, RT : 39 };
+				var keys = { SP : "Space", W : "KeyW", A : "KeyA", S : "KeyS", D : "KeyD", SH : "ShiftLeft" };
 
 				var keysPressed = {};
 
 				(function( watchedKeyCodes ) {
 					var handler = function( down ) {
 						return function( e ) {
-							var index = watchedKeyCodes.indexOf( e.keyCode );
+							var index = watchedKeyCodes.indexOf( e.code );
 							if( index >= 0 ) {
 								keysPressed[watchedKeyCodes[index]] = down; e.preventDefault();
 							}
@@ -79,7 +73,7 @@
 					window.addEventListener( "keydown", handler( true ), false );
 					window.addEventListener( "keyup", handler( false ), false );
 				})([
-					keys.SP, keys.W, keys.A, keys.S, keys.D, keys.UP, keys.LT, keys.DN, keys.RT
+					keys.SP, keys.W, keys.A, keys.S, keys.D, keys.SH
 				]);
 
 				var forward = new THREE.Vector3();
@@ -88,19 +82,13 @@
 				return function() {
 					if( !motion.airborne ) {
 
-						// look around
-						var sx = keysPressed[keys.UP] ? 0.03 : ( keysPressed[keys.DN] ? -0.03 : 0 );
-						var sy = keysPressed[keys.LT] ? 0.03 : ( keysPressed[keys.RT] ? -0.03 : 0 );
-
-						if( Math.abs( sx ) >= Math.abs( motion.spinning.x ) ) motion.spinning.x = sx;
-						if( Math.abs( sy ) >= Math.abs( motion.spinning.y ) ) motion.spinning.y = sy;
-
 						// move around
 						forward.set( Math.sin( motion.rotation.y ), 0, Math.cos( motion.rotation.y ) );
 						sideways.set( forward.z, 0, -forward.x );
 
-						forward.multiplyScalar( keysPressed[keys.W] ? -0.1 : (keysPressed[keys.S] ? 0.1 : 0));
-						sideways.multiplyScalar( keysPressed[keys.A] ? -0.1 : (keysPressed[keys.D] ? 0.1 : 0));
+						var speed = keysPressed[keys.SH] ? 0.2 : 0.1;
+						forward.multiplyScalar( keysPressed[keys.W] ? -speed : (keysPressed[keys.S] ? speed : 0));
+						sideways.multiplyScalar( keysPressed[keys.A] ? -speed : (keysPressed[keys.D] ? speed : 0));
 
 						var combined = forward.add( sideways );
 						if( Math.abs( combined.x ) >= Math.abs( motion.velocity.x ) ) motion.velocity.x = combined.x;
@@ -112,6 +100,23 @@
  						motion.velocity.y += vy;
 					}
 				};
+			})();
+
+			(function() {
+				var element = document.getElementById( "container" );
+				var sensitivity = 0.002;
+
+				element.addEventListener( "click", function() {
+					element.requestPointerLock();
+				});
+
+				document.addEventListener( "mousemove", function( e ) {
+					if( document.pointerLockElement !== element ) return;
+
+					motion.rotation.y -= e.movementX * sensitivity;
+					motion.rotation.x -= e.movementY * sensitivity;
+					motion.rotation.x = Math.max( -1.2, Math.min( 1.2, motion.rotation.x ) );
+				});
 			})();
 
 			var jumpPads = (function() {
@@ -143,7 +148,6 @@
 				var raycaster = new THREE.Raycaster();
 				raycaster.ray.direction.set( 0, -1, 0 );
 
-				var angles = new THREE.Vector2();
 				var displacement = new THREE.Vector3();
 
 				return function( dt ) {
@@ -182,18 +186,10 @@
 
 							if( motion.airborne ) motion.velocity.y -= gravity;
 
-							angles.copy( motion.spinning ).multiplyScalar( time );
-							if( !motion.airborne ) motion.spinning.multiplyScalar( damping );
-
 							displacement.copy( motion.velocity ).multiplyScalar( time );
 							if( !motion.airborne ) motion.velocity.multiplyScalar( damping );
 
-							motion.rotation.add( angles );
 							motion.position.add( displacement );
-
-							// limit the tilt at ±0.4 radians
-
-							motion.rotation.x = Math.max( -0.4, Math.min ( +0.4, motion.rotation.x ) );
 
 							// wrap horizontal rotation to 0...2π
 
@@ -219,21 +215,20 @@
 				};
 			})();
 
-
 			// init 3D stuff
 
 			function makeSkybox( urls, size ) {
-            
+
 				var materials = []
-                
+
                 for(var i=0; i<urls.length; i++) {
                     materials.push(new THREE.MeshBasicMaterial( { map: new THREE.TextureLoader().load( urls[i] ) } ));
                 }
-                
-				var geometry = new THREE.BoxBufferGeometry( size, size, size, 1, 1, 1 );
+
+				var geometry = new THREE.BoxGeometry( size, size, size, 1, 1, 1 );
 				geometry.scale( - 1, 1, 1 );
                 return new THREE.Mesh( geometry, materials );
-                
+
 			}
 
 			function makePlatform( jsonUrl, textureUrl ) {
@@ -242,11 +237,10 @@
 				var texture = new THREE.TextureLoader().load( textureUrl );
 				texture.minFilter = THREE.LinearFilter;
 
-				var loader = new THREE.JSONLoader();
+				var loader = new THREE.BufferGeometryLoader();
 				loader.load( jsonUrl, function( geometry ) {
 
-					geometry.computeFaceNormals();
-                    
+
 					var platform = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({ map : texture }) );
 
 					platform.name = "platform";
@@ -257,9 +251,7 @@
 				return placeholder;
 			}
 
-			//var renderer = new THREE.WebGLRenderer({ antialias : true });
-			var renderer = new THREE.CSS3DRenderer();
-			renderer.setPixelRatio( window.devicePixelRatio );
+			var renderer = new C3RRenderer();
 
 			var camera = new THREE.PerspectiveCamera( 60, 1, 0.1, 9000 );
 
@@ -280,7 +272,6 @@
 				'models/platform/platform.json',
 				'models/platform/platform.jpg'
 			));
-
 
 			// start the game
 
@@ -307,18 +298,17 @@
 				};
 
 				requestAnimationFrame( render );
-                
+
                 if( navigator.userAgent.toLowerCase().indexOf('firefox') > -1 ){
-                
+
                     // The scene is not rendered in Firefox, without an initial move
                     setTimeout(function(){
                         motion.velocity.y = 0.5;
                     }, 1500);
-                    
-                }
-                
-			};
 
+                }
+
+			};
 
 			var gameLoop = function( dt ) {
 				resetPlayer();
