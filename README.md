@@ -12,13 +12,13 @@ Try the examples live [here](https://k-adam.github.io/CSS3D-Renderer/).
 
 ## Development
 
-Requires Node 20.19+ or 22.12+.
+Requires Node 20.19+ or 22.12+. The packages are written in TypeScript.
 
 ```sh
 npm install
-npm run build   # packages/*/dist
-npm run dev     # serve the examples
-npm run lint
+npm run build      # packages/*/dist, with type declarations
+npm run dev        # serve the examples
+npm run typecheck  # tsc in strict mode, also the linter
 npm run format
 ```
 

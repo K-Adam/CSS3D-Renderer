@@ -1,0 +1,4 @@
+{
+    "files": [],
+    "references": [{ "path": "packages/c3r" }, { "path": "packages/c3r-three" }]
+}
