@@ -1,40 +1,23 @@
 {
-    "name": "c3r",
-    "version": "0.2.0",
-    "description": "CSS 3D Renderer",
-    "main": "build/C3R.js",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git"
+    "name": "c3r-workspace",
+    "private": true,
+    "workspaces": [
+        "packages/*",
+        "examples"
+    ],
+    "engines": {
+        "node": ">=20.19"
     },
     "scripts": {
-        "build": "rollup -c",
+        "build": "npm run build --workspaces --if-present",
         "lint": "eslint",
         "format": "prettier --write .",
         "format:check": "prettier --check ."
     },
-    "author": "Adam Kecskes <kecskes.adam@outlook.com>",
-    "license": "MIT",
-    "keywords": [
-        "javascript",
-        "css",
-        "css3d",
-        "renderer"
-    ],
-    "dependencies": {
-        "gl-matrix": "^3.4.4"
-    },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@rollup/plugin-node-resolve": "^16.0.3",
-        "@rollup/plugin-terser": "^1.0.2",
         "eslint": "^10.13.0",
         "globals": "^17.13.0",
-        "prettier": "^3.9.10",
-        "rollup": "^4.65.0"
-    },
-    "module": "build/C3R.module.js",
-    "files": [
-        "build"
-    ]
+        "prettier": "^3.9.10"
+    }
 }

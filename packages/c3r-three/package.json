@@ -1,0 +1,37 @@
+{
+    "name": "c3r-three",
+    "version": "0.1.0",
+    "description": "three.js CSS3DRenderer built on C3R, with geometry and texture support",
+    "keywords": [
+        "three",
+        "threejs",
+        "css3d",
+        "renderer"
+    ],
+    "homepage": "https://k-adam.github.io/CSS3D-Renderer/examples/",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
+        "directory": "packages/c3r-three"
+    },
+    "license": "MIT",
+    "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+    "main": "dist/c3r-three.js",
+    "module": "dist/c3r-three.module.js",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "rollup -c"
+    },
+    "dependencies": {
+        "c3r": "^0.2.0",
+        "gl-matrix": "^3.4.4"
+    },
+    "peerDependencies": {
+        "three": ">=0.90.0 <0.125.0"
+    },
+    "devDependencies": {
+        "rollup": "^4.65.0"
+    }
+}

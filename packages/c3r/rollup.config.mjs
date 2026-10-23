@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
 import terser from "@rollup/plugin-terser";
 
@@ -12,6 +13,7 @@ const license = (title, file) =>
     "\n */";
 
 const banner = license("C3R", "LICENSE");
+const glMatrixLicense = createRequire(import.meta.url).resolve("gl-matrix/LICENSE.md");
 const umd = { format: "umd", name: "C3R", globals: { "gl-matrix": "glMatrix" }, banner };
 
 export default [
@@ -19,9 +21,9 @@ export default [
         input: "src/C3R.js",
         external: ["gl-matrix"],
         output: [
-            { file: "build/C3R.module.js", format: "es", banner },
-            { ...umd, file: "build/C3R.js" },
-            { ...umd, file: "build/C3R.min.js", plugins: [terser()] },
+            { file: "dist/C3R.module.js", format: "es", banner },
+            { ...umd, file: "dist/C3R.js" },
+            { ...umd, file: "dist/C3R.min.js", plugins: [terser()] },
         ],
     },
     {
@@ -29,8 +31,8 @@ export default [
         plugins: [nodeResolve()],
         output: {
             ...umd,
-            file: "build/C3R.standalone.js",
-            banner: banner + "\n" + license("gl-matrix", "node_modules/gl-matrix/LICENSE.md"),
+            file: "dist/C3R.standalone.js",
+            banner: banner + "\n" + license("gl-matrix", glMatrixLicense),
             plugins: [terser()],
         },
     },

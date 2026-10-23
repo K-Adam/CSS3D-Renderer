@@ -1,0 +1,36 @@
+{
+    "name": "c3r",
+    "version": "0.2.0",
+    "description": "CSS 3D Renderer",
+    "keywords": [
+        "javascript",
+        "css",
+        "css3d",
+        "renderer"
+    ],
+    "homepage": "https://k-adam.github.io/CSS3D-Renderer/examples/",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
+        "directory": "packages/c3r"
+    },
+    "license": "MIT",
+    "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+    "main": "dist/C3R.js",
+    "module": "dist/C3R.module.js",
+    "unpkg": "dist/C3R.standalone.js",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "rollup -c"
+    },
+    "dependencies": {
+        "gl-matrix": "^3.4.4"
+    },
+    "devDependencies": {
+        "@rollup/plugin-node-resolve": "^16.0.3",
+        "@rollup/plugin-terser": "^1.0.2",
+        "rollup": "^4.65.0"
+    }
+}

@@ -1,11 +1,40 @@
 /**
+ * @license c3r-three
+ * The MIT License
+ *
+ * Copyright © 2020 Adam Kecskes
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+import { Object3D, Vector2, REVISION, Matrix4, BufferGeometry } from 'three';
+import * as C3R from 'c3r';
+import { mat4, vec2, vec3, vec4 } from 'gl-matrix';
+
+/**
  * @author Adam Kecskes <kecskes.adam@outlook.com>
  */
 
-// The CSS3DObject and CSS3DSprite classes are preserved for compatibility
-THREE.CSS3DObject = function (element) {
 
-	THREE.Object3D.call(this);
+// The CSS3DObject and CSS3DSprite classes are preserved for compatibility
+function CSS3DObject(element) {
+
+	Object3D.call(this);
 
 	this.element = element;
 	this.element.style.position = 'absolute';
@@ -20,35 +49,30 @@ THREE.CSS3DObject = function (element) {
 
 	});
 
-};
-
-THREE.CSS3DObject.prototype = Object.assign(Object.create(THREE.Object3D.prototype), {
+}
+CSS3DObject.prototype = Object.assign(Object.create(Object3D.prototype), {
 
 	isDomElement: true
 
 });
-THREE.CSS3DObject.prototype.constructor = THREE.CSS3DObject;
+CSS3DObject.prototype.constructor = CSS3DObject;
 
-THREE.CSS3DSprite = function (element) {
+function CSS3DSprite(element) {
 
-	THREE.CSS3DObject.call(this, element);
+	CSS3DObject.call(this, element);
 
-	this.center = new THREE.Vector2(0.5, 0.5);
+	this.center = new Vector2(0.5, 0.5);
 
-};
-
-THREE.CSS3DSprite.prototype = Object.create(THREE.CSS3DObject.prototype);
-THREE.CSS3DSprite.prototype.constructor = THREE.CSS3DSprite;
-
-// CSS Renderer
-
-THREE.CSS3DRenderer = function (parameters) {
-	const { mat4, vec2, vec3, vec4 } = glMatrix;
+}
+CSS3DSprite.prototype = Object.create(CSS3DObject.prototype);
+CSS3DSprite.prototype.constructor = CSS3DSprite;
 
 
-	console.log('THREE.CSS3DRenderer', THREE.REVISION);
+function CSS3DRenderer() {
 
-	parameters = parameters || {};
+
+	console.log('THREE.CSS3DRenderer', REVISION);
+
 	var _this = this;
 
 	var _width, _height;
@@ -70,10 +94,6 @@ THREE.CSS3DRenderer = function (parameters) {
 
 	var activateContainer = function (container, remove_current) {
 
-		if (remove_current && active_container) {
-			hideContainer(active_container);
-		}
-
 		container.setSize(_width, _height);
 
 		active_container = container;
@@ -83,26 +103,10 @@ THREE.CSS3DRenderer = function (parameters) {
 			_this.domElement.appendChild(container.domElement);
 
 		}
-	}
-
-	var hideContainer = function (container) {
-
-		if (container.domElement.parentNode === _this.domElement) {
-
-			_this.domElement.removeChild(container.domElement);
-
-		}
-
-		if (active_container === container) {
-
-			active_container = null;
-
-		}
 	};
 
 
 
-	// Warn if some features can not be user
 
 	if (!CSS.supports("clip-path: polygon(0% 0%,100% 0%,100% 100%)")) {
 
@@ -133,8 +137,6 @@ THREE.CSS3DRenderer = function (parameters) {
 		if (a == null || b == null) return false;
 		if (a.length != b.length) return false;
 
-		// If you don't care about the order of the elements inside
-		// the array, you should sort both arrays here.
 
 		for (var i = 0; i < a.length; ++i) {
 
@@ -144,7 +146,7 @@ THREE.CSS3DRenderer = function (parameters) {
 
 		return true;
 
-	}
+	};
 
 	// List of objects, which needed update
 	// One element in the scene graph can appear multiple times in the tree, so we need to update later
@@ -199,7 +201,6 @@ THREE.CSS3DRenderer = function (parameters) {
 
 		}
 
-		// Compare camera world inv matrices
 		if (!mat4.equals(active_container.camera.matrix, camera.matrixWorldInverse.elements)) {
 
 			mat4.copy(active_container.camera.matrix, camera.matrixWorldInverse.elements);
@@ -216,13 +217,13 @@ THREE.CSS3DRenderer = function (parameters) {
 	};
 
 
-	var tMatrix = new THREE.Matrix4();
+	var tMatrix = new Matrix4();
 	var updateSpriteMatrix = function (three_object, c3d_object) {
 
 		tMatrix.fromArray(active_container.camera.matrix);
 		tMatrix.transpose();
 		tMatrix.copyPosition(three_object.matrixWorld);
-		tMatrix.multiplyMatrices(tMatrix, (new THREE.Matrix4()).extractRotation(three_object.matrixWorld).transpose());
+		tMatrix.multiplyMatrices(tMatrix, (new Matrix4()).extractRotation(three_object.matrixWorld).transpose());
 		tMatrix.scale(three_object.scale);
 
 		tMatrix.elements[3] = 0;
@@ -279,7 +280,6 @@ THREE.CSS3DRenderer = function (parameters) {
 
 				} else {
 
-					// CSS3D Object
 					if (three_child.isDomElement) {
 						var element = three_child.element;
 
@@ -292,7 +292,7 @@ THREE.CSS3DRenderer = function (parameters) {
 
 					} else if (three_child.isSprite) {
 
-						var element = document.createElement('div');
+						element = document.createElement('div');
 
 						element.style['background-blend-mode'] = 'multiply';
 
@@ -339,8 +339,7 @@ THREE.CSS3DRenderer = function (parameters) {
 
 		}
 
-		// Update child nodes
-		for (var threejs_id in c3d_object.threejs_children) {
+		for (threejs_id in c3d_object.threejs_children) {
 
 			var c = c3d_object.threejs_children[threejs_id];
 			updateObject(t_child_map[threejs_id], c);
@@ -356,7 +355,7 @@ THREE.CSS3DRenderer = function (parameters) {
 		if (!geometry.isBufferGeometry) {
 
 			// TODO: support for not just bufferGeometry
-			three_object.geometry = geometry = (new THREE.BufferGeometry()).fromGeometry(geometry);
+			three_object.geometry = geometry = (new BufferGeometry()).fromGeometry(geometry);
 
 		}
 
@@ -393,7 +392,6 @@ THREE.CSS3DRenderer = function (parameters) {
 
 			threejs_updated.push(geometry.attributes.position, geometry.attributes.uv);
 
-			// Remove old content
 			(c3d_object.threejs_groups || []).forEach(function (gr) {
 
 				c3d_object.removeChild(gr);
@@ -457,14 +455,13 @@ THREE.CSS3DRenderer = function (parameters) {
 
 		}
 
-		// Materials
 
 		var multi_material = Array.isArray(three_object.material);
 		var threejs_materials = multi_material ? three_object.material : [three_object.material];
 
-		for (var g = 0; g < groups.length; g++) {
+		for (g = 0; g < groups.length; g++) {
 
-			var c3d_group = c3d_object.threejs_groups[g];
+			c3d_group = c3d_object.threejs_groups[g];
 			var threejs_material = threejs_materials[groups[g].materialIndex % threejs_materials.length];
 
 			updateObjectMaterial(threejs_material, c3d_group);
@@ -491,10 +488,9 @@ THREE.CSS3DRenderer = function (parameters) {
 
 	var updateObject = function (three_object, c3d_object) {
 
-		// Compare object matrices
 		var three_matrix = three_object.matrix.elements;
 
-		if ((three_object instanceof THREE.CSS3DSprite) || three_object.isSprite) {
+		if ((three_object instanceof CSS3DSprite) || three_object.isSprite) {
 
 			three_matrix = updateSpriteMatrix(three_object, c3d_object);
 
@@ -507,7 +503,6 @@ THREE.CSS3DRenderer = function (parameters) {
 
 		}
 
-		// Update content
 
 		updateChildren(three_object, c3d_object);
 
@@ -631,7 +626,7 @@ THREE.CSS3DRenderer = function (parameters) {
 
 				c3d_object.children.forEach(function (child) {
 
-					if (!child instanceof C3R.Polygon) {
+					if (!(child instanceof C3R.Polygon)) {
 						return;
 					}
 
@@ -686,14 +681,10 @@ THREE.CSS3DRenderer = function (parameters) {
 
 	};
 
-	this.setPixelRatio = function (val) {};
+	this.setPixelRatio = function () {};
 
 	this.clearDepth = function () {};
-
-	var clearNext = false;
 	this.clear = function () {
-
-		clearNext = true;
 
 	};
 
@@ -704,15 +695,6 @@ THREE.CSS3DRenderer = function (parameters) {
 	};
 
 	this.render = function (scene, camera) {
-
-		if (clearNext) {
-
-			// TODO: Hide containers except the currently rendered ones
-			// collect the rendered containers in an array, and clear the others with a timeout? 
-
-			clearNext = false;
-
-		}
 
 		if (!active_container || active_container.threejs_id !== scene.id) {
 
@@ -758,4 +740,6 @@ THREE.CSS3DRenderer = function (parameters) {
 
 	};
 
-};
+}
+
+export { CSS3DObject, CSS3DRenderer, CSS3DSprite };
