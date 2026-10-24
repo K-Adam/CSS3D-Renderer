@@ -1,13 +1,5 @@
-import {
-  mat2,
-  mat3,
-  vec2,
-  vec3,
-  type ReadonlyVec2,
-  type ReadonlyVec3,
-} from "gl-matrix";
+import { mat2, mat3, vec2, vec3, type ReadonlyVec2 } from "gl-matrix";
 
-import { CSSClass } from "../css/CSSClass.js";
 import { Object3D } from "./Object3D.js";
 import { Triangle } from "../math/Triangle.js";
 import type { Vertex } from "../math/Vertex.js";
@@ -117,42 +109,16 @@ export class Polygon extends Object3D {
   #blockWidth = 0;
   #blockHeight = 0;
 
-  static getClass: () => CSSClass = CSSClass.lazy({
-    width: "var(--width, 0px)",
-    height: "var(--height, 0px)",
-
-    opacity: "var(--opacity, 1)",
-
-    "transform-style": "flat",
-    overflow: "hidden",
-
-    ...Object3D.commonAttributes,
-  });
-
-  static getContentClass: () => CSSClass = CSSClass.lazy({
-    width: "100%",
-    height: "100%",
-
-    "background-color": "var(--background-color, white)",
-    "background-image": "var(--background-image, none)",
-    "background-size": "100% 100%",
-
-    "background-blend-mode": "multiply",
-
-    transform: "matrix(1, 0, 0, 1, 0, 0)",
-    "transform-origin": "0 0",
-  });
-
   constructor(vertices: Vertex[], contentElement: HTMLElement | null = null) {
     super();
 
     this.vertices = vertices;
     this.simplify();
 
-    Polygon.getClass().attach(this.domElement);
+    this.domElement.classList.add("c3r-polygon");
 
     this.contentElement = contentElement ?? document.createElement("div");
-    Polygon.getContentClass().attach(this.contentElement);
+    this.contentElement.classList.add("c3r-polygon-content");
     this.domElement.appendChild(this.contentElement);
   }
 
@@ -230,7 +196,7 @@ export class Polygon extends Object3D {
     points[bi] = vec2.fromValues(a * scale, 0);
     points[ci] = vec2.fromValues(Ax * scale, Ay * scale);
 
-    this.#layout(points, tri, [0, 0, 1]);
+    this.#layout(points, tri);
   }
 
   #fitPolygon(tri: Triangle): void {
@@ -301,11 +267,11 @@ export class Polygon extends Object3D {
       return vec2.fromValues((t[0] - xmin) * scale, (t[1] - ymin) * scale);
     });
 
-    this.#layout(points, tri, [0, 0, 1]);
+    this.#layout(points, tri);
   }
 
   // Fits the element around the dilated polygon
-  #layout(points: ReadonlyVec2[], tri: Triangle, norm?: ReadonlyVec3): void {
+  #layout(points: ReadonlyVec2[], tri: Triangle): void {
     const dilated = dilate(points, this.edgeOverlap);
 
     const [xmin, xmax, ymin, ymax] = bounds(dilated);
@@ -324,7 +290,7 @@ export class Polygon extends Object3D {
     const [c0, c1, c2] = points.map(([x, y]) =>
       vec3.fromValues(x - xmin, y - ymin, 0),
     );
-    this.matrix = new Triangle(c0, c1, c2, norm).getTransformationTo(tri);
+    this.matrix = new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(tri);
   }
 
   updateContent(): void {

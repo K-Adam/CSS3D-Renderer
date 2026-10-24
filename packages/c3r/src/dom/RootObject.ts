@@ -1,4 +1,3 @@
-import { CSSClass } from "../css/CSSClass.js";
 import { Group } from "./Group.js";
 
 import { PerspectiveCamera } from "../math/PerspectiveCamera.js";
@@ -9,23 +8,10 @@ export type Camera = PerspectiveCamera | OrthographicCamera;
 export class RootObject extends Group {
   camera: Camera = new PerspectiveCamera();
 
-  static override getClass: () => CSSClass = CSSClass.lazy({
-    width: "100% !important",
-    height: "100% !important",
-
-    top: "50%",
-    left: "50%",
-
-    // Click through
-    "pointer-events": "none",
-
-    "backface-visibility": "hidden !important",
-  });
-
   constructor() {
     super();
 
-    RootObject.getClass().attach(this.domElement);
+    this.domElement.classList.add("c3r-root");
   }
 
   // The view transform: camera projection, then the root's own matrix

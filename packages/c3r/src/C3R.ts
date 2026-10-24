@@ -1,4 +1,3 @@
-export { CSSClass } from "./css/CSSClass.js";
 export { Material } from "./css/Material.js";
 
 export { Object3D } from "./dom/Object3D.js";

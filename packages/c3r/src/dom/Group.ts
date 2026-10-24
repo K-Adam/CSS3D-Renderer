@@ -1,6 +1,5 @@
 import { vec2, vec3, type mat4, type ReadonlyVec3 } from "gl-matrix";
 
-import { CSSClass } from "../css/CSSClass.js";
 import { Triangle } from "../math/Triangle.js";
 import type { Vertex } from "../math/Vertex.js";
 
@@ -14,21 +13,10 @@ export class Group extends Object3D {
   #normCache: ReadonlyVec3 | null = null;
   #vec2tex: mat4 | null = null;
 
-  static getClass: () => CSSClass = CSSClass.lazy({
-    // Center element
-    width: "0px",
-    height: "0px",
-
-    "transform-style": "preserve-3d",
-    overflow: "visible",
-
-    ...Object3D.commonAttributes,
-  });
-
   constructor() {
     super();
 
-    Group.getClass().attach(this.domElement);
+    this.domElement.classList.add("c3r-group");
   }
 
   addChild(obj: Object3D): void {

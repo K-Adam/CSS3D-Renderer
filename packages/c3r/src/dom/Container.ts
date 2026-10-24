@@ -1,4 +1,3 @@
-import { CSSClass } from "../css/CSSClass.js";
 import { RootObject, type Camera } from "./RootObject.js";
 
 import { PerspectiveCamera } from "../math/PerspectiveCamera.js";
@@ -10,20 +9,8 @@ export class Container {
   width = 0;
   height = 0;
 
-  static getClass: () => CSSClass = CSSClass.lazy({
-    overflow: "hidden",
-
-    position: "relative",
-
-    "--viewport-width": "100vw",
-    "--viewport-height": "100vh",
-
-    width: "var(--viewport-width)",
-    height: "var(--viewport-height)",
-  });
-
   constructor() {
-    Container.getClass().attach(this.domElement);
+    this.domElement.classList.add("c3r-container");
 
     this.domElement.appendChild(this.root.domElement);
     this.updateCamera();
@@ -35,6 +22,7 @@ export class Container {
 
   set camera(camera: Camera) {
     this.root.camera = camera;
+    this.updateCamera();
   }
 
   // Needs to be called on camera change and if the root was replaced

@@ -396,10 +396,7 @@ function createNode(object: Object3D): C3R.Object3D {
     const element = document.createElement("div");
     element.style.backgroundBlendMode = "multiply";
     element.style.maskImage = "var(--background-image, none)";
-    element.style.setProperty(
-      "-webkit-mask-image",
-      "var(--background-image, none)",
-    );
+    element.style.maskSize = "100% 100%";
 
     const node = new C3R.CustomElement(element);
     node.setSize(128, 128);

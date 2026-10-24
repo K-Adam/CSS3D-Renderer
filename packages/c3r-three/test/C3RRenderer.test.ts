@@ -106,3 +106,13 @@ it("follows visibility, geometry updates and removal", () => {
   expect(meshNode.isConnected).toBe(false);
   expect(polygons()).toHaveLength(0);
 });
+
+it("shares one stylesheet between renderers", () => {
+  const a = setup();
+  const b = setup();
+  a.renderer.render(a.scene, a.camera);
+  b.renderer.render(b.scene, b.camera);
+
+  expect(document.adoptedStyleSheets).toHaveLength(1);
+  expect([...a.root().classList]).toEqual(["c3r-group", "c3r-root"]);
+});

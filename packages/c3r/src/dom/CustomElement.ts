@@ -1,6 +1,5 @@
 import { vec2 } from "gl-matrix";
 
-import { CSSClass } from "../css/CSSClass.js";
 import { Group } from "./Group.js";
 
 export class CustomElement extends Group {
@@ -10,21 +9,13 @@ export class CustomElement extends Group {
   elementCenter: vec2 = vec2.fromValues(0.5, 0.5);
   elementRotation = 0;
 
-  static getContentClass: () => CSSClass = CSSClass.lazy({
-    "background-color": "var(--background-color, transparent)",
-    "background-image": "var(--background-image, white)",
-    "background-size": "100% 100%",
-
-    opacity: "var(--opacity, 1)",
-  });
-
   constructor(element: HTMLElement) {
     super();
 
     this.element = element;
     this.domElement.appendChild(element);
 
-    CustomElement.getContentClass().attach(this.element);
+    this.element.classList.add("c3r-element");
 
     this.updateElementTransform();
   }
