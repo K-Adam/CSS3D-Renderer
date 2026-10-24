@@ -63,8 +63,10 @@
       var rigidBodies = [];
       var margin = 0.05;
       var hinge;
-      var rope;
+      var ropeSoftBody;
+      var ropeSegments = [];
       var transformAux1 = new Ammo.btTransform();
+      var ropeAux1 = new THREE.Vector3();
 
       var time = 0;
       var armMovement = 0;
@@ -260,43 +262,24 @@
         }
 
         // The rope
-        // Rope graphic object
         var ropeNumSegments = 10;
         var ropeLength = 4;
         var ropeMass = 3;
         var ropePos = ball.position.clone();
         ropePos.y += ballRadius;
 
-        var segmentLength = ropeLength / ropeNumSegments;
-        var ropeGeometry = new THREE.BufferGeometry();
-        var ropeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-        var ropePositions = [];
-        var ropeIndices = [];
-
-        for (var i = 0; i < ropeNumSegments + 1; i++) {
-          ropePositions.push(
-            ropePos.x,
-            ropePos.y + i * segmentLength,
-            ropePos.z,
-          );
-        }
-
+        // C3R renders only meshes: one box per segment, moved each frame
+        var ropeGeometry = new THREE.BoxGeometry(0.06, 0.06, 1).translate(
+          0,
+          0,
+          0.5,
+        );
+        var ropeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
         for (var i = 0; i < ropeNumSegments; i++) {
-          ropeIndices.push(i, i + 1);
+          var segment = new THREE.Mesh(ropeGeometry, ropeMaterial);
+          scene.add(segment);
+          ropeSegments.push(segment);
         }
-
-        ropeGeometry.setIndex(
-          new THREE.BufferAttribute(new Uint16Array(ropeIndices), 1),
-        );
-        ropeGeometry.setAttribute(
-          "position",
-          new THREE.BufferAttribute(new Float32Array(ropePositions), 3),
-        );
-        ropeGeometry.computeBoundingSphere();
-        rope = new THREE.LineSegments(ropeGeometry, ropeMaterial);
-        rope.castShadow = true;
-        rope.receiveShadow = true;
-        scene.add(rope);
 
         // Rope physic object
         var softBodyHelpers = new Ammo.btSoftBodyHelpers();
@@ -306,7 +289,7 @@
           ropePos.y + ropeLength,
           ropePos.z,
         );
-        var ropeSoftBody = softBodyHelpers.CreateRope(
+        ropeSoftBody = softBodyHelpers.CreateRope(
           physicsWorld.getWorldInfo(),
           ropeStart,
           ropeEnd,
@@ -321,7 +304,6 @@
           .getCollisionShape()
           .setMargin(margin * 3);
         physicsWorld.addSoftBody(ropeSoftBody, 1, -1);
-        rope.userData.physicsBody = ropeSoftBody;
         // Disable deactivation
         ropeSoftBody.setActivationState(4);
 
@@ -524,19 +506,17 @@
         physicsWorld.stepSimulation(deltaTime, 10);
 
         // Update rope
-        var softBody = rope.userData.physicsBody;
-        var ropePositions = rope.geometry.attributes.position.array;
-        var numVerts = ropePositions.length / 3;
-        var nodes = softBody.get_m_nodes();
-        var indexFloat = 0;
-        for (var i = 0; i < numVerts; i++) {
-          var node = nodes.at(i);
-          var nodePos = node.get_m_x();
-          ropePositions[indexFloat++] = nodePos.x();
-          ropePositions[indexFloat++] = nodePos.y();
-          ropePositions[indexFloat++] = nodePos.z();
+        var nodes = ropeSoftBody.get_m_nodes();
+        for (var i = 0; i < ropeSegments.length; i++) {
+          var a = nodes.at(i).get_m_x();
+          var b = nodes.at(i + 1).get_m_x();
+          ropeAux1.set(b.x(), b.y(), b.z());
+
+          var segment = ropeSegments[i];
+          segment.position.set(a.x(), a.y(), a.z());
+          segment.scale.z = segment.position.distanceTo(ropeAux1);
+          segment.lookAt(ropeAux1);
         }
-        rope.geometry.attributes.position.needsUpdate = true;
 
         // Update rigid bodies
         for (var i = 0, il = rigidBodies.length; i < il; i++) {
