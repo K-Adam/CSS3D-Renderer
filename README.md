@@ -25,5 +25,3 @@ npm run dev        # serve the examples
 npm run typecheck  # tsc in strict mode, also the linter
 npm run format
 ```
-
-`dist/` is not committed; `v*` tags publish a GitHub Release and deploy the examples to Pages.
