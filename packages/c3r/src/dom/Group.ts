@@ -71,8 +71,12 @@ export class Group extends Object3D {
     pushPolygon(vertices: Vertex[]): void {
         // TODO: if vertices.length > 3, then we should compare more than 1 edge
 
-        const norm = new Triangle(vertices[0].position, vertices[1].position, vertices[2].position)
-            .norm;
+        const tri = new Triangle(vertices[0].position, vertices[1].position, vertices[2].position);
+
+        // Skip slivers
+        if (tri.calculateArea() <= 1e-6 * Math.max(...tri.calculateEdgeLengths()) ** 2) return;
+
+        const { norm } = tri;
 
         if (this.#vertCache && this.#normCache && this.#vec2tex) {
             if (

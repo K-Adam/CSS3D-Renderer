@@ -9,7 +9,10 @@ export class Material {
         const { style } = elem;
 
         if (this.backgroundImageSrc) {
-            style.setProperty("--background-image", `url('${this.backgroundImageSrc}')`);
+            style.setProperty(
+                "--background-image",
+                `url("${this.backgroundImageSrc.replace(/["\\]/g, "\\$&")}")`,
+            );
         } else {
             style.removeProperty("--background-image");
         }

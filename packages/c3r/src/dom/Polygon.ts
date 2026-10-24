@@ -40,6 +40,16 @@ const convexHull = (points: ReadonlyVec2[]): ReadonlyVec2[] => {
     return [...chain(sorted), ...chain(sorted.slice().reverse())];
 };
 
+// Newell's method
+const newellNormal = (vertices: Vertex[]): vec3 => {
+    const n = vec3.create();
+    vertices.forEach(({ position: [x1, y1, z1] }, i) => {
+        const [x2, y2, z2] = vertices[(i + 1) % vertices.length].position;
+        vec3.add(n, n, [(y1 - y2) * (z1 + z2), (z1 - z2) * (x1 + x2), (x1 - x2) * (y1 + y2)]);
+    });
+    return vec3.normalize(n, n);
+};
+
 const MITER_LIMIT = 4;
 
 // Offsets every edge outward by d
@@ -147,7 +157,9 @@ export class Polygon extends Object3D {
         const [v0, v1, v2] = this.vertices;
         if (!v2) throw new Error("The polygon has not enough sides");
 
-        const tri = new Triangle(v0.position, v1.position, v2.position);
+        // The first corner may be reflex
+        const norm = this.vertices.length === 3 ? undefined : newellNormal(this.vertices);
+        const tri = new Triangle(v0.position, v1.position, v2.position, norm);
 
         if (this.vertices.length === 3) {
             this.#fitTriangle(tri);
@@ -180,7 +192,7 @@ export class Polygon extends Object3D {
         const c = ln[ci];
 
         const Ax = -(b * b - c * c - a * a) / (2 * a);
-        const Ay = Math.sqrt(c * c - Ax * Ax);
+        const Ay = Math.sqrt(Math.max(0, c * c - Ax * Ax));
 
         const scale = this.getDomSize(a) / a;
 
@@ -253,7 +265,7 @@ export class Polygon extends Object3D {
             return vec2.fromValues((t[0] - xmin) * scale, (t[1] - ymin) * scale);
         });
 
-        this.#layout(points, tri);
+        this.#layout(points, tri, [0, 0, 1]);
     }
 
     // Fits the element around the dilated polygon
@@ -283,8 +295,7 @@ export class Polygon extends Object3D {
         const { style } = this.contentElement;
 
         // No texture mapping without a UV area (e.g. a mesh without uvs), show the plain color
-        const [uxmin, uxmax, uymin, uymax] = bounds(uvs);
-        if (!(uxmax - uxmin > 0 && uymax - uymin > 0)) {
+        if (!cross2(uvs[1], uvs[2], uvs[0])) {
             style.removeProperty("background-position");
             style.removeProperty("background-size");
             style.removeProperty("transform");

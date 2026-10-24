@@ -12,11 +12,14 @@
         "build": "npm run build --workspaces --if-present",
         "dev": "npm run dev -w c3r-examples",
         "typecheck": "tsc -b",
+        "test": "vitest run",
         "format": "prettier --write .",
         "format:check": "prettier --check ."
     },
     "devDependencies": {
+        "happy-dom": "^21.0.4",
         "prettier": "^3.9.10",
-        "typescript": "^7.0.2"
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.5"
     }
 }

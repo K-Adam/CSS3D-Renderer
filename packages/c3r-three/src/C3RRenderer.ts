@@ -8,8 +8,10 @@ import {
     Mesh,
     OrthographicCamera,
     PerspectiveCamera,
+    Quaternion,
     SRGBColorSpace,
     Sprite,
+    Vector3,
     type BufferAttribute,
     type BufferGeometry,
     type Camera,
@@ -50,7 +52,10 @@ interface MaterialState {
 
 const DEFAULT_CENTER = { x: 0.5, y: 0.5 };
 const _matrix = new Matrix4();
-const _rotation = new Matrix4();
+const _parent = new Matrix4();
+const _position = new Vector3();
+const _quaternion = new Quaternion();
+const _scale = new Vector3();
 const _rgb = { r: 0, g: 0, b: 0 };
 
 export class C3RRenderer {
@@ -133,6 +138,11 @@ export class C3RRenderer {
     }
 
     #syncObject(object: Object3D, node: C3R.Object3D, container: C3R.Container): void {
+        const { style } = node.domElement;
+        const display = object.visible ? "" : "none";
+        if (style.display !== display) style.display = display;
+        if (!object.visible) return;
+
         const isSprite = object instanceof Sprite || object instanceof CSS3DSprite;
         const matrix = isSprite
             ? this.#spriteMatrix(object, node, container)
@@ -161,14 +171,18 @@ export class C3RRenderer {
     }
 
     #spriteMatrix(object: Object3D, node: C3R.Object3D, container: C3R.Container): number[] {
+        // Billboard in world space
         _matrix.fromArray(container.camera.matrix).transpose();
-        _matrix.copyPosition(object.matrixWorld);
-        _matrix.multiply(_rotation.extractRotation(object.matrixWorld).transpose());
-        _matrix.scale(object.scale);
 
         const e = _matrix.elements;
         e[3] = e[7] = e[11] = 0;
         e[15] = 1;
+
+        object.matrixWorld.decompose(_position, _quaternion, _scale);
+        _matrix.setPosition(_position).scale(_scale);
+
+        // relative to the parent node
+        if (object.parent) _matrix.premultiply(_parent.copy(object.parent.matrixWorld).invert());
 
         const center = object instanceof Sprite ? object.center : DEFAULT_CENTER;
         if (

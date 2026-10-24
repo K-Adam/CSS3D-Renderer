@@ -32,6 +32,11 @@ export class Triangle {
         return [vec3.len(e1), vec3.len(e2), vec3.len(e3)];
     }
 
+    calculateArea(): number {
+        const [e1, e2] = this.#edges;
+        return vec3.len(vec3.cross(vec3.create(), e1, e2)) / 2;
+    }
+
     getTransformationTo(that: Triangle): mat4 {
         const A = Triangle.#basis(this);
         const AI = mat4.invert(A, A);

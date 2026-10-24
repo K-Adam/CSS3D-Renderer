@@ -67,6 +67,7 @@ export class Container {
 
         this.domElement.style.setProperty("--viewport-width", `${width}px`);
         this.domElement.style.setProperty("--viewport-height", `${height}px`);
+        this.root.updateMatrix();
     }
 
     resetSize(): void {

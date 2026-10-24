@@ -49,7 +49,7 @@ export class RootObject extends Group {
 
             this.domElement.style.transform =
                 `scale(${width / xsize},${height / ysize})` +
-                `translate(${-xcenter}px,${-ycenter}px)${view}`;
+                `translate(${-xcenter}px,${ycenter}px)${view}`;
         }
     }
 }
