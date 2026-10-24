@@ -251,6 +251,8 @@
           camera.position.copy(motion.position);
 
           camera.position.y += 3.0;
+
+          skybox.position.copy(camera.position);
         };
       })();
 
@@ -301,19 +303,19 @@
 
       scene.add(camera);
 
-      scene.add(
-        makeSkybox(
-          [
-            "textures/cube/skybox/px.jpg", // right
-            "textures/cube/skybox/nx.jpg", // left
-            "textures/cube/skybox/py.jpg", // top
-            "textures/cube/skybox/ny.jpg", // bottom
-            "textures/cube/skybox/pz.jpg", // back
-            "textures/cube/skybox/nz.jpg", // front
-          ],
-          2000,
-        ),
+      var skybox = makeSkybox(
+        [
+          "textures/cube/skybox/px.jpg", // right
+          "textures/cube/skybox/nx.jpg", // left
+          "textures/cube/skybox/py.jpg", // top
+          "textures/cube/skybox/ny.jpg", // bottom
+          "textures/cube/skybox/pz.jpg", // back
+          "textures/cube/skybox/nz.jpg", // front
+        ],
+        2000,
       );
+
+      scene.add(skybox);
 
       scene.add(
         makePlatform(
