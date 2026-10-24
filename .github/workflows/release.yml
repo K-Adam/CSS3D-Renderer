@@ -24,7 +24,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: examples/dist
-      - run: gh release create "$GITHUB_REF_NAME" packages/c3r/dist/*.js packages/c3r/dist/*.mjs packages/c3r-three/dist/*.js --generate-notes
+      - run: gh release create "$GITHUB_REF_NAME" packages/c3r/dist/*.js packages/c3r-three/dist/*.js --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
 

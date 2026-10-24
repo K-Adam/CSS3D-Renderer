@@ -10,9 +10,13 @@
 
 Try the examples live [here](https://k-adam.github.io/CSS3D-Renderer/).
 
+## Install
+
+`npm install c3r`, or `npm install c3r-three three` for three.js. Prebuilt files are on [GitHub Releases](https://github.com/K-Adam/CSS3D-Renderer/releases).
+
 ## Development
 
-Requires Node 20.19+ or 22.12+. The packages are written in TypeScript.
+Requires Node 22.12+. The packages are written in TypeScript.
 
 ```sh
 npm install

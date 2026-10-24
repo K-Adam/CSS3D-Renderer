@@ -16,23 +16,23 @@
     },
     "license": "MIT",
     "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+    "type": "module",
     "exports": {
         ".": {
             "types": "./dist/C3R.d.ts",
-            "import": "./dist/C3R.mjs",
-            "default": "./dist/C3R.js"
+            "default": "./dist/c3r.js"
         }
     },
-    "main": "dist/C3R.js",
-    "module": "dist/C3R.mjs",
+    "main": "dist/c3r.js",
     "types": "dist/C3R.d.ts",
-    "unpkg": "dist/C3R.standalone.js",
+    "unpkg": "dist/c3r.min.js",
+    "jsdelivr": "dist/c3r.min.js",
     "files": [
         "dist",
         "!dist/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "vite build && vite build --mode standalone && tsc -b",
+        "build": "vite build && vite build --mode min && tsc -b",
         "prepublishOnly": "npm run build"
     },
     "dependencies": {

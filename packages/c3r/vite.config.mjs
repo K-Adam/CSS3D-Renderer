@@ -13,34 +13,30 @@ const license = (title, file) =>
 
 const postBanner = license("C3R", "LICENSE");
 const glMatrixLicense = createRequire(import.meta.url).resolve("gl-matrix/LICENSE.md");
-const umd = { format: "umd", name: "C3R", globals: { "gl-matrix": "glMatrix" }, postBanner };
-const min = { minify: true, comments: false };
 
-// Two passes, because gl-matrix is external in one and bundled in the other
+// Two passes, because gl-matrix is external in the ESM build and bundled in the browser one
 export default defineConfig(({ mode }) => ({
     build: {
         lib: { entry: "src/C3R.ts" },
         minify: false,
-        emptyOutDir: mode !== "standalone",
+        emptyOutDir: mode !== "min",
         rolldownOptions:
-            mode === "standalone"
+            mode === "min"
                 ? {
                       output: [
                           {
-                              ...umd,
-                              ...min,
-                              entryFileNames: "C3R.standalone.js",
+                              format: "umd",
+                              name: "C3R",
+                              entryFileNames: "c3r.min.js",
+                              minify: true,
+                              comments: false,
                               postBanner: postBanner + "\n" + license("gl-matrix", glMatrixLicense),
                           },
                       ],
                   }
                 : {
                       external: ["gl-matrix"],
-                      output: [
-                          { format: "es", entryFileNames: "C3R.mjs", postBanner },
-                          { ...umd, entryFileNames: "C3R.js" },
-                          { ...umd, ...min, entryFileNames: "C3R.min.js" },
-                      ],
+                      output: [{ format: "es", entryFileNames: "c3r.js", postBanner }],
                   },
     },
 }));
