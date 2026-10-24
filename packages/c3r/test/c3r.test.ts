@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { mat4, vec2, vec3, vec4 } from "gl-matrix";
-import { Group, Polygon, Vertex } from "c3r";
+import {
+  Container,
+  css,
+  Group,
+  OrthographicCamera,
+  Polygon,
+  Vertex,
+} from "c3r";
 
 const vertex = (x: number, y: number, z: number, u = 0, v = 0) =>
   new Vertex(vec3.fromValues(x, y, z), vec2.fromValues(u, v));
@@ -134,5 +141,21 @@ describe("Group.pushPolygon", () => {
     group.flushPolygons();
 
     expect(group.children).toHaveLength(1);
+  });
+});
+
+describe("server-side rendering", () => {
+  it("exports the stylesheet for static html", () => {
+    expect(css).toContain(".c3r-polygon");
+  });
+
+  it("sizes an orthographic view from setSize, without layout", () => {
+    const container = new Container();
+    container.setSize(400, 300);
+    container.camera = new OrthographicCamera(-200, 200, 150, -150);
+
+    expect(container.root.domElement.style.transform).toMatch(
+      /^scale\(1, ?1\)/,
+    );
   });
 });

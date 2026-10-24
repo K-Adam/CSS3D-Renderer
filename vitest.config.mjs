@@ -14,6 +14,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "happy-dom",
+          css: true, // for the exported stylesheet string
           include: ["packages/*/test/**/*.test.ts"],
           exclude: ["**/*.browser.test.ts"],
         },

@@ -29,9 +29,12 @@ export class RootObject extends Group {
       const xcenter = (camera.right + camera.left) / 2;
       const ycenter = (camera.top + camera.bottom) / 2;
 
+      // Without layout (server-side), the size from Container.setSize
       const parent = this.domElement.parentElement;
-      const width = parent?.offsetWidth ?? 0;
-      const height = parent?.offsetHeight ?? 0;
+      const viewport = (name: string) =>
+        parseFloat(parent?.style.getPropertyValue(name) ?? "") || 0;
+      const width = parent?.offsetWidth || viewport("--viewport-width");
+      const height = parent?.offsetHeight || viewport("--viewport-height");
 
       this.domElement.style.transform =
         `scale(${width / xsize},${height / ysize})` +

@@ -24,4 +24,25 @@ It bundles gl-matrix and exposes a `C3R` global.
 
 TypeScript declarations are included.
 
+## Node
+
+C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline the exported `css`. There is no layout either, so set the size explicitly.
+
+```sh
+npm install c3r @happy-dom/global-registrator
+```
+
+```js
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+GlobalRegistrator.register();
+
+const { Container, css } = await import("c3r");
+
+const container = new Container();
+container.setSize(800, 600);
+// ... build the scene
+
+const html = `<!doctype html><style>${css}</style>${container.domElement.outerHTML}`;
+```
+
 See the [examples](https://k-adam.github.io/CSS3D-Renderer/).
