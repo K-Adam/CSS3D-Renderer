@@ -1,141 +1,156 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<title>three.js css3d - interactive - cubes tween</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-			body {
-				font-family: Monospace;
-				background-color: #f0f0f0;
-				margin: 0px;
-				overflow: hidden;
-			}
-		</style>
-	</head>
-	<body>
+  <head>
+    <title>three.js css3d - interactive - cubes tween</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <style>
+      body {
+        font-family: Monospace;
+        background-color: #f0f0f0;
+        margin: 0px;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from "three";
+      import { C3RRenderer } from "c3r-three";
+      import Stats from "three/addons/libs/stats.module.js";
+      import * as TWEEN from "three/addons/libs/tween.module.js";
 
-		<script type="module">
-		import * as THREE from "three";
-		import { C3RRenderer } from "c3r-three";
-		import Stats from "three/addons/libs/stats.module.js";
-		import * as TWEEN from "three/addons/libs/tween.module.js";
+      var container, stats;
+      var camera, scene, renderer;
 
-			var container, stats;
-			var camera, scene, renderer;
+      var raycaster;
+      var mouse;
 
-			var raycaster;
-			var mouse;
+      init();
+      animate();
 
-			init();
-			animate();
+      function init() {
+        container = document.createElement("div");
+        document.body.appendChild(container);
 
-			function init() {
+        var info = document.createElement("div");
+        info.style.position = "absolute";
+        info.style.top = "10px";
+        info.style.width = "100%";
+        info.style.textAlign = "center";
+        info.innerHTML =
+          '<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - clickable objects';
+        container.appendChild(info);
 
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          10000,
+        );
+        camera.position.y = 300;
+        camera.position.z = 500;
 
-				var info = document.createElement( 'div' );
-				info.style.position = 'absolute';
-				info.style.top = '10px';
-				info.style.width = '100%';
-				info.style.textAlign = 'center';
-				info.innerHTML = '<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - clickable objects';
-				container.appendChild( info );
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
-				camera.position.y = 300;
-				camera.position.z = 500;
+        var geometry = new THREE.BoxGeometry(100, 100, 100);
 
-				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0xf0f0f0 );
+        for (var i = 0; i < 16; i++) {
+          var object = new THREE.Mesh(
+            geometry,
+            new THREE.MeshBasicMaterial({
+              color: Math.random() * 0xffffff,
+              opacity: 0.5,
+            }),
+          );
+          object.position.x = Math.random() * 800 - 400;
+          object.position.y = Math.random() * 800 - 400;
+          object.position.z = Math.random() * 800 - 400;
+          object.scale.x = Math.random() * 2 + 1;
+          object.scale.y = Math.random() * 2 + 1;
+          object.scale.z = Math.random() * 2 + 1;
+          object.rotation.x = Math.random() * 2 * Math.PI;
+          object.rotation.y = Math.random() * 2 * Math.PI;
+          object.rotation.z = Math.random() * 2 * Math.PI;
+          scene.add(object);
+        }
 
-				var geometry = new THREE.BoxGeometry( 100, 100, 100 );
+        //
 
-				for ( var i = 0; i < 16; i ++ ) {
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
 
-					var object = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff, opacity: 0.5 } ) );
-					object.position.x = Math.random() * 800 - 400;
-					object.position.y = Math.random() * 800 - 400;
-					object.position.z = Math.random() * 800 - 400;
-					object.scale.x = Math.random() * 2 + 1;
-					object.scale.y = Math.random() * 2 + 1;
-					object.scale.z = Math.random() * 2 + 1;
-					object.rotation.x = Math.random() * 2 * Math.PI;
-					object.rotation.y = Math.random() * 2 * Math.PI;
-					object.rotation.z = Math.random() * 2 * Math.PI;
-					scene.add( object );
+        renderer = new C3RRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
 
-				}
+        stats = new Stats();
+        container.appendChild(stats.dom);
 
-				//
+        document.addEventListener("mousedown", onDocumentMouseDown, false);
+        document.addEventListener("touchstart", onDocumentTouchStart, false);
 
-				raycaster = new THREE.Raycaster();
-				mouse = new THREE.Vector2();
+        //
 
-				renderer = new C3RRenderer();
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				container.appendChild(renderer.domElement);
+        window.addEventListener("resize", onWindowResize, false);
+      }
 
-				stats = new Stats();
-				container.appendChild( stats.dom );
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
 
-				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
 
-				//
+      function onDocumentTouchStart(event) {
+        event.preventDefault();
 
-				window.addEventListener( 'resize', onWindowResize, false );
+        event.clientX = event.touches[0].clientX;
+        event.clientY = event.touches[0].clientY;
+        onDocumentMouseDown(event);
+      }
 
-			}
+      function onDocumentMouseDown(event) {
+        event.preventDefault();
 
-			function onWindowResize() {
+        mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+        mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
 
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
+        raycaster.setFromCamera(mouse, camera);
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+        var intersects = raycaster.intersectObjects(scene.children);
 
-			}
+        if (intersects.length > 0) {
+          new TWEEN.Tween(intersects[0].object.position)
+            .to(
+              {
+                x: Math.random() * 800 - 400,
+                y: Math.random() * 800 - 400,
+                z: Math.random() * 800 - 400,
+              },
+              2000,
+            )
+            .easing(TWEEN.Easing.Elastic.Out)
+            .start();
 
-			function onDocumentTouchStart( event ) {
+          new TWEEN.Tween(intersects[0].object.rotation)
+            .to(
+              {
+                x: Math.random() * 2 * Math.PI,
+                y: Math.random() * 2 * Math.PI,
+                z: Math.random() * 2 * Math.PI,
+              },
+              2000,
+            )
+            .easing(TWEEN.Easing.Elastic.Out)
+            .start();
+        }
 
-				event.preventDefault();
-
-				event.clientX = event.touches[0].clientX;
-				event.clientY = event.touches[0].clientY;
-				onDocumentMouseDown( event );
-
-			}	
-
-			function onDocumentMouseDown( event ) {
-
-				event.preventDefault();
-
-				mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
-				mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
-
-				raycaster.setFromCamera( mouse, camera );
-
-				var intersects = raycaster.intersectObjects( scene.children );
-
-				if ( intersects.length > 0 ) {
-
-					new TWEEN.Tween( intersects[ 0 ].object.position ).to( {
-						x: Math.random() * 800 - 400,
-						y: Math.random() * 800 - 400,
-						z: Math.random() * 800 - 400 }, 2000 )
-					.easing( TWEEN.Easing.Elastic.Out).start();
-
-					new TWEEN.Tween( intersects[ 0 ].object.rotation ).to( {
-						x: Math.random() * 2 * Math.PI,
-						y: Math.random() * 2 * Math.PI,
-						z: Math.random() * 2 * Math.PI }, 2000 )
-					.easing( TWEEN.Easing.Elastic.Out).start();
-
-				}
-
-				/*
+        /*
 				// Parse all the faces
 				for ( var i in intersects ) {
 
@@ -143,38 +158,32 @@
 
 				}
 				*/
-			}
+      }
 
-			//
+      //
 
-			function animate() {
+      function animate() {
+        requestAnimationFrame(animate);
 
-				requestAnimationFrame( animate );
+        render();
+        stats.update();
+      }
 
-				render();
-				stats.update();
+      var radius = 600;
+      var theta = 0;
 
-			}
+      function render() {
+        TWEEN.update();
 
-			var radius = 600;
-			var theta = 0;
+        theta += 0.1;
 
-			function render() {
+        camera.position.x = radius * Math.sin(THREE.MathUtils.degToRad(theta));
+        camera.position.y = radius * Math.sin(THREE.MathUtils.degToRad(theta));
+        camera.position.z = radius * Math.cos(THREE.MathUtils.degToRad(theta));
+        camera.lookAt(scene.position);
 
-				TWEEN.update();
-
-				theta += 0.1;
-
-				camera.position.x = radius * Math.sin( THREE.MathUtils.degToRad( theta ) );
-				camera.position.y = radius * Math.sin( THREE.MathUtils.degToRad( theta ) );
-				camera.position.z = radius * Math.cos( THREE.MathUtils.degToRad( theta ) );
-				camera.lookAt( scene.position );
-
-				renderer.render( scene, camera );
-
-			}
-
-		</script>
-
-	</body>
+        renderer.render(scene, camera);
+      }
+    </script>
+  </body>
 </html>

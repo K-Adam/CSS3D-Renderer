@@ -1,170 +1,169 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<title>three.js CSS3D - geometry - earth</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-			body {
-				color: #808080;
-				font-family:Monospace;
-				font-size:13px;
-				text-align:center;
+  <head>
+    <title>three.js CSS3D - geometry - earth</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <style>
+      body {
+        color: #808080;
+        font-family: Monospace;
+        font-size: 13px;
+        text-align: center;
 
-				background-color: #ffffff;
-				margin: 0px;
-				overflow: hidden;
-			}
+        background-color: #ffffff;
+        margin: 0px;
+        overflow: hidden;
+      }
 
-			#info {
-				position: absolute;
-				top: 0px; width: 100%;
-				padding: 5px;
-			}
+      #info {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        padding: 5px;
+      }
 
-			a {
+      a {
+        color: #0080ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div id="info">
+      <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
+      earth demo
+    </div>
 
-				color: #0080ff;
-			}
+    <script type="module">
+      import * as THREE from "three";
+      import { C3RRenderer } from "c3r-three";
+      import Stats from "three/addons/libs/stats.module.js";
 
-		</style>
-	</head>
-	<body>
+      var container, stats;
+      var camera, scene, renderer;
+      var group;
+      var mouseX = 0,
+        mouseY = 0;
 
-		<div id="container"></div>
-		<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - earth demo</div>
+      var windowHalfX = window.innerWidth / 2;
+      var windowHalfY = window.innerHeight / 2;
 
-		<script type="module">
-		import * as THREE from "three";
-		import { C3RRenderer } from "c3r-three";
-		import Stats from "three/addons/libs/stats.module.js";
+      init();
+      animate();
 
-			var container, stats;
-			var camera, scene, renderer;
-			var group;
-			var mouseX = 0, mouseY = 0;
+      function init() {
+        container = document.getElementById("container");
 
-			var windowHalfX = window.innerWidth / 2;
-			var windowHalfY = window.innerHeight / 2;
+        camera = new THREE.PerspectiveCamera(
+          60,
+          window.innerWidth / window.innerHeight,
+          1,
+          2000,
+        );
+        camera.position.z = 500;
 
-			init();
-			animate();
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
 
-			function init() {
+        group = new THREE.Group();
+        scene.add(group);
 
-				container = document.getElementById( 'container' );
+        // earth
 
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.z = 500;
+        var loader = new THREE.TextureLoader();
+        loader.load(
+          "textures/land_ocean_ice_cloud_2048.jpg",
+          function (texture) {
+            var geometry = new THREE.SphereGeometry(200, 16, 10);
 
-				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0xffffff );
+            var material = new THREE.MeshBasicMaterial({ map: texture });
+            var mesh = new THREE.Mesh(geometry, material);
+            group.add(mesh);
+          },
+        );
 
-				group = new THREE.Group();
-				scene.add( group );
+        // shadow
 
-				// earth
+        var canvas = document.createElement("canvas");
+        canvas.width = 128;
+        canvas.height = 128;
 
-				var loader = new THREE.TextureLoader();
-				loader.load( 'textures/land_ocean_ice_cloud_2048.jpg', function ( texture ) {
+        var context = canvas.getContext("2d");
+        var gradient = context.createRadialGradient(
+          canvas.width / 2,
+          canvas.height / 2,
+          0,
+          canvas.width / 2,
+          canvas.height / 2,
+          canvas.width / 2,
+        );
+        gradient.addColorStop(0.1, "rgba(210,210,210,1)");
+        gradient.addColorStop(1, "rgba(255,255,255,1)");
 
-					var geometry = new THREE.SphereGeometry( 200, 16, 10 );
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
 
-					var material = new THREE.MeshBasicMaterial( { map: texture } );
-					var mesh = new THREE.Mesh( geometry, material );
-					group.add( mesh );
+        var texture = new THREE.CanvasTexture(canvas);
 
-				} );
+        var geometry = new THREE.PlaneGeometry(300, 300, 2, 2);
+        var material = new THREE.MeshBasicMaterial({ map: texture });
 
-				// shadow
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.position.y = -250;
+        mesh.rotation.x = -Math.PI / 2;
+        group.add(mesh);
 
-				var canvas = document.createElement( 'canvas' );
-				canvas.width = 128;
-				canvas.height = 128;
+        renderer = new C3RRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
 
-				var context = canvas.getContext( '2d' );
-				var gradient = context.createRadialGradient(
-					canvas.width / 2,
-					canvas.height / 2,
-					0,
-					canvas.width / 2,
-					canvas.height / 2,
-					canvas.width / 2
-				);
-				gradient.addColorStop( 0.1, 'rgba(210,210,210,1)' );
-				gradient.addColorStop( 1, 'rgba(255,255,255,1)' );
+        stats = new Stats();
+        container.appendChild(stats.dom);
 
-				context.fillStyle = gradient;
-				context.fillRect( 0, 0, canvas.width, canvas.height );
+        document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-				var texture = new THREE.CanvasTexture( canvas );
+        //
 
-				var geometry = new THREE.PlaneGeometry( 300, 300, 2, 2 );
-				var material = new THREE.MeshBasicMaterial( { map: texture } );
+        window.addEventListener("resize", onWindowResize, false);
+      }
 
-				var mesh = new THREE.Mesh( geometry, material );
-				mesh.position.y = - 250;
-				mesh.rotation.x = - Math.PI / 2;
-				group.add( mesh );
+      function onWindowResize() {
+        windowHalfX = window.innerWidth / 2;
+        windowHalfY = window.innerHeight / 2;
 
-				renderer = new C3RRenderer();
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				container.appendChild( renderer.domElement );
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
 
-				stats = new Stats();
-				container.appendChild( stats.dom );
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
 
-				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+      function onDocumentMouseMove(event) {
+        mouseX = event.clientX - windowHalfX;
+        mouseY = event.clientY - windowHalfY;
+      }
 
-				//
+      function animate() {
+        if (!window.no_animate) {
+          requestAnimationFrame(animate);
+        }
 
-				window.addEventListener( 'resize', onWindowResize, false );
+        render();
+        stats.update();
+      }
 
-			}
+      function render() {
+        camera.position.x += (mouseX - camera.position.x) * 0.05;
+        camera.position.y += (-mouseY - camera.position.y) * 0.05;
+        camera.lookAt(scene.position);
 
-			function onWindowResize() {
+        group.rotation.y -= 0.005;
 
-				windowHalfX = window.innerWidth / 2;
-				windowHalfY = window.innerHeight / 2;
-
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
-
-			function onDocumentMouseMove( event ) {
-
-				mouseX = ( event.clientX - windowHalfX );
-				mouseY = ( event.clientY - windowHalfY );
-
-			}
-
-			function animate() {
-
-                if(!window.no_animate) {
-                    requestAnimationFrame( animate );
-                }
-
-				render();
-				stats.update();
-
-			}
-
-			function render() {
-
-				camera.position.x += ( mouseX - camera.position.x ) * 0.05;
-				camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
-				camera.lookAt( scene.position );
-
-				group.rotation.y -= 0.005;
-
-				renderer.render( scene, camera );
-
-			}
-
-		</script>
-
-	</body>
+        renderer.render(scene, camera);
+      }
+    </script>
+  </body>
 </html>

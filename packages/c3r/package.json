@@ -1,44 +1,44 @@
 {
-    "name": "c3r",
-    "version": "0.2.0",
-    "description": "CSS 3D Renderer",
-    "keywords": [
-        "typescript",
-        "css",
-        "css3d",
-        "renderer"
-    ],
-    "homepage": "https://k-adam.github.io/CSS3D-Renderer/",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
-        "directory": "packages/c3r"
-    },
-    "license": "MIT",
-    "author": "Adam Kecskes <kecskes.adam@outlook.com>",
-    "type": "module",
-    "exports": {
-        ".": {
-            "types": "./dist/C3R.d.ts",
-            "default": "./dist/c3r.js"
-        }
-    },
-    "main": "dist/c3r.js",
-    "types": "dist/C3R.d.ts",
-    "unpkg": "dist/c3r.min.js",
-    "jsdelivr": "dist/c3r.min.js",
-    "files": [
-        "dist",
-        "!dist/*.tsbuildinfo"
-    ],
-    "scripts": {
-        "build": "vite build && vite build --mode min && tsc -b",
-        "prepublishOnly": "npm run build"
-    },
-    "dependencies": {
-        "gl-matrix": "^3.4.4"
-    },
-    "devDependencies": {
-        "vite": "^8.3.5"
+  "name": "c3r",
+  "version": "0.2.0",
+  "description": "CSS 3D Renderer",
+  "keywords": [
+    "typescript",
+    "css",
+    "css3d",
+    "renderer"
+  ],
+  "homepage": "https://k-adam.github.io/CSS3D-Renderer/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
+    "directory": "packages/c3r"
+  },
+  "license": "MIT",
+  "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/C3R.d.ts",
+      "default": "./dist/c3r.js"
     }
+  },
+  "main": "dist/c3r.js",
+  "types": "dist/C3R.d.ts",
+  "unpkg": "dist/c3r.min.js",
+  "jsdelivr": "dist/c3r.min.js",
+  "files": [
+    "dist",
+    "!dist/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "build": "vite build && vite build --mode min && tsc -b",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "gl-matrix": "^3.4.4"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5"
+  }
 }

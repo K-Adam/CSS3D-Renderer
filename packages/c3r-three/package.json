@@ -1,48 +1,48 @@
 {
-    "name": "c3r-three",
-    "version": "0.2.0",
-    "description": "three.js CSS3DRenderer built on C3R, with geometry and texture support",
-    "keywords": [
-        "three",
-        "threejs",
-        "css3d",
-        "renderer"
-    ],
-    "homepage": "https://k-adam.github.io/CSS3D-Renderer/",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
-        "directory": "packages/c3r-three"
-    },
-    "license": "MIT",
-    "author": "Adam Kecskes <kecskes.adam@outlook.com>",
-    "type": "module",
-    "exports": {
-        ".": {
-            "types": "./dist/C3RRenderer.d.ts",
-            "default": "./dist/c3r-three.js"
-        }
-    },
-    "main": "dist/c3r-three.js",
-    "types": "dist/C3RRenderer.d.ts",
-    "files": [
-        "dist",
-        "!dist/*.tsbuildinfo"
-    ],
-    "scripts": {
-        "build": "vite build && tsc -b",
-        "prepublishOnly": "npm run build"
-    },
-    "dependencies": {
-        "c3r": "^0.2.0",
-        "gl-matrix": "^3.4.4"
-    },
-    "peerDependencies": {
-        "three": ">=0.160.0"
-    },
-    "devDependencies": {
-        "@types/three": "^0.186.0",
-        "three": "^0.186.1",
-        "vite": "^8.3.5"
+  "name": "c3r-three",
+  "version": "0.2.0",
+  "description": "three.js CSS3DRenderer built on C3R, with geometry and texture support",
+  "keywords": [
+    "three",
+    "threejs",
+    "css3d",
+    "renderer"
+  ],
+  "homepage": "https://k-adam.github.io/CSS3D-Renderer/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/K-Adam/CSS3D-Renderer.git",
+    "directory": "packages/c3r-three"
+  },
+  "license": "MIT",
+  "author": "Adam Kecskes <kecskes.adam@outlook.com>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/C3RRenderer.d.ts",
+      "default": "./dist/c3r-three.js"
     }
+  },
+  "main": "dist/c3r-three.js",
+  "types": "dist/C3RRenderer.d.ts",
+  "files": [
+    "dist",
+    "!dist/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "build": "vite build && tsc -b",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "c3r": "^0.2.0",
+    "gl-matrix": "^3.4.4"
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "three": "^0.186.1",
+    "vite": "^8.3.5"
+  }
 }
