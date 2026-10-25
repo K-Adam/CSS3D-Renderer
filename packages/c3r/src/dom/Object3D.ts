@@ -19,7 +19,7 @@ export abstract class Object3D {
     return this.#matrix;
   }
 
-  set matrix(matrix: ReadonlyMat4) {
+  protected setMatrix(matrix: ReadonlyMat4): void {
     if (mat4.exactEquals(matrix, this.#matrix)) return;
     mat4.copy(this.#matrix, matrix);
     this.domElement.style.transform = `matrix3d(${[...matrix].join()})`;

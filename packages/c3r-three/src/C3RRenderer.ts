@@ -67,8 +67,8 @@ export class C3RRenderer {
   #width = 0;
   #height = 0;
   #containers = new Map<Scene, C3R.Container>(); // multiple scenes can overlap
-  #children = new WeakMap<C3R.Group, Map<Object3D, C3R.Object3D>>();
-  #meshes = new WeakMap<C3R.Object3D, MeshState>();
+  #children = new WeakMap<C3R.Group, Map<Object3D, C3R.Group>>();
+  #meshes = new WeakMap<C3R.Group, MeshState>();
   #materials = new WeakMap<Material, MaterialState>();
 
   getSize(): { width: number; height: number } {
@@ -145,7 +145,7 @@ export class C3RRenderer {
 
   #syncObject(
     object: Object3D,
-    node: C3R.Object3D,
+    node: C3R.Group,
     container: C3R.Container,
   ): void {
     const { style } = node.domElement;
@@ -160,7 +160,7 @@ export class C3RRenderer {
 
     node.matrix = matrix;
 
-    if (node instanceof C3R.Group) this.#syncChildren(object, node, container);
+    this.#syncChildren(object, node, container);
 
     if (isSprite && node instanceof C3R.CustomElement) {
       const rotation =
@@ -179,7 +179,7 @@ export class C3RRenderer {
 
   #spriteMatrix(
     object: Object3D,
-    node: C3R.Object3D,
+    node: C3R.Group,
     container: C3R.Container,
   ): number[] {
     // Billboard in world space
@@ -212,9 +212,8 @@ export class C3RRenderer {
     node: C3R.Group,
     container: C3R.Container,
   ): void {
-    const previous =
-      this.#children.get(node) ?? new Map<Object3D, C3R.Object3D>();
-    const current = new Map<Object3D, C3R.Object3D>();
+    const previous = this.#children.get(node) ?? new Map<Object3D, C3R.Group>();
+    const current = new Map<Object3D, C3R.Group>();
 
     for (const child of object.children) {
       let childNode = previous.get(child);
@@ -236,9 +235,7 @@ export class C3RRenderer {
     }
   }
 
-  #syncMesh(mesh: Mesh, node: C3R.Object3D): void {
-    if (!(node instanceof C3R.Group)) return;
-
+  #syncMesh(mesh: Mesh, node: C3R.Group): void {
     const { geometry } = mesh;
     const { index, attributes, drawRange } = geometry;
     const { position, uv } = attributes;
@@ -319,7 +316,7 @@ export class C3RRenderer {
   // Returns the map in use, for the caller to apply its repeat/offset
   #syncMaterial(
     material: MappedMaterial,
-    node: C3R.Object3D,
+    node: C3R.Group,
   ): Texture | null | undefined {
     let state = this.#materials.get(material);
     if (!state) {
@@ -392,7 +389,7 @@ const version = (
 const sameKey = (a: unknown[], b: unknown[]) =>
   a.length === b.length && a.every((v, i) => v === b[i]);
 
-function createNode(object: Object3D): C3R.Object3D {
+function createNode(object: Object3D): C3R.Group {
   if (object instanceof CSS3DObject) {
     const node = new C3R.CustomElement(object.element);
     node.domElement.style.backfaceVisibility = "visible";

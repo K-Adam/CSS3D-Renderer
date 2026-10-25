@@ -45,7 +45,7 @@ const convexHull = (points: ReadonlyVec2[]): ReadonlyVec2[] => {
 };
 
 // Newell's method
-const newellNormal = (vertices: Vertex[]): vec3 => {
+const newellNormal = (vertices: readonly Vertex[]): vec3 => {
   const n = vec3.create();
   vertices.forEach(({ position: [x1, y1, z1] }, i) => {
     const [x2, y2, z2] = vertices[(i + 1) % vertices.length].position;
@@ -88,20 +88,42 @@ const dilate = (points: ReadonlyVec2[], d: number): vec2[] => {
   });
 };
 
+// Remove collinear vertices
+const simplify = (vertices: readonly Vertex[]): Vertex[] =>
+  vertices.filter((vertex, i) => {
+    if (i === 0) return true;
+
+    const p1 = vertices[i - 1].position;
+    const p3 = vertices[(i + 1) % vertices.length].position;
+
+    const e1 = vec3.normalize(
+      vec3.create(),
+      vec3.sub(vec3.create(), p1, vertex.position),
+    );
+    const e2 = vec3.normalize(
+      vec3.create(),
+      vec3.sub(vec3.create(), vertex.position, p3),
+    );
+
+    return Math.abs(vec3.dot(e1, e2)) < 0.9999;
+  });
+
+export interface PolygonOptions {
+  // Base size of the dom element, too small makes the content blurry
+  getDomSize?: (size: number) => number;
+  // Outward edge offset in DOM pixels, hides seams between neighbours
+  edgeOverlap?: number;
+}
+
 export class Polygon extends Object3D {
-  vertices: Vertex[]; // vertices in CCW
+  readonly vertices: readonly Vertex[]; // vertices in CCW
   readonly contentElement: HTMLElement;
 
   uvScale: vec2 = vec2.fromValues(1, 1);
   uvOffset: vec2 = vec2.fromValues(0, 0);
 
-  // Base size of the dom element (for a triangle, the length of the longest side)
-  // Avoid scaling issues. If the content element is initially too small, the result will be blurry
-  getDomSize: (size: number) => number = (size) =>
-    Math.max(250, Math.min(size, 1200));
-
-  // Outward offset of the edges in DOM pixels, hides the anti-aliasing seams between neighbours
-  edgeOverlap = 1;
+  #getDomSize: (size: number) => number;
+  #edgeOverlap: number;
 
   #clipPath: ReadonlyVec2[] = []; // path of the dilated polygon on a rectangular element
   #vertexPoints: ReadonlyVec2[] = [];
@@ -109,11 +131,19 @@ export class Polygon extends Object3D {
   #blockWidth = 0;
   #blockHeight = 0;
 
-  constructor(vertices: Vertex[], contentElement: HTMLElement | null = null) {
+  constructor(
+    vertices: readonly Vertex[],
+    contentElement: HTMLElement | null = null,
+    {
+      getDomSize = (size) => Math.max(250, Math.min(size, 1200)),
+      edgeOverlap = 1,
+    }: PolygonOptions = {},
+  ) {
     super();
 
-    this.vertices = vertices;
-    this.simplify();
+    this.vertices = simplify(vertices);
+    this.#getDomSize = getDomSize;
+    this.#edgeOverlap = edgeOverlap;
 
     this.domElement.classList.add("c3r-polygon");
 
@@ -122,29 +152,6 @@ export class Polygon extends Object3D {
     this.domElement.appendChild(this.contentElement);
 
     this.#fit();
-  }
-
-  // Remove collinear vertices
-  simplify(): void {
-    const { vertices } = this;
-
-    this.vertices = vertices.filter((vertex, i) => {
-      if (i === 0) return true;
-
-      const p1 = vertices[i - 1].position;
-      const p3 = vertices[(i + 1) % vertices.length].position;
-
-      const e1 = vec3.normalize(
-        vec3.create(),
-        vec3.sub(vec3.create(), p1, vertex.position),
-      );
-      const e2 = vec3.normalize(
-        vec3.create(),
-        vec3.sub(vec3.create(), vertex.position, p3),
-      );
-
-      return Math.abs(vec3.dot(e1, e2)) < 0.9999;
-    });
   }
 
   #fit(): void {
@@ -189,7 +196,7 @@ export class Polygon extends Object3D {
     const Ax = -(b * b - c * c - a * a) / (2 * a);
     const Ay = Math.sqrt(Math.max(0, c * c - Ax * Ax));
 
-    const scale = this.getDomSize(a) / a;
+    const scale = this.#getDomSize(a) / a;
 
     const points: vec2[] = [];
     points[ai] = vec2.fromValues(0, 0);
@@ -260,7 +267,7 @@ export class Polygon extends Object3D {
     const boxHeight = ymax - ymin;
 
     const longest = Math.max(boxWidth, boxHeight);
-    const scale = this.getDomSize(longest) / longest;
+    const scale = this.#getDomSize(longest) / longest;
 
     const points = points2d.map((p) => {
       const t = vec2.transformMat2(vec2.create(), p, minTI);
@@ -272,7 +279,7 @@ export class Polygon extends Object3D {
 
   // Fits the element around the dilated polygon
   #layout(points: ReadonlyVec2[], tri: Triangle): void {
-    const dilated = dilate(points, this.edgeOverlap);
+    const dilated = dilate(points, this.#edgeOverlap);
 
     const [xmin, xmax, ymin, ymax] = bounds(dilated);
     this.#blockWidth = xmax - xmin;
@@ -290,7 +297,9 @@ export class Polygon extends Object3D {
     const [c0, c1, c2] = points.map(([x, y]) =>
       vec3.fromValues(x - xmin, y - ymin, 0),
     );
-    this.matrix = new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(tri);
+    this.setMatrix(
+      new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(tri),
+    );
   }
 
   updateContent(): void {

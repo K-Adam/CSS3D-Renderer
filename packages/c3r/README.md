@@ -28,6 +28,8 @@ A `Material` is a class rule in a shared stylesheet, so the objects using it sha
 
 Cameras work the same way: a camera's class sets the variables that `styles.css` projects with, and is disposed the same way.
 
+A group applies `matrix` on assignment, a material or camera on `update()`. A polygon is laid out from its vertices on construction; put it in a group to move it.
+
 ## Node
 
 C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline `cssText()`, the base styles plus the material and camera rules, after building the scene. There is no layout either, so set the size explicitly.

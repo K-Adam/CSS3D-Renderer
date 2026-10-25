@@ -1,4 +1,10 @@
-import { vec2, vec3, type mat4, type ReadonlyVec3 } from "gl-matrix";
+import {
+  vec2,
+  vec3,
+  type mat4,
+  type ReadonlyMat4,
+  type ReadonlyVec3,
+} from "gl-matrix";
 
 import { Triangle } from "../math/Triangle.js";
 import type { Vertex } from "../math/Vertex.js";
@@ -17,6 +23,14 @@ export class Group extends Object3D {
     super();
 
     this.domElement.classList.add("c3r-group");
+  }
+
+  override get matrix(): ReadonlyMat4 {
+    return super.matrix;
+  }
+
+  override set matrix(matrix: ReadonlyMat4) {
+    this.setMatrix(matrix);
   }
 
   addChild(obj: Object3D): void {
