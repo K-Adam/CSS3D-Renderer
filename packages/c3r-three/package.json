@@ -34,8 +34,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "c3r": "^0.2.0",
-    "gl-matrix": "^3.4.4"
+    "c3r": "^0.2.0"
   },
   "peerDependencies": {
     "three": ">=0.160.0"

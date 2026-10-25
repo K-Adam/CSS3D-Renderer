@@ -1,6 +1,6 @@
 # CSS 3D Renderer
 
-**C3R.js** is a lightweight library for displaying 3D scenes with CSS. It is designed to be used as a CSS3D backend for existing libraries. It provides classes to construct textured polygons, nest 3D transformed elements and handle camera.
+Display textured 3D scenes with plain DOM elements and CSS transforms.
 
 | Package                           | Description                                          |
 | --------------------------------- | ---------------------------------------------------- |
@@ -16,7 +16,7 @@ Try the examples live [here](https://k-adam.github.io/CSS3D-Renderer/).
 
 ## Development
 
-Requires Node 22.12+. The packages are written in TypeScript.
+Requires Node 24+. The packages are written in TypeScript.
 
 ```sh
 npm install

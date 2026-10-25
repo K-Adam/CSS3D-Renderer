@@ -1,7 +1,3 @@
-/**
- * @author Adam Kecskes <kecskes.adam@outlook.com>
- */
-
 import {
   InterleavedBufferAttribute,
   Matrix4,
@@ -26,7 +22,6 @@ import {
   CSS3DSprite,
 } from "three/addons/renderers/CSS3DRenderer.js";
 import * as C3R from "c3r";
-import { mat4, vec2, vec3, vec4 } from "gl-matrix";
 
 export { CSS3DObject, CSS3DSprite };
 
@@ -44,7 +39,7 @@ interface Range {
 
 interface MeshState {
   key: unknown[];
-  groups: { node: C3R.Group; repeat: vec2; offset: vec2 }[];
+  groups: { node: C3R.Group; polygons: C3R.Polygon[] }[];
 }
 
 interface MaterialState {
@@ -60,6 +55,7 @@ const _position = new Vector3();
 const _quaternion = new Quaternion();
 const _scale = new Vector3();
 const _rgb = { r: 0, g: 0, b: 0 };
+const RAD2DEG = 180 / Math.PI;
 
 export class C3RRenderer {
   readonly domElement: HTMLDivElement = document.createElement("div");
@@ -87,6 +83,14 @@ export class C3RRenderer {
     }
   }
 
+  dispose(): void {
+    for (const container of this.#containers.values()) {
+      container.domElement.remove();
+      container.camera[Symbol.dispose]();
+    }
+    this.#containers.clear();
+  }
+
   render(scene: Scene, camera: Camera): void {
     let container = this.#containers.get(scene);
     if (!container) {
@@ -106,41 +110,34 @@ export class C3RRenderer {
   }
 
   #syncCamera(container: C3R.Container, camera: Camera): void {
-    let changed = false;
     const c = container.camera;
 
     if (camera instanceof PerspectiveCamera) {
-      if (!(c instanceof C3R.PerspectiveCamera)) {
+      const fov =
+        2 *
+        RAD2DEG *
+        Math.atan(Math.tan(camera.fov / 2 / RAD2DEG) / camera.zoom);
+      if (c instanceof C3R.PerspectiveCamera) {
+        c.fov = fov;
+      } else {
         c[Symbol.dispose](); // ours, never shared
-        container.camera = new C3R.PerspectiveCamera(camera.fov);
-      } else if (c.fov !== camera.fov) {
-        c.fov = camera.fov;
-        changed = true;
+        container.camera = new C3R.PerspectiveCamera(fov);
       }
     } else if (camera instanceof OrthographicCamera) {
-      const { left, right, top, bottom } = camera;
-      if (!(c instanceof C3R.OrthographicCamera)) {
+      const { zoom } = camera;
+      const left = camera.left / zoom;
+      const right = camera.right / zoom;
+      const top = camera.top / zoom;
+      const bottom = camera.bottom / zoom;
+      if (c instanceof C3R.OrthographicCamera) {
+        Object.assign(c, { left, right, top, bottom });
+      } else {
         c[Symbol.dispose]();
         container.camera = new C3R.OrthographicCamera(left, right, top, bottom);
-      } else if (
-        c.left !== left ||
-        c.right !== right ||
-        c.top !== top ||
-        c.bottom !== bottom
-      ) {
-        Object.assign(c, { left, right, top, bottom });
-        changed = true;
       }
     }
 
-    if (
-      !mat4.equals(container.camera.matrix, camera.matrixWorldInverse.elements)
-    ) {
-      mat4.copy(container.camera.matrix, camera.matrixWorldInverse.elements);
-      changed = true;
-    }
-
-    if (changed) container.camera.update();
+    container.camera.matrix = camera.matrixWorldInverse.elements;
   }
 
   #syncObject(
@@ -162,15 +159,11 @@ export class C3RRenderer {
 
     this.#syncChildren(object, node, container);
 
-    if (isSprite && node instanceof C3R.CustomElement) {
-      const rotation =
+    if (isSprite && node instanceof C3R.ElementObject) {
+      node.rotation =
         object instanceof Sprite
           ? object.material.rotation
           : ((object as RotatedSprite).rotation2D ?? 0);
-      if (rotation !== node.elementRotation) {
-        node.elementRotation = rotation;
-        node.updateElementTransform();
-      }
     }
 
     if (object instanceof Sprite) this.#syncMaterial(object.material, node);
@@ -196,12 +189,10 @@ export class C3RRenderer {
     if (object.parent)
       _matrix.premultiply(_parent.copy(object.parent.matrixWorld).invert());
 
-    const center = object instanceof Sprite ? object.center : DEFAULT_CENTER;
-    if (
-      node instanceof C3R.CustomElement &&
-      !vec2.equals([center.x, center.y], node.elementCenter)
-    ) {
-      node.setCenter(center.x, center.y);
+    if (node instanceof C3R.ElementObject) {
+      const { x, y } =
+        object instanceof Sprite ? object.center : DEFAULT_CENTER;
+      node.center = [x, y];
     }
 
     return e;
@@ -267,14 +258,7 @@ export class C3RRenderer {
     let state = this.#meshes.get(node);
     if (!state || !sameKey(state.key, key)) {
       state?.groups.forEach((g) => node.removeChild(g.node));
-      state = {
-        key,
-        groups: ranges.map((r) => ({
-          node: buildGroup(geometry, r),
-          repeat: vec2.fromValues(1, 1),
-          offset: vec2.fromValues(0, 0),
-        })),
-      };
+      state = { key, groups: ranges.map((r) => buildGroup(geometry, r)) };
       state.groups.forEach((g) => node.addChild(g.node));
       this.#meshes.set(node, state);
     }
@@ -289,26 +273,15 @@ export class C3RRenderer {
         group.node,
       );
 
-      const repeat = map
-        ? vec2.fromValues(map.repeat.x, map.repeat.y)
-        : vec2.fromValues(1, 1);
-      const offset = map
-        ? vec2.fromValues(map.offset.x, map.offset.y)
-        : vec2.fromValues(0, 0);
-      if (
-        vec2.equals(group.repeat, repeat) &&
-        vec2.equals(group.offset, offset)
-      )
-        return;
-
-      group.repeat = repeat;
-      group.offset = offset;
-
-      for (const child of group.node.children) {
-        if (!(child instanceof C3R.Polygon)) continue;
-        child.uvScale = repeat;
-        child.uvOffset = offset;
-        child.updateContent();
+      const repeat: [number, number] = map
+        ? [map.repeat.x, map.repeat.y]
+        : [1, 1];
+      const offset: [number, number] = map
+        ? [map.offset.x, map.offset.y]
+        : [0, 0];
+      for (const polygon of group.polygons) {
+        polygon.uvScale = repeat;
+        polygon.uvOffset = offset;
       }
     });
   }
@@ -335,7 +308,6 @@ export class C3RRenderer {
     }
 
     const target = state.material;
-    let changed = false;
     node.material = target;
 
     const { map } = material;
@@ -349,31 +321,16 @@ export class C3RRenderer {
       state.map = map;
       state.version = map.version;
     }
-    if (target.backgroundImageSrc !== src) {
-      target.backgroundImageSrc = src;
-      changed = true;
-    }
+    target.backgroundImageSrc = src;
 
-    let color: vec4 | null = null;
     if (material.color) {
       material.color.getRGB(_rgb, SRGBColorSpace);
-      color = vec4.fromValues(_rgb.r, _rgb.g, _rgb.b, 1);
-    }
-    const sameColor =
-      color && target.backgroundColor
-        ? vec4.equals(color, target.backgroundColor)
-        : color === target.backgroundColor;
-    if (!sameColor) {
-      target.backgroundColor = color;
-      changed = true;
+      target.backgroundColor = [_rgb.r, _rgb.g, _rgb.b, 1];
+    } else {
+      target.backgroundColor = null;
     }
 
-    if (target.opacity !== material.opacity) {
-      target.opacity = material.opacity;
-      changed = true;
-    }
-
-    if (changed) target.update();
+    target.opacity = material.transparent ? material.opacity : 1;
 
     return map;
   }
@@ -391,7 +348,7 @@ const sameKey = (a: unknown[], b: unknown[]) =>
 
 function createNode(object: Object3D): C3R.Group {
   if (object instanceof CSS3DObject) {
-    const node = new C3R.CustomElement(object.element);
+    const node = new C3R.ElementObject(object.element);
     node.domElement.style.backfaceVisibility = "visible";
     return node;
   }
@@ -399,12 +356,12 @@ function createNode(object: Object3D): C3R.Group {
   if (object instanceof Sprite) {
     const element = document.createElement("div");
     element.style.backgroundBlendMode = "multiply";
-    element.style.maskImage = "var(--background-image, none)";
+    element.style.maskImage = "var(--c3r-background-image, none)";
     element.style.maskSize = "100% 100%";
 
-    const node = new C3R.CustomElement(element);
+    const node = new C3R.ElementObject(element);
     node.setSize(128, 128);
-    node.setScale(1 / 128, 1 / 128);
+    node.scale = [1 / 128, 1 / 128];
     return node;
   }
 
@@ -414,25 +371,23 @@ function createNode(object: Object3D): C3R.Group {
 function buildGroup(
   geometry: BufferGeometry,
   { start, count }: Range,
-): C3R.Group {
+): MeshState["groups"][number] {
   const { index } = geometry;
   const { position, uv } = geometry.attributes;
 
-  const group = new C3R.Group();
-
-  const vertex = (i: number) => {
+  const vertex = (i: number): C3R.Vertex => {
     if (index) i = index.getX(i);
-    return new C3R.Vertex(
-      vec3.fromValues(position.getX(i), position.getY(i), position.getZ(i)),
-      uv ? vec2.fromValues(uv.getX(i), uv.getY(i)) : vec2.create(),
-    );
+    return {
+      position: [position.getX(i), position.getY(i), position.getZ(i)],
+      uv: uv ? [uv.getX(i), uv.getY(i)] : [0, 0],
+    };
   };
 
-  // pushPolygon merges coplanar neighbours, e.g. two triangles into a quad
+  const triangles: C3R.Vertex[][] = [];
   for (let i = start; i + 2 < start + count; i += 3) {
-    group.pushPolygon([vertex(i), vertex(i + 1), vertex(i + 2)]);
+    triangles.push([vertex(i), vertex(i + 1), vertex(i + 2)]);
   }
-  group.flushPolygons();
 
-  return group;
+  const node = new C3R.Group();
+  return { node, polygons: node.addTriangles(triangles) };
 }

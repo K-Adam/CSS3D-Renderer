@@ -22,6 +22,8 @@ renderer.render(scene, camera);
 
 `CSS3DObject` and `CSS3DSprite` are re-exported from `three/addons`, so their elements receive pointer events as with three's renderer.
 
+Perspective and orthographic cameras are supported, including `zoom`. Material `color`, `map` (image or canvas, with `repeat` and `offset`) and `opacity` (when `transparent`) are applied, and a material's style is removed on its `dispose()`. `renderer.dispose()` removes every rendered scene.
+
 ## Node
 
 Set up a DOM and inline `cssText()` as described in [c3r](../c3r/README.md#node), then render and serialize `renderer.domElement.outerHTML`. `TextureLoader` needs a browser, so set the image directly: `new Texture(Object.assign(document.createElement("img"), { src }))`. See [node-render.mjs](../../examples/node-render.mjs).

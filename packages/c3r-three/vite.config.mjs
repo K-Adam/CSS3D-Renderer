@@ -8,6 +8,6 @@ export default defineConfig({
       fileName: "c3r-three",
     },
     minify: false,
-    rolldownOptions: { external: [/^three($|\/)/, "c3r", "gl-matrix"] },
+    rolldownOptions: { external: [/^three($|\/)/, "c3r"] },
   },
 });

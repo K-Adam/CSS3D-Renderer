@@ -1,10 +1,5 @@
 import css from "./styles.css?inline";
 
-export { css };
-
-// Safari
-(Symbol as { dispose?: symbol }).dispose ??= Symbol.for("Symbol.dispose");
-
 let sheet: CSSStyleSheet | undefined;
 
 export function ensureStyles(): CSSStyleSheet {

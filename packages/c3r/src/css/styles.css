@@ -1,7 +1,7 @@
 /* .c3r-view must come after .c3r-group, both are on the view element */
 
 /* Not inherited, so a camera move restyles only .c3r-view */
-@property --camera-view {
+@property --c3r-camera-view {
   syntax: "*";
   inherits: false;
 }
@@ -10,10 +10,10 @@
   overflow: hidden;
   position: relative;
   contain: strict;
-  --viewport-width: 100vw;
-  --viewport-height: 100vh;
-  width: var(--viewport-width);
-  height: var(--viewport-height);
+  --c3r-viewport-width: 100vw;
+  --c3r-viewport-height: 100vh;
+  width: var(--c3r-viewport-width);
+  height: var(--c3r-viewport-height);
 }
 
 .c3r-group,
@@ -42,30 +42,39 @@
 }
 
 .c3r-perspective {
-  --focal-length: calc(var(--viewport-height) / 2 / tan(var(--camera-fov) / 2));
-  perspective: var(--focal-length);
+  --c3r-focal-length: calc(
+    var(--c3r-viewport-height) / 2 / tan(var(--c3r-camera-fov) / 2)
+  );
+  perspective: var(--c3r-focal-length);
 }
 
 .c3r-perspective > .c3r-view {
-  transform: translateZ(var(--focal-length)) scaleY(-1) var(--camera-view);
+  transform: translateZ(var(--c3r-focal-length)) scaleY(-1)
+    var(--c3r-camera-view);
 }
 
 .c3r-orthographic > .c3r-view {
   transform: scale(
-      calc(var(--viewport-w) / (var(--camera-right) - var(--camera-left))),
-      calc(var(--viewport-h) / (var(--camera-top) - var(--camera-bottom)))
+      calc(
+        var(--c3r-viewport-x) /
+          (var(--c3r-camera-right) - var(--c3r-camera-left))
+      ),
+      calc(
+        var(--c3r-viewport-y) /
+          (var(--c3r-camera-top) - var(--c3r-camera-bottom))
+      )
     )
     translate(
-      calc((var(--camera-right) + var(--camera-left)) * -0.5px),
-      calc((var(--camera-top) + var(--camera-bottom)) * 0.5px)
+      calc((var(--c3r-camera-right) + var(--c3r-camera-left)) * -0.5px),
+      calc((var(--c3r-camera-top) + var(--c3r-camera-bottom)) * 0.5px)
     )
-    scaleY(-1) var(--camera-view);
+    scaleY(-1) var(--c3r-camera-view);
 }
 
 .c3r-polygon {
-  width: var(--width, 0px);
-  height: var(--height, 0px);
-  opacity: var(--opacity, 1);
+  width: var(--c3r-width, 0px);
+  height: var(--c3r-height, 0px);
+  opacity: var(--c3r-opacity, 1);
   transform-style: flat;
   overflow: hidden;
 }
@@ -73,8 +82,8 @@
 .c3r-polygon-content {
   width: 100%;
   height: 100%;
-  background-color: var(--background-color, white);
-  background-image: var(--background-image, none);
+  background-color: var(--c3r-background-color, white);
+  background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;
   background-blend-mode: multiply;
   transform: matrix(1, 0, 0, 1, 0, 0);
@@ -82,8 +91,8 @@
 }
 
 .c3r-element {
-  background-color: var(--background-color, transparent);
-  background-image: var(--background-image, none);
+  background-color: var(--c3r-background-color, transparent);
+  background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;
-  opacity: var(--opacity, 1);
+  opacity: var(--c3r-opacity, 1);
 }

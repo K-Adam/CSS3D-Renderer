@@ -109,6 +109,7 @@ const simplify = (vertices: readonly Vertex[]): Vertex[] =>
   });
 
 export interface PolygonOptions {
+  contentElement?: HTMLElement;
   // Base size of the dom element, too small makes the content blurry
   getDomSize?: (size: number) => number;
   // Outward edge offset in DOM pixels, hides seams between neighbours
@@ -119,8 +120,8 @@ export class Polygon extends Object3D {
   readonly vertices: readonly Vertex[]; // vertices in CCW
   readonly contentElement: HTMLElement;
 
-  uvScale: vec2 = vec2.fromValues(1, 1);
-  uvOffset: vec2 = vec2.fromValues(0, 0);
+  #uvScale: ReadonlyVec2 = [1, 1];
+  #uvOffset: ReadonlyVec2 = [0, 0];
 
   #getDomSize: (size: number) => number;
   #edgeOverlap: number;
@@ -133,8 +134,8 @@ export class Polygon extends Object3D {
 
   constructor(
     vertices: readonly Vertex[],
-    contentElement: HTMLElement | null = null,
     {
+      contentElement = document.createElement("div"),
       getDomSize = (size) => Math.max(250, Math.min(size, 1200)),
       edgeOverlap = 1,
     }: PolygonOptions = {},
@@ -147,11 +148,32 @@ export class Polygon extends Object3D {
 
     this.domElement.classList.add("c3r-polygon");
 
-    this.contentElement = contentElement ?? document.createElement("div");
+    this.contentElement = contentElement;
     this.contentElement.classList.add("c3r-polygon-content");
     this.domElement.appendChild(this.contentElement);
 
     this.#fit();
+    this.#updateContent();
+  }
+
+  get uvScale(): ReadonlyVec2 {
+    return this.#uvScale;
+  }
+
+  set uvScale(scale: ReadonlyVec2) {
+    if (vec2.exactEquals(scale, this.#uvScale)) return;
+    this.#uvScale = vec2.clone(scale);
+    this.#updateContent();
+  }
+
+  get uvOffset(): ReadonlyVec2 {
+    return this.#uvOffset;
+  }
+
+  set uvOffset(offset: ReadonlyVec2) {
+    if (vec2.exactEquals(offset, this.#uvOffset)) return;
+    this.#uvOffset = vec2.clone(offset);
+    this.#updateContent();
   }
 
   #fit(): void {
@@ -177,8 +199,8 @@ export class Polygon extends Object3D {
     // We need the width/height information in the childNode to properly position and scale the texture
     // If we use width/height CSS values, then we can rescale this element, without calling updateContent
 
-    this.domElement.style.setProperty("--width", `${this.#blockWidth}px`);
-    this.domElement.style.setProperty("--height", `${this.#blockHeight}px`);
+    this.domElement.style.setProperty("--c3r-width", `${this.#blockWidth}px`);
+    this.domElement.style.setProperty("--c3r-height", `${this.#blockHeight}px`);
   }
 
   // Faster method for triangles: the longest side will be the base
@@ -302,10 +324,10 @@ export class Polygon extends Object3D {
     );
   }
 
-  updateContent(): void {
+  #updateContent(): void {
     const uvs = this.vertices.map((v) => {
-      const uv = vec2.mul(vec2.create(), v.uv, this.uvScale);
-      return vec2.add(uv, uv, this.uvOffset);
+      const uv = vec2.mul(vec2.create(), v.uv, this.#uvScale);
+      return vec2.add(uv, uv, this.#uvOffset);
     });
 
     const { style } = this.contentElement;
@@ -346,7 +368,7 @@ export class Polygon extends Object3D {
     const scx = 1 / xsize;
     const scy = 1 / ysize;
 
-    style.backgroundPosition = `calc(var(--width) * ${-txmin * scx}) calc(var(--height) * ${1 + tymin * scy})`;
+    style.backgroundPosition = `calc(var(--c3r-width) * ${-txmin * scx}) calc(var(--c3r-height) * ${1 + tymin * scy})`;
     style.backgroundSize = `${100 * scx}% ${100 * scy}%`;
 
     const uvPoint = ([u, v]: vec2): Point => [

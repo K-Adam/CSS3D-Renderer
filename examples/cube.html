@@ -1,95 +1,71 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>CSS3DRenderer</title>
     <meta charset="utf-8" />
-
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Spinning box</title>
     <style>
       body {
-        margin: 0px;
-        background-color: #000000;
+        margin: 0;
+        background-color: #000;
         overflow: hidden;
       }
     </style>
-
+  </head>
+  <body>
     <script type="module">
-      import * as C3R from "c3r";
+      import { Container, Group, Material } from "c3r";
       import { mat4, vec3 } from "gl-matrix";
 
-      var container, cube_node;
+      const container = new Container();
+      document.body.appendChild(container.domElement);
 
-      function init() {
-        // Create a container for the scene
-        container = new C3R.Container();
-        document.body.appendChild(container.domElement);
+      // The +z face of the cube, counter-clockwise
+      const face = [
+        { position: [-100, 100, 100], uv: [0, 1] },
+        { position: [-100, -100, 100], uv: [0, 0] },
+        { position: [100, -100, 100], uv: [1, 0] },
+        { position: [100, 100, 100], uv: [1, 1] },
+      ];
 
-        // The +z face of the cube, counter-clockwise
-        const corners = [
-          [-100, 100, 100],
-          [-100, -100, 100],
-          [100, -100, 100],
-          [100, 100, 100],
-        ];
-        const uvs = [
-          [0, 1],
-          [0, 0],
-          [1, 0],
-          [1, 1],
-        ];
+      const turn = Math.PI / 2;
+      const rotations = [
+        ...[0, 1, 2, 3].map((i) => mat4.fromYRotation(mat4.create(), i * turn)),
+        mat4.fromXRotation(mat4.create(), turn),
+        mat4.fromXRotation(mat4.create(), -turn),
+      ];
 
-        // Rotate it into the 6 sides
-        const turn = Math.PI / 2;
-        const rotations = [
-          ...[0, 1, 2, 3].map((i) =>
-            mat4.fromYRotation(mat4.create(), i * turn),
-          ),
-          mat4.fromXRotation(mat4.create(), turn),
-          mat4.fromXRotation(mat4.create(), -turn),
-        ];
+      const cube = new Group();
+      container.root.addChild(cube);
 
-        cube_node = new C3R.Group();
-        container.root.addChild(cube_node);
-
-        for (const rotation of rotations) {
-          cube_node.addPolygon(
-            corners.map(
-              (p, i) =>
-                new C3R.Vertex(
-                  vec3.transformMat4(vec3.create(), p, rotation),
-                  uvs[i],
-                ),
-            ),
-          );
-        }
-
-        // Create a material with a crate texture
-        cube_node.material = new C3R.Material();
-        cube_node.material.backgroundImageSrc = "textures/crate.jpg";
-        //cube_node.material.backgroundColor = [1,0,0, 1];
-        cube_node.material.update();
-
-        // The camera matrix is the inverse world transform
-        mat4.fromTranslation(container.camera.matrix, [0, 0, -400]);
-        container.camera.update();
+      for (const rotation of rotations) {
+        cube.addPolygon(
+          face.map(({ position, uv }) => ({
+            position: vec3.transformMat4(vec3.create(), position, rotation),
+            uv,
+          })),
+        );
       }
 
-      var animate = function () {
-        // Rotate object
+      cube.material = new Material();
+      cube.material.backgroundImageSrc = "textures/crate.jpg";
 
-        cube_node.matrix = mat4.fromRotation(
+      // The camera matrix is the inverse world transform
+      container.camera.matrix = mat4.fromTranslation(
+        mat4.create(),
+        [0, 0, -400],
+      );
+
+      function animate() {
+        cube.matrix = mat4.fromRotation(
           mat4.create(),
-          Date.now() / 1000.0,
+          Date.now() / 1000,
           [1, 1, 1],
         );
-
         requestAnimationFrame(animate);
-      };
+      }
 
-      //
-      init();
       animate();
     </script>
-  </head>
-
-  <body></body>
+  </body>
 </html>

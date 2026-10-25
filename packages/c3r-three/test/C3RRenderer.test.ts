@@ -5,12 +5,14 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  OrthographicCamera,
   PerspectiveCamera,
   Scene,
   Sprite,
   SpriteMaterial,
   Vector3,
 } from "three";
+import { cssText } from "c3r";
 import { C3RRenderer } from "../src/C3RRenderer.js";
 
 const setup = () => {
@@ -78,7 +80,7 @@ it("follows visibility, geometry updates and removal", () => {
 
   const polygons = () =>
     [...renderer.domElement.querySelectorAll("div")].filter((d) =>
-      d.style.getPropertyValue("--width"),
+      d.style.getPropertyValue("--c3r-width"),
     );
 
   renderer.render(scene, camera);
@@ -141,4 +143,53 @@ it("shares one material rule between meshes, removed on dispose", () => {
 
   material.dispose();
   expect(rules()).toHaveLength(0);
+});
+
+it("applies the camera zoom", () => {
+  const { renderer, scene } = setup();
+
+  renderer.render(scene, new OrthographicCamera(-400, 400, 300, -300));
+  const container = renderer.domElement.firstElementChild!;
+  expect(container.classList).toContain("c3r-orthographic");
+
+  const ortho = new OrthographicCamera(-400, 400, 300, -300);
+  ortho.zoom = 2;
+  renderer.render(scene, ortho);
+  expect(cssText()).toMatch(/--c3r-camera-left: ?-200;/);
+
+  const perspective = new PerspectiveCamera(90);
+  perspective.zoom = 2;
+  renderer.render(scene, perspective);
+  expect(container.classList).toContain("c3r-perspective");
+  // 2 * atan(tan(45deg) / 2)
+  expect(cssText()).toMatch(/--c3r-camera-fov: ?53\.13/);
+});
+
+it("ignores opacity unless the material is transparent, as WebGL", () => {
+  const { renderer, scene, camera } = setup();
+
+  const material = new MeshBasicMaterial({ opacity: 0.5 });
+  scene.add(new Mesh(new BoxGeometry(), material));
+  renderer.render(scene, camera);
+  expect(cssText()).not.toMatch(/--c3r-opacity:/);
+
+  material.transparent = true;
+  renderer.render(scene, camera);
+  expect(cssText()).toMatch(/--c3r-opacity: ?0\.5/);
+  material.dispose();
+});
+
+it("removes the scenes and camera rules on dispose", () => {
+  const { renderer, scene, camera } = setup();
+  renderer.render(scene, camera);
+  const className = [...renderer.domElement.firstElementChild!.classList].find(
+    (c) => c.startsWith("c3r-camera-"),
+  )!;
+
+  renderer.dispose();
+  expect(renderer.domElement.children).toHaveLength(0);
+  expect(cssText()).not.toContain(`.${className} `);
+
+  renderer.render(scene, camera);
+  expect(renderer.domElement.children).toHaveLength(1);
 });

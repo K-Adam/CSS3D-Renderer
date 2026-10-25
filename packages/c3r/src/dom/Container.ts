@@ -7,25 +7,33 @@ export class Container {
   readonly domElement: HTMLDivElement = document.createElement("div");
   // Camera transform
   readonly viewElement: HTMLDivElement = document.createElement("div");
-  root: Group = new Group();
 
-  width = 0;
-  height = 0;
-
+  #root: Group = new Group();
   #camera: Camera = new PerspectiveCamera();
+  #width = 0;
+  #height = 0;
 
   constructor() {
     this.domElement.classList.add(
       "c3r-container",
-      this.#camera.type,
+      this.#camera.projectionClass,
       this.#camera.className,
     );
     this.viewElement.classList.add("c3r-group", "c3r-view");
 
     this.domElement.appendChild(this.viewElement);
-    this.viewElement.appendChild(this.root.domElement);
+    this.viewElement.appendChild(this.#root.domElement);
     this.resetSize();
-    this.#camera.update();
+  }
+
+  get root(): Group {
+    return this.#root;
+  }
+
+  set root(root: Group) {
+    if (root === this.#root) return;
+    this.#root.domElement.replaceWith(root.domElement);
+    this.#root = root;
   }
 
   get camera(): Camera {
@@ -36,43 +44,42 @@ export class Container {
   set camera(camera: Camera) {
     if (camera === this.#camera) return;
     const { classList } = this.domElement;
-    classList.remove(this.#camera.type, this.#camera.className);
-    classList.add(camera.type, camera.className);
-
+    classList.remove(this.#camera.projectionClass, this.#camera.className);
+    classList.add(camera.projectionClass, camera.className);
     this.#camera = camera;
-    camera.update();
   }
 
-  addRoot(root: Group): void {
-    this.root.domElement.replaceWith(root.domElement);
-    this.root = root;
+  get width(): number {
+    return this.#width;
+  }
+
+  get height(): number {
+    return this.#height;
   }
 
   setSize(width: number, height: number): void {
-    if (this.width === width && this.height === height) {
-      return;
-    }
+    if (this.#width === width && this.#height === height) return;
 
-    this.width = width;
-    this.height = height;
+    this.#width = width;
+    this.#height = height;
 
     const { style } = this.domElement;
-    style.setProperty("--viewport-width", `${width}px`);
-    style.setProperty("--viewport-height", `${height}px`);
+    style.setProperty("--c3r-viewport-width", `${width}px`);
+    style.setProperty("--c3r-viewport-height", `${height}px`);
     // Unitless for the ortho scale, CSS can't divide lengths yet
-    style.setProperty("--viewport-w", String(width));
-    style.setProperty("--viewport-h", String(height));
+    style.setProperty("--c3r-viewport-x", String(width));
+    style.setProperty("--c3r-viewport-y", String(height));
   }
 
   resetSize(): void {
-    this.width = 0;
-    this.height = 0;
+    this.#width = 0;
+    this.#height = 0;
 
     const { style } = this.domElement;
-    style.removeProperty("--viewport-width");
-    style.removeProperty("--viewport-height");
+    style.removeProperty("--c3r-viewport-width");
+    style.removeProperty("--c3r-viewport-height");
     // ponytail: window size at reset, ortho needs setSize for other sizes or resizes
-    style.setProperty("--viewport-w", String(innerWidth));
-    style.setProperty("--viewport-h", String(innerHeight));
+    style.setProperty("--c3r-viewport-x", String(innerWidth));
+    style.setProperty("--c3r-viewport-y", String(innerHeight));
   }
 }
