@@ -20,8 +20,8 @@ const setup = () => {
   const camera = new PerspectiveCamera(70, 800 / 600, 1, 1000);
   camera.position.set(5, 5, 20);
   camera.lookAt(0, 0, 0);
-  // renderer.domElement > container > root > the scene's children
-  const root = () => renderer.domElement.firstElementChild!.firstElementChild!;
+  const root = () =>
+    renderer.domElement.querySelector(".c3r-view > .c3r-group")!;
   return { renderer, scene, camera, root };
 };
 
@@ -114,7 +114,8 @@ it("shares one stylesheet between renderers", () => {
   b.renderer.render(b.scene, b.camera);
 
   expect(document.adoptedStyleSheets).toHaveLength(1);
-  expect([...a.root().classList]).toEqual(["c3r-group", "c3r-root"]);
+  expect([...a.root().classList]).toEqual(["c3r-group"]);
+  expect(a.root().parentElement!.classList).toContain("c3r-view");
 });
 
 it("shares one material rule between meshes, removed on dispose", () => {

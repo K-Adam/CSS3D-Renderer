@@ -7,6 +7,7 @@ import {
   Group,
   Material,
   OrthographicCamera,
+  PerspectiveCamera,
   Polygon,
   Vertex,
 } from "c3r";
@@ -187,10 +188,42 @@ describe("server-side rendering", () => {
   it("sizes an orthographic view from setSize, without layout", () => {
     const container = new Container();
     container.setSize(400, 300);
-    container.camera = new OrthographicCamera(-200, 200, 150, -150);
+    const camera = new OrthographicCamera(-200, 200, 150, -150);
+    container.camera = camera;
 
-    expect(container.root.domElement.style.transform).toMatch(
-      /^scale\(1, ?1\)/,
+    const { classList, style } = container.domElement;
+    expect([...classList]).toEqual([
+      "c3r-container",
+      "c3r-orthographic",
+      camera.className,
+    ]);
+    expect(style.getPropertyValue("--viewport-w")).toBe("400");
+    expect(cssText()).toMatch(
+      new RegExp(String.raw`\.${camera.className} \{[^}]*--camera-left: ?-200`),
     );
+  });
+});
+
+describe("cameras", () => {
+  it("project through stylesheet rules, removed on dispose", () => {
+    const container = new Container();
+    {
+      using camera = new PerspectiveCamera(60);
+      mat4.fromTranslation(camera.matrix, [0, 0, -400]);
+      container.camera = camera;
+
+      expect(container.domElement.classList).toContain("c3r-perspective");
+      expect(cssText()).toMatch(
+        new RegExp(
+          String.raw`\.${camera.className} \{[^}]*--camera-fov: ?60deg`,
+        ),
+      );
+      expect(cssText()).toMatch(
+        new RegExp(
+          `\.${camera.className} > \.c3r-view \{[^}]*matrix3d\([^)]*-400,1\)`,
+        ),
+      );
+    }
+    expect(cssText()).not.toContain(`${container.camera.className} `);
   });
 });

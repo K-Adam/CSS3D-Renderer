@@ -1,48 +1,55 @@
-import { RootObject, type Camera } from "./RootObject.js";
+import type { Camera } from "../css/Camera.js";
+import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 
-import { PerspectiveCamera } from "../math/PerspectiveCamera.js";
+import { Group } from "./Group.js";
 
 export class Container {
   readonly domElement: HTMLDivElement = document.createElement("div");
-  root: RootObject = new RootObject();
+  // Camera transform
+  readonly viewElement: HTMLDivElement = document.createElement("div");
+  root: Group = new Group();
 
   width = 0;
   height = 0;
 
-  constructor() {
-    this.domElement.classList.add("c3r-container");
+  #camera: Camera = new PerspectiveCamera();
 
-    this.domElement.appendChild(this.root.domElement);
+  constructor() {
+    this.domElement.classList.add(
+      "c3r-container",
+      this.#camera.type,
+      this.#camera.className,
+    );
+    this.viewElement.classList.add("c3r-group", "c3r-view");
+
+    this.domElement.appendChild(this.viewElement);
+    this.viewElement.appendChild(this.root.domElement);
+    this.resetSize();
     this.updateCamera();
   }
 
   get camera(): Camera {
-    return this.root.camera;
+    return this.#camera;
   }
 
+  // Not disposed when replaced, cameras can be shared
   set camera(camera: Camera) {
-    this.root.camera = camera;
+    const { classList } = this.domElement;
+    classList.remove(this.#camera.type, this.#camera.className);
+    classList.add(camera.type, camera.className);
+
+    this.#camera = camera;
     this.updateCamera();
   }
 
-  // Needs to be called on camera change and if the root was replaced
+  // Call after mutating the camera
   updateCamera(): void {
-    if (this.camera instanceof PerspectiveCamera) {
-      this.domElement.style.perspective = `calc(${this.camera.perspectiveCoefficient} * var(--viewport-height) / 2)`;
-    } else {
-      this.domElement.style.removeProperty("perspective");
-    }
-
-    this.root.updateMatrix();
+    this.#camera.update();
   }
 
-  addRoot(root: RootObject): void {
-    root.camera = this.camera;
-
+  addRoot(root: Group): void {
     this.root.domElement.replaceWith(root.domElement);
     this.root = root;
-
-    this.updateCamera();
   }
 
   setSize(width: number, height: number): void {
@@ -53,16 +60,23 @@ export class Container {
     this.width = width;
     this.height = height;
 
-    this.domElement.style.setProperty("--viewport-width", `${width}px`);
-    this.domElement.style.setProperty("--viewport-height", `${height}px`);
-    this.root.updateMatrix();
+    const { style } = this.domElement;
+    style.setProperty("--viewport-width", `${width}px`);
+    style.setProperty("--viewport-height", `${height}px`);
+    // Unitless for the ortho scale, CSS can't divide lengths yet
+    style.setProperty("--viewport-w", String(width));
+    style.setProperty("--viewport-h", String(height));
   }
 
   resetSize(): void {
     this.width = 0;
     this.height = 0;
 
-    this.domElement.style.removeProperty("--viewport-width");
-    this.domElement.style.removeProperty("--viewport-height");
+    const { style } = this.domElement;
+    style.removeProperty("--viewport-width");
+    style.removeProperty("--viewport-height");
+    // ponytail: window size at reset, ortho needs setSize for other sizes or resizes
+    style.setProperty("--viewport-w", String(innerWidth));
+    style.setProperty("--viewport-h", String(innerHeight));
   }
 }

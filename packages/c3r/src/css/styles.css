@@ -1,4 +1,11 @@
-/* .c3r-root must come after .c3r-group, both are on the root element */
+/* .c3r-view must come after .c3r-group, both are on the view element */
+
+/* Not inherited, so a camera move restyles only .c3r-view */
+@property --camera-view {
+  syntax: "*";
+  inherits: false;
+}
+
 .c3r-container {
   overflow: hidden;
   position: relative;
@@ -25,13 +32,34 @@
   transform-style: preserve-3d;
 }
 
-.c3r-root {
+.c3r-view {
   width: 100%;
   height: 100%;
   top: 50%;
   left: 50%;
   pointer-events: none;
   backface-visibility: hidden;
+}
+
+.c3r-perspective {
+  --focal-length: calc(var(--viewport-height) / 2 / tan(var(--camera-fov) / 2));
+  perspective: var(--focal-length);
+}
+
+.c3r-perspective > .c3r-view {
+  transform: translateZ(var(--focal-length)) scaleY(-1) var(--camera-view);
+}
+
+.c3r-orthographic > .c3r-view {
+  transform: scale(
+      calc(var(--viewport-w) / (var(--camera-right) - var(--camera-left))),
+      calc(var(--viewport-h) / (var(--camera-top) - var(--camera-bottom)))
+    )
+    translate(
+      calc((var(--camera-right) + var(--camera-left)) * -0.5px),
+      calc((var(--camera-top) + var(--camera-bottom)) * 0.5px)
+    )
+    scaleY(-1) var(--camera-view);
 }
 
 .c3r-polygon {

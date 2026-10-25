@@ -1,20 +1,8 @@
 import type { vec4 } from "gl-matrix";
 
-import { ensureStyles } from "./styles.js";
-
-// Safari
-(Symbol as { dispose?: symbol }).dispose ??= Symbol.for("Symbol.dispose");
+import { deleteRule, insertRule } from "./styles.js";
 
 let nextId = 0;
-
-function deleteRule(rule: CSSStyleRule) {
-  const sheet = rule.parentStyleSheet;
-  const i = sheet ? Array.from(sheet.cssRules).indexOf(rule) : -1;
-  if (i >= 0) sheet!.deleteRule(i);
-}
-
-// For undisposed Materials
-const registry = new FinalizationRegistry(deleteRule);
 
 export class Material {
   readonly className = `c3r-material-${nextId++}`;
@@ -26,15 +14,7 @@ export class Material {
   #rule: CSSStyleRule | null = null;
 
   update(): void {
-    if (!this.#rule) {
-      const sheet = ensureStyles();
-      const i = sheet.insertRule(
-        `.${this.className} {}`,
-        sheet.cssRules.length,
-      );
-      this.#rule = sheet.cssRules[i] as CSSStyleRule;
-      registry.register(this, this.#rule, this);
-    }
+    this.#rule ??= insertRule(`.${this.className}`, this);
 
     const { style } = this.#rule;
 
@@ -63,10 +43,7 @@ export class Material {
   }
 
   [Symbol.dispose](): void {
-    if (this.#rule) {
-      registry.unregister(this);
-      deleteRule(this.#rule);
-    }
+    deleteRule(this.#rule);
     this.#rule = null;
   }
 }

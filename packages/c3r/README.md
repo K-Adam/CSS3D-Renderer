@@ -26,9 +26,11 @@ TypeScript declarations are included.
 
 A `Material` is a class rule in a shared stylesheet, so the objects using it share one style. The rule stays until `material[Symbol.dispose]()` is called, or the material leaves a `using` block; otherwise it may be removed once the material and its elements are garbage-collected. c3r-three does this on the three.js material's `dispose()`.
 
+Cameras work the same way: a camera's class sets the variables that `styles.css` projects with, and is disposed the same way.
+
 ## Node
 
-C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline `cssText()`, the base styles plus the material rules, after building the scene. There is no layout either, so set the size explicitly.
+C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline `cssText()`, the base styles plus the material and camera rules, after building the scene. There is no layout either, so set the size explicitly.
 
 ```sh
 npm install c3r @happy-dom/global-registrator

@@ -111,8 +111,8 @@ export class C3RRenderer {
 
     if (camera instanceof PerspectiveCamera) {
       if (!(c instanceof C3R.PerspectiveCamera)) {
+        c[Symbol.dispose](); // ours, never shared
         container.camera = new C3R.PerspectiveCamera(camera.fov);
-        changed = true;
       } else if (c.fov !== camera.fov) {
         c.fov = camera.fov;
         changed = true;
@@ -120,8 +120,8 @@ export class C3RRenderer {
     } else if (camera instanceof OrthographicCamera) {
       const { left, right, top, bottom } = camera;
       if (!(c instanceof C3R.OrthographicCamera)) {
+        c[Symbol.dispose]();
         container.camera = new C3R.OrthographicCamera(left, right, top, bottom);
-        changed = true;
       } else if (
         c.left !== left ||
         c.right !== right ||
