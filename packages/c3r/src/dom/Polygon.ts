@@ -119,6 +119,8 @@ export interface PolygonOptions {
 export class Polygon extends Object3D {
   readonly vertices: readonly Vertex[]; // vertices in CCW
   readonly contentElement: HTMLElement;
+  // Clips in a child, Chrome masks the 3d layer itself with an oversized layer (flicker)
+  #clipElement = document.createElement("div");
 
   #uvScale: ReadonlyVec2 = [1, 1];
   #uvOffset: ReadonlyVec2 = [0, 0];
@@ -150,7 +152,9 @@ export class Polygon extends Object3D {
 
     this.contentElement = contentElement;
     this.contentElement.classList.add("c3r-polygon-content");
-    this.domElement.appendChild(this.contentElement);
+    this.#clipElement.classList.add("c3r-polygon-clip");
+    this.#clipElement.appendChild(this.contentElement);
+    this.domElement.appendChild(this.#clipElement);
 
     this.#fit();
     this.#updateContent();
@@ -194,7 +198,7 @@ export class Polygon extends Object3D {
     const clip = this.#clipPath
       .map((p) => `${p[0] * 100}% ${p[1] * 100}%`)
       .join();
-    this.domElement.style.clipPath = `polygon(${clip})`;
+    this.#clipElement.style.clipPath = `polygon(${clip})`;
 
     // We need the width/height information in the childNode to properly position and scale the texture
     // If we use width/height CSS values, then we can rescale this element, without calling updateContent

@@ -96,6 +96,20 @@ describe("Polygon", () => {
     poly.uvScale = [2, 2];
     expect(style.backgroundSize).not.toBe(size);
   });
+
+  // Chrome flickers with a clip-path on the 3d layer
+  it("clips below the 3d layer", () => {
+    const poly = new Polygon([
+      vertex(0, 0, 0, 0, 0),
+      vertex(1, 0, 0, 1, 0),
+      vertex(0, 1, 0, 0, 1),
+    ]);
+
+    expect(poly.domElement.style.clipPath).toBe("");
+    expect(poly.contentElement.parentElement!.style.clipPath).toMatch(
+      /^polygon\(/,
+    );
+  });
 });
 
 describe("Group.addTriangles", () => {
