@@ -76,11 +76,11 @@
       var animate = function () {
         // Rotate object
 
-        //cube_node.matrix = mat4.fromRotation( ... );
-        mat4.fromRotation(cube_node.matrix, Date.now() / 1000.0, [1, 1, 1]);
-
-        // Call updateMatrix if the transformation was changed
-        cube_node.updateMatrix();
+        cube_node.matrix = mat4.fromRotation(
+          mat4.create(),
+          Date.now() / 1000.0,
+          [1, 1, 1],
+        );
 
         requestAnimationFrame(animate);
       };

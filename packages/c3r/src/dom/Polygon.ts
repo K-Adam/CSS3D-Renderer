@@ -120,6 +120,8 @@ export class Polygon extends Object3D {
     this.contentElement = contentElement ?? document.createElement("div");
     this.contentElement.classList.add("c3r-polygon-content");
     this.domElement.appendChild(this.contentElement);
+
+    this.#fit();
   }
 
   // Remove collinear vertices
@@ -145,7 +147,7 @@ export class Polygon extends Object3D {
     });
   }
 
-  override updateMatrix(): void {
+  #fit(): void {
     const [v0, v1, v2] = this.vertices;
     if (!v2) throw new Error("The polygon has not enough sides");
 
@@ -170,8 +172,6 @@ export class Polygon extends Object3D {
 
     this.domElement.style.setProperty("--width", `${this.#blockWidth}px`);
     this.domElement.style.setProperty("--height", `${this.#blockHeight}px`);
-
-    super.updateMatrix();
   }
 
   // Faster method for triangles: the longest side will be the base

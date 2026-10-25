@@ -1,4 +1,4 @@
-import { mat4 } from "gl-matrix";
+import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
 import type { Material } from "../css/Material.js";
 import { ensureStyles } from "../css/styles.js";
@@ -7,21 +7,22 @@ import { ensureStyles } from "../css/styles.js";
 const elementMaterials = new WeakMap<Element, Material>();
 
 export abstract class Object3D {
-  matrix: mat4 = mat4.create();
   readonly domElement: HTMLDivElement = document.createElement("div");
+  #matrix = mat4.create();
   #material: Material | null = null;
 
   constructor() {
     ensureStyles();
   }
 
-  updateMatrix(): void {
-    this.domElement.style.transform = `matrix3d(${[...this.matrix].join()})`;
+  get matrix(): ReadonlyMat4 {
+    return this.#matrix;
   }
 
-  clearMatrix(): void {
-    this.matrix = mat4.create();
-    this.domElement.style.transform = "";
+  set matrix(matrix: ReadonlyMat4) {
+    if (mat4.exactEquals(matrix, this.#matrix)) return;
+    mat4.copy(this.#matrix, matrix);
+    this.domElement.style.transform = `matrix3d(${[...matrix].join()})`;
   }
 
   get material(): Material | null {

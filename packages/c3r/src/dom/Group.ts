@@ -46,7 +46,6 @@ export class Group extends Object3D {
   addPolygon(vertices: Vertex[], element: HTMLElement | null = null): Polygon {
     const poly = new Polygon(vertices, element);
 
-    poly.updateMatrix();
     poly.updateContent();
 
     this.addChild(poly);

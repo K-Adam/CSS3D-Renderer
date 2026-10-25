@@ -43,7 +43,6 @@ describe("Polygon", () => {
         ["concave quad, reflex at v1", tilted([[0, 0, 0], [1, 0, 0], [3, -1, 0], [0, 1, 0]])],
     ])("places the element on the vertices of a %s, front side out", (_, vertices) => {
         const poly = new Polygon(vertices);
-        poly.updateMatrix();
 
         const M = poly.matrix;
         const MI = mat4.invert(mat4.create(), M)!;
@@ -78,7 +77,6 @@ describe("Polygon", () => {
       vertex(1, 0, 0, 0.5, 0.5),
       vertex(0, 1, 0, 1, 1),
     ]);
-    poly.updateMatrix();
     poly.updateContent();
 
     expect(poly.contentElement.style.transform).toBe("");

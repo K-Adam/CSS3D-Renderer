@@ -158,10 +158,7 @@ export class C3RRenderer {
       ? this.#spriteMatrix(object, node, container)
       : object.matrix.elements;
 
-    if (!mat4.equals(node.matrix, matrix)) {
-      mat4.copy(node.matrix, matrix);
-      node.updateMatrix();
-    }
+    node.matrix = matrix;
 
     if (node instanceof C3R.Group) this.#syncChildren(object, node, container);
 
