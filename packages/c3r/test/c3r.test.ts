@@ -154,7 +154,7 @@ describe("Material", () => {
       using material = new Material();
       material.backgroundColor = [1, 0, 0, 1];
       group.material = material;
-      group.updateMaterial();
+      material.update();
 
       expect(group.domElement.classList).toContain(material.className);
       expect(
@@ -168,7 +168,6 @@ describe("Material", () => {
 
       using other = new Material();
       group.material = other;
-      group.updateMaterial();
       expect([...group.domElement.classList]).toEqual([
         "c3r-group",
         other.className,

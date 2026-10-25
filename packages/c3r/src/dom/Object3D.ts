@@ -9,8 +9,7 @@ const elementMaterials = new WeakMap<Element, Material>();
 export abstract class Object3D {
   matrix: mat4 = mat4.create();
   readonly domElement: HTMLDivElement = document.createElement("div");
-  material: Material | null = null;
-  #appliedMaterial: Material | null = null;
+  #material: Material | null = null;
 
   constructor() {
     ensureStyles();
@@ -25,19 +24,20 @@ export abstract class Object3D {
     this.domElement.style.transform = "";
   }
 
-  updateMaterial(): void {
+  get material(): Material | null {
+    return this.#material;
+  }
+
+  set material(material: Material | null) {
+    if (material === this.#material) return;
     const { classList } = this.domElement;
-    if (this.#appliedMaterial !== this.material) {
-      if (this.#appliedMaterial)
-        classList.remove(this.#appliedMaterial.className);
-      if (this.material) {
-        classList.add(this.material.className);
-        elementMaterials.set(this.domElement, this.material);
-      } else {
-        elementMaterials.delete(this.domElement);
-      }
-      this.#appliedMaterial = this.material;
+    if (this.#material) classList.remove(this.#material.className);
+    if (material) {
+      classList.add(material.className);
+      elementMaterials.set(this.domElement, material);
+    } else {
+      elementMaterials.delete(this.domElement);
     }
-    this.material?.update();
+    this.#material = material;
   }
 }

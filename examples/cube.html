@@ -66,11 +66,11 @@
         cube_node.material = new C3R.Material();
         cube_node.material.backgroundImageSrc = "textures/crate.jpg";
         //cube_node.material.backgroundColor = [1,0,0, 1];
-        cube_node.updateMaterial();
+        cube_node.material.update();
 
         // The camera matrix is the inverse world transform
         mat4.fromTranslation(container.camera.matrix, [0, 0, -400]);
-        container.updateCamera();
+        container.camera.update();
       }
 
       var animate = function () {

@@ -25,7 +25,7 @@ export class Container {
     this.domElement.appendChild(this.viewElement);
     this.viewElement.appendChild(this.root.domElement);
     this.resetSize();
-    this.updateCamera();
+    this.#camera.update();
   }
 
   get camera(): Camera {
@@ -34,17 +34,13 @@ export class Container {
 
   // Not disposed when replaced, cameras can be shared
   set camera(camera: Camera) {
+    if (camera === this.#camera) return;
     const { classList } = this.domElement;
     classList.remove(this.#camera.type, this.#camera.className);
     classList.add(camera.type, camera.className);
 
     this.#camera = camera;
-    this.updateCamera();
-  }
-
-  // Call after mutating the camera
-  updateCamera(): void {
-    this.#camera.update();
+    camera.update();
   }
 
   addRoot(root: Group): void {

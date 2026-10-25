@@ -140,7 +140,7 @@ export class C3RRenderer {
       changed = true;
     }
 
-    if (changed) container.updateCamera();
+    if (changed) container.camera.update();
   }
 
   #syncObject(
@@ -341,7 +341,7 @@ export class C3RRenderer {
     }
 
     const target = state.material;
-    let changed = node.material !== target;
+    let changed = false;
     node.material = target;
 
     const { map } = material;
@@ -379,7 +379,7 @@ export class C3RRenderer {
       changed = true;
     }
 
-    if (changed) node.updateMaterial();
+    if (changed) target.update();
 
     return map;
   }
