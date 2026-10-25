@@ -1,3 +1,5 @@
+import "../polyfill.js";
+
 import { vec4, type ReadonlyVec4 } from "gl-matrix";
 
 import { deleteRule, insertRule } from "./styles.js";

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mat4, vec3, vec4 } from "gl-matrix";
 import {
   Container,
@@ -329,4 +329,24 @@ describe("cameras", () => {
     }
     expect(cssText()).not.toContain(`${container.camera.className} `);
   });
+});
+
+it("polyfills Symbol.dispose before the classes use it", async () => {
+  const RealSymbol = Symbol;
+  const { dispose: _, ...props } = Object.getOwnPropertyDescriptors(Symbol);
+  const FakeSymbol = Object.defineProperties(
+    (description?: string) => RealSymbol(description),
+    props,
+  );
+
+  globalThis.Symbol = FakeSymbol as SymbolConstructor;
+  try {
+    vi.resetModules();
+    const { Material, Camera } = await import("../src/C3R.ts");
+    const key = RealSymbol.for("Symbol.dispose");
+    expect(Object.hasOwn(Material.prototype, key)).toBe(true);
+    expect(Object.hasOwn(Camera.prototype, key)).toBe(true);
+  } finally {
+    globalThis.Symbol = RealSymbol;
+  }
 });

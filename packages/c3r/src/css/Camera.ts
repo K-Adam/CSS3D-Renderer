@@ -1,3 +1,5 @@
+import "../polyfill.js";
+
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
 import { deleteRule, insertRule } from "./styles.js";

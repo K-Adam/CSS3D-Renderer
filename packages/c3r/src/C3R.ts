@@ -1,6 +1,3 @@
-// Safari
-(Symbol as { dispose?: symbol }).dispose ??= Symbol.for("Symbol.dispose");
-
 export { Material } from "./css/Material.js";
 export { cssText } from "./css/styles.js";
 
