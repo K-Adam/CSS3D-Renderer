@@ -1,12 +1,9 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>three.js css3d - loaders - OBJ loader</title>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - OBJ loader</title>
     <style>
       body {
         font-family: Monospace;
@@ -45,15 +42,15 @@
       import { C3RRenderer } from "c3r-three";
       import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
-      var container;
+      let container;
 
-      var camera, scene, renderer;
+      let camera, scene, renderer;
 
-      var mouseX = 0,
+      let mouseX = 0,
         mouseY = 0;
 
-      var windowHalfX = window.innerWidth / 2;
-      var windowHalfY = window.innerHeight / 2;
+      let windowHalfX = window.innerWidth / 2;
+      let windowHalfY = window.innerHeight / 2;
 
       init();
       animate();
@@ -74,35 +71,35 @@
 
         scene = new THREE.Scene();
 
-        var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
+        const ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
         scene.add(ambientLight);
 
-        var pointLight = new THREE.PointLight(0xffffff, 0.8);
+        const pointLight = new THREE.PointLight(0xffffff, 0.8);
         camera.add(pointLight);
         scene.add(camera);
 
         // texture
 
-        var manager = new THREE.LoadingManager();
+        const manager = new THREE.LoadingManager();
         manager.onProgress = function (item, loaded, total) {
           console.log(item, loaded, total);
         };
 
-        var textureLoader = new THREE.TextureLoader(manager);
-        var texture = textureLoader.load("textures/UV_Grid_Sm.jpg");
+        const textureLoader = new THREE.TextureLoader(manager);
+        const texture = textureLoader.load("textures/UV_Grid_Sm.jpg");
 
         // model
 
-        var onProgress = function (xhr) {
+        const onProgress = function (xhr) {
           if (xhr.lengthComputable) {
-            var percentComplete = (xhr.loaded / xhr.total) * 100;
+            const percentComplete = (xhr.loaded / xhr.total) * 100;
             console.log(Math.round(percentComplete, 2) + "% downloaded");
           }
         };
 
-        var onError = function (xhr) {};
+        const onError = function () {};
 
-        var loader = new OBJLoader(manager);
+        const loader = new OBJLoader(manager);
         loader.load(
           "models/obj/suzanne/suzanne.obj",
           function (object) {
@@ -122,17 +119,13 @@
           onError,
         );
 
-        //
-
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
 
-        document.addEventListener("mousemove", onDocumentMouseMove, false);
+        document.addEventListener("mousemove", onDocumentMouseMove);
 
-        //
-
-        window.addEventListener("resize", onWindowResize, false);
+        window.addEventListener("resize", onWindowResize);
       }
 
       function onWindowResize() {
@@ -149,8 +142,6 @@
         mouseX = (event.clientX - windowHalfX) / 2;
         mouseY = (event.clientY - windowHalfY) / 2;
       }
-
-      //
 
       function animate() {
         requestAnimationFrame(animate);

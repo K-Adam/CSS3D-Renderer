@@ -1,12 +1,9 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>three.js CSS3D - geometry - cube</title>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Cube geometry</title>
     <style>
       body {
         font-family: Monospace;
@@ -22,20 +19,20 @@
       import { C3RRenderer } from "c3r-three";
       import Stats from "three/addons/libs/stats.module.js";
 
-      var container, stats;
+      let container, stats;
 
-      var camera, scene, renderer;
+      let camera, scene, renderer;
 
-      var cube, plane;
+      let cube, plane;
 
-      var targetRotation = 0;
-      var targetRotationOnMouseDown = 0;
+      let targetRotation = 0;
+      let targetRotationOnMouseDown = 0;
 
-      var mouseX = 0;
-      var mouseXOnMouseDown = 0;
+      let mouseX = 0;
+      let mouseXOnMouseDown = 0;
 
-      var windowHalfX = window.innerWidth / 2;
-      var windowHalfY = window.innerHeight / 2;
+      let windowHalfX = window.innerWidth / 2;
+      let windowHalfY = window.innerHeight / 2;
 
       init();
       animate();
@@ -44,7 +41,7 @@
         container = document.createElement("div");
         document.body.appendChild(container);
 
-        var info = document.createElement("div");
+        const info = document.createElement("div");
         info.style.position = "absolute";
         info.style.top = "10px";
         info.style.width = "100%";
@@ -66,26 +63,26 @@
 
         // Cube
 
-        var geometry = new THREE.BoxGeometry(200, 200, 200);
+        const cubeGeometry = new THREE.BoxGeometry(200, 200, 200);
 
-        var material = [];
-        for (var i = 0; i < 6; i++) {
-          var hex = Math.random() * 0xffffff;
-          material.push(new THREE.MeshBasicMaterial({ color: hex }));
+        const cubeMaterials = [];
+        for (let i = 0; i < 6; i++) {
+          const hex = Math.random() * 0xffffff;
+          cubeMaterials.push(new THREE.MeshBasicMaterial({ color: hex }));
         }
 
-        cube = new THREE.Mesh(geometry, material);
+        cube = new THREE.Mesh(cubeGeometry, cubeMaterials);
         cube.position.y = 150;
         scene.add(cube);
 
         // Plane
 
-        var geometry = new THREE.PlaneGeometry(200, 200);
-        geometry.rotateX(-Math.PI / 2);
+        const planeGeometry = new THREE.PlaneGeometry(200, 200);
+        planeGeometry.rotateX(-Math.PI / 2);
 
-        var material = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
+        const planeMaterial = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
 
-        plane = new THREE.Mesh(geometry, material);
+        plane = new THREE.Mesh(planeGeometry, planeMaterial);
         scene.add(plane);
 
         renderer = new C3RRenderer();
@@ -95,13 +92,11 @@
         stats = new Stats();
         container.appendChild(stats.dom);
 
-        document.addEventListener("mousedown", onDocumentMouseDown, false);
-        document.addEventListener("touchstart", onDocumentTouchStart, false);
-        document.addEventListener("touchmove", onDocumentTouchMove, false);
+        document.addEventListener("mousedown", onDocumentMouseDown);
+        document.addEventListener("touchstart", onDocumentTouchStart);
+        document.addEventListener("touchmove", onDocumentTouchMove);
 
-        //
-
-        window.addEventListener("resize", onWindowResize, false);
+        window.addEventListener("resize", onWindowResize);
       }
 
       function onWindowResize() {
@@ -114,14 +109,12 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
-      //
-
       function onDocumentMouseDown(event) {
         event.preventDefault();
 
-        document.addEventListener("mousemove", onDocumentMouseMove, false);
-        document.addEventListener("mouseup", onDocumentMouseUp, false);
-        document.addEventListener("mouseout", onDocumentMouseOut, false);
+        document.addEventListener("mousemove", onDocumentMouseMove);
+        document.addEventListener("mouseup", onDocumentMouseUp);
+        document.addEventListener("mouseout", onDocumentMouseOut);
 
         mouseXOnMouseDown = event.clientX - windowHalfX;
         targetRotationOnMouseDown = targetRotation;
@@ -134,16 +127,16 @@
           targetRotationOnMouseDown + (mouseX - mouseXOnMouseDown) * 0.02;
       }
 
-      function onDocumentMouseUp(event) {
-        document.removeEventListener("mousemove", onDocumentMouseMove, false);
-        document.removeEventListener("mouseup", onDocumentMouseUp, false);
-        document.removeEventListener("mouseout", onDocumentMouseOut, false);
+      function onDocumentMouseUp() {
+        document.removeEventListener("mousemove", onDocumentMouseMove);
+        document.removeEventListener("mouseup", onDocumentMouseUp);
+        document.removeEventListener("mouseout", onDocumentMouseOut);
       }
 
-      function onDocumentMouseOut(event) {
-        document.removeEventListener("mousemove", onDocumentMouseMove, false);
-        document.removeEventListener("mouseup", onDocumentMouseUp, false);
-        document.removeEventListener("mouseout", onDocumentMouseOut, false);
+      function onDocumentMouseOut() {
+        document.removeEventListener("mousemove", onDocumentMouseMove);
+        document.removeEventListener("mouseup", onDocumentMouseUp);
+        document.removeEventListener("mouseout", onDocumentMouseOut);
       }
 
       function onDocumentTouchStart(event) {
@@ -164,8 +157,6 @@
             targetRotationOnMouseDown + (mouseX - mouseXOnMouseDown) * 0.05;
         }
       }
-
-      //
 
       function animate() {
         requestAnimationFrame(animate);

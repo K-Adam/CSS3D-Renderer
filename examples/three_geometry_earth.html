@@ -1,12 +1,9 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>three.js CSS3D - geometry - earth</title>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Earth</title>
     <style>
       body {
         color: #808080;
@@ -43,14 +40,14 @@
       import { C3RRenderer } from "c3r-three";
       import Stats from "three/addons/libs/stats.module.js";
 
-      var container, stats;
-      var camera, scene, renderer;
-      var group;
-      var mouseX = 0,
+      let container, stats;
+      let camera, scene, renderer;
+      let group;
+      let mouseX = 0,
         mouseY = 0;
 
-      var windowHalfX = window.innerWidth / 2;
-      var windowHalfY = window.innerHeight / 2;
+      let windowHalfX = window.innerWidth / 2;
+      let windowHalfY = window.innerHeight / 2;
 
       init();
       animate();
@@ -74,26 +71,26 @@
 
         // earth
 
-        var loader = new THREE.TextureLoader();
+        const loader = new THREE.TextureLoader();
         loader.load(
           "textures/land_ocean_ice_cloud_2048.jpg",
           function (texture) {
-            var geometry = new THREE.SphereGeometry(200, 16, 10);
+            const geometry = new THREE.SphereGeometry(200, 16, 10);
 
-            var material = new THREE.MeshBasicMaterial({ map: texture });
-            var mesh = new THREE.Mesh(geometry, material);
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const mesh = new THREE.Mesh(geometry, material);
             group.add(mesh);
           },
         );
 
         // shadow
 
-        var canvas = document.createElement("canvas");
+        const canvas = document.createElement("canvas");
         canvas.width = 128;
         canvas.height = 128;
 
-        var context = canvas.getContext("2d");
-        var gradient = context.createRadialGradient(
+        const context = canvas.getContext("2d");
+        const gradient = context.createRadialGradient(
           canvas.width / 2,
           canvas.height / 2,
           0,
@@ -107,12 +104,12 @@
         context.fillStyle = gradient;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
-        var texture = new THREE.CanvasTexture(canvas);
+        const texture = new THREE.CanvasTexture(canvas);
 
-        var geometry = new THREE.PlaneGeometry(300, 300, 2, 2);
-        var material = new THREE.MeshBasicMaterial({ map: texture });
+        const geometry = new THREE.PlaneGeometry(300, 300, 2, 2);
+        const material = new THREE.MeshBasicMaterial({ map: texture });
 
-        var mesh = new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(geometry, material);
         mesh.position.y = -250;
         mesh.rotation.x = -Math.PI / 2;
         group.add(mesh);
@@ -124,11 +121,9 @@
         stats = new Stats();
         container.appendChild(stats.dom);
 
-        document.addEventListener("mousemove", onDocumentMouseMove, false);
+        document.addEventListener("mousemove", onDocumentMouseMove);
 
-        //
-
-        window.addEventListener("resize", onWindowResize, false);
+        window.addEventListener("resize", onWindowResize);
       }
 
       function onWindowResize() {

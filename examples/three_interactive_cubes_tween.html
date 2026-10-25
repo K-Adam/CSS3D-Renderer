@@ -1,12 +1,9 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>three.js css3d - interactive - cubes tween</title>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Interactive cubes</title>
     <style>
       body {
         font-family: Monospace;
@@ -23,11 +20,14 @@
       import Stats from "three/addons/libs/stats.module.js";
       import * as TWEEN from "three/addons/libs/tween.module.js";
 
-      var container, stats;
-      var camera, scene, renderer;
+      let container, stats;
+      let camera, scene, renderer;
 
-      var raycaster;
-      var mouse;
+      let raycaster;
+      let mouse;
+
+      const radius = 600;
+      let theta = 0;
 
       init();
       animate();
@@ -36,7 +36,7 @@
         container = document.createElement("div");
         document.body.appendChild(container);
 
-        var info = document.createElement("div");
+        const info = document.createElement("div");
         info.style.position = "absolute";
         info.style.top = "10px";
         info.style.width = "100%";
@@ -57,10 +57,10 @@
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0);
 
-        var geometry = new THREE.BoxGeometry(100, 100, 100);
+        const geometry = new THREE.BoxGeometry(100, 100, 100);
 
-        for (var i = 0; i < 16; i++) {
-          var object = new THREE.Mesh(
+        for (let i = 0; i < 16; i++) {
+          const object = new THREE.Mesh(
             geometry,
             new THREE.MeshBasicMaterial({
               color: Math.random() * 0xffffff,
@@ -79,8 +79,6 @@
           scene.add(object);
         }
 
-        //
-
         raycaster = new THREE.Raycaster();
         mouse = new THREE.Vector2();
 
@@ -91,12 +89,10 @@
         stats = new Stats();
         container.appendChild(stats.dom);
 
-        document.addEventListener("mousedown", onDocumentMouseDown, false);
-        document.addEventListener("touchstart", onDocumentTouchStart, false);
+        document.addEventListener("mousedown", onDocumentMouseDown);
+        document.addEventListener("touchstart", onDocumentTouchStart);
 
-        //
-
-        window.addEventListener("resize", onWindowResize, false);
+        window.addEventListener("resize", onWindowResize);
       }
 
       function onWindowResize() {
@@ -122,7 +118,7 @@
 
         raycaster.setFromCamera(mouse, camera);
 
-        var intersects = raycaster.intersectObjects(scene.children);
+        const intersects = raycaster.intersectObjects(scene.children);
 
         if (intersects.length > 0) {
           new TWEEN.Tween(intersects[0].object.position)
@@ -160,17 +156,12 @@
 				*/
       }
 
-      //
-
       function animate() {
         requestAnimationFrame(animate);
 
         render();
         stats.update();
       }
-
-      var radius = 600;
-      var theta = 0;
 
       function render() {
         TWEEN.update();

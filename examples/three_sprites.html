@@ -1,12 +1,9 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>three.js css3d - sprites</title>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Sprites</title>
     <style>
       html,
       body {
@@ -52,13 +49,13 @@
       import { TrackballControls } from "three/addons/controls/TrackballControls.js";
       import * as TWEEN from "three/addons/libs/tween.module.js";
 
-      var camera, scene, renderer;
-      var controls;
+      let camera, scene, renderer;
+      let controls;
 
-      var particlesTotal = 512;
-      var positions = [];
-      var objects = [];
-      var current = 0;
+      const particlesTotal = 512;
+      const positions = [];
+      const objects = [];
+      let current = 0;
 
       init();
       animate();
@@ -75,59 +72,55 @@
 
         scene = new THREE.Scene();
 
-        var image = document.createElement("img");
-        image.addEventListener(
-          "load",
-          function (event) {
-            for (var i = 0; i < particlesTotal; i++) {
-              var object = new CSS3DSprite(image.cloneNode());
-              ((object.position.x = Math.random() * 4000 - 2000),
-                (object.position.y = Math.random() * 4000 - 2000),
-                (object.position.z = Math.random() * 4000 - 2000));
-              scene.add(object);
+        const image = document.createElement("img");
+        image.addEventListener("load", function () {
+          for (let i = 0; i < particlesTotal; i++) {
+            const object = new CSS3DSprite(image.cloneNode());
+            object.position.x = Math.random() * 4000 - 2000;
+            object.position.y = Math.random() * 4000 - 2000;
+            object.position.z = Math.random() * 4000 - 2000;
+            scene.add(object);
 
-              objects.push(object);
-            }
+            objects.push(object);
+          }
 
-            transition();
-          },
-          false,
-        );
+          transition();
+        });
         image.src = "textures/sprite.png";
 
         // Plane
 
-        var amountX = 16;
-        var amountZ = 32;
-        var separation = 150;
-        var offsetX = ((amountX - 1) * separation) / 2;
-        var offsetZ = ((amountZ - 1) * separation) / 2;
+        const amountX = 16;
+        const amountZ = 32;
+        const separation = 150;
+        const offsetX = ((amountX - 1) * separation) / 2;
+        const offsetZ = ((amountZ - 1) * separation) / 2;
 
-        for (var i = 0; i < particlesTotal; i++) {
-          var x = (i % amountX) * separation;
-          var z = Math.floor(i / amountX) * separation;
-          var y = (Math.sin(x * 0.5) + Math.sin(z * 0.5)) * 200;
+        for (let i = 0; i < particlesTotal; i++) {
+          const x = (i % amountX) * separation;
+          const z = Math.floor(i / amountX) * separation;
+          const y = (Math.sin(x * 0.5) + Math.sin(z * 0.5)) * 200;
 
           positions.push(x - offsetX, y, z - offsetZ);
         }
 
         // Cube
 
-        var amount = 8;
-        var separation = 150;
-        var offset = ((amount - 1) * separation) / 2;
+        const amount = 8;
+        const cubeSeparation = 150;
+        const offset = ((amount - 1) * cubeSeparation) / 2;
 
-        for (var i = 0; i < particlesTotal; i++) {
-          var x = (i % amount) * separation;
-          var y = Math.floor((i / amount) % amount) * separation;
-          var z = Math.floor(i / (amount * amount)) * separation;
+        for (let i = 0; i < particlesTotal; i++) {
+          const x = (i % amount) * cubeSeparation;
+          const y = Math.floor((i / amount) % amount) * cubeSeparation;
+          const z = Math.floor(i / (amount * amount)) * cubeSeparation;
 
           positions.push(x - offset, y - offset, z - offset);
         }
 
         // Random
 
-        for (var i = 0; i < particlesTotal; i++) {
+        for (let i = 0; i < particlesTotal; i++) {
           positions.push(
             Math.random() * 4000 - 2000,
             Math.random() * 4000 - 2000,
@@ -137,11 +130,11 @@
 
         // Sphere
 
-        var radius = 750;
+        const radius = 750;
 
-        for (var i = 0; i < particlesTotal; i++) {
-          var phi = Math.acos(-1 + (2 * i) / particlesTotal);
-          var theta = Math.sqrt(particlesTotal * Math.PI) * phi;
+        for (let i = 0; i < particlesTotal; i++) {
+          const phi = Math.acos(-1 + (2 * i) / particlesTotal);
+          const theta = Math.sqrt(particlesTotal * Math.PI) * phi;
 
           positions.push(
             radius * Math.cos(theta) * Math.sin(phi),
@@ -150,20 +143,14 @@
           );
         }
 
-        //
-
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById("container").appendChild(renderer.domElement);
 
-        //
-
         controls = new TrackballControls(camera, renderer.domElement);
         controls.rotateSpeed = 0.5;
 
-        //
-
-        window.addEventListener("resize", onWindowResize, false);
+        window.addEventListener("resize", onWindowResize);
       }
 
       function onWindowResize() {
@@ -174,11 +161,11 @@
       }
 
       function transition() {
-        var offset = current * particlesTotal * 3;
-        var duration = 2000;
+        const offset = current * particlesTotal * 3;
+        const duration = 2000;
 
-        for (var i = 0, j = offset; i < particlesTotal; i++, j += 3) {
-          var object = objects[i];
+        for (let i = 0, j = offset; i < particlesTotal; i++, j += 3) {
+          const object = objects[i];
 
           new TWEEN.Tween(object.position)
             .to(
@@ -193,7 +180,7 @@
             .start();
         }
 
-        new TWEEN.Tween(this)
+        new TWEEN.Tween({})
           .to({}, duration * 3)
           .onComplete(transition)
           .start();
@@ -207,11 +194,11 @@
         TWEEN.update();
         controls.update();
 
-        var time = performance.now();
+        const time = performance.now();
 
-        for (var i = 0, l = objects.length; i < l; i++) {
-          var object = objects[i];
-          var scale =
+        for (let i = 0, l = objects.length; i < l; i++) {
+          const object = objects[i];
+          const scale =
             Math.sin((Math.floor(object.position.x) + time) * 0.002) * 0.3 + 1;
           object.scale.set(scale, scale, scale);
         }
