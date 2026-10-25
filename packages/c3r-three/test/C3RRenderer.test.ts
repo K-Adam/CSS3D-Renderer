@@ -116,3 +116,28 @@ it("shares one stylesheet between renderers", () => {
   expect(document.adoptedStyleSheets).toHaveLength(1);
   expect([...a.root().classList]).toEqual(["c3r-group", "c3r-root"]);
 });
+
+it("shares one material rule between meshes, removed on dispose", () => {
+  const { renderer, scene, camera, root } = setup();
+
+  const material = new MeshBasicMaterial({ color: 0xff0000 });
+  scene.add(new Mesh(new BoxGeometry(), material));
+  scene.add(new Mesh(new BoxGeometry(), material));
+  renderer.render(scene, camera);
+
+  // mesh node > polygon group
+  const classes = [...root().children].map(
+    (mesh) => mesh.firstElementChild!.className,
+  );
+  const className = /c3r-material-\d+/.exec(classes[0])![0];
+  expect(classes[1]).toContain(className);
+
+  const [sheet] = document.adoptedStyleSheets;
+  const rules = () =>
+    [...sheet.cssRules].filter((r) => r.cssText.startsWith(`.${className} `));
+  expect(rules()).toHaveLength(1);
+  expect(rules()[0].cssText).toContain("rgba(255");
+
+  material.dispose();
+  expect(rules()).toHaveLength(0);
+});

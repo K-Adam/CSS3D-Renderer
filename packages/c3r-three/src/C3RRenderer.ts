@@ -48,7 +48,7 @@ interface MeshState {
 }
 
 interface MaterialState {
-  uuid: string;
+  material: C3R.Material;
   map: Texture | null | undefined;
   version: number;
 }
@@ -69,7 +69,7 @@ export class C3RRenderer {
   #containers = new Map<Scene, C3R.Container>(); // multiple scenes can overlap
   #children = new WeakMap<C3R.Group, Map<Object3D, C3R.Object3D>>();
   #meshes = new WeakMap<C3R.Object3D, MeshState>();
-  #materials = new WeakMap<C3R.Object3D, MaterialState>();
+  #materials = new WeakMap<Material, MaterialState>();
 
   getSize(): { width: number; height: number } {
     return { width: this.#width, height: this.#height };
@@ -324,15 +324,25 @@ export class C3RRenderer {
     material: MappedMaterial,
     node: C3R.Object3D,
   ): Texture | null | undefined {
-    let state = this.#materials.get(node);
-    if (!node.material || state?.uuid !== material.uuid) {
-      node.material = new C3R.Material();
-      state = { uuid: material.uuid, map: undefined, version: -1 };
-      this.#materials.set(node, state);
+    let state = this.#materials.get(material);
+    if (!state) {
+      const created = {
+        material: new C3R.Material(),
+        map: undefined,
+        version: -1,
+      };
+      const onDispose = () => {
+        material.removeEventListener("dispose", onDispose);
+        created.material[Symbol.dispose]();
+        this.#materials.delete(material);
+      };
+      material.addEventListener("dispose", onDispose);
+      this.#materials.set(material, (state = created));
     }
 
-    const target = node.material;
-    let changed = false;
+    const target = state.material;
+    let changed = node.material !== target;
+    node.material = target;
 
     const { map } = material;
     const image: unknown = map?.image;

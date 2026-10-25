@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023", "DOM"],
+    "lib": ["ES2023", "ESNext.Disposable", "DOM"],
     "module": "preserve",
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,

@@ -3,7 +3,9 @@ import { mat4, vec2, vec3, vec4 } from "gl-matrix";
 import {
   Container,
   css,
+  cssText,
   Group,
+  Material,
   OrthographicCamera,
   Polygon,
   Vertex,
@@ -141,6 +143,39 @@ describe("Group.pushPolygon", () => {
     group.flushPolygons();
 
     expect(group.children).toHaveLength(1);
+  });
+});
+
+describe("Material", () => {
+  it("styles objects through a class rule, removed on dispose", () => {
+    const group = new Group();
+    {
+      using material = new Material();
+      material.backgroundColor = [1, 0, 0, 1];
+      group.material = material;
+      group.updateMaterial();
+
+      expect(group.domElement.classList).toContain(material.className);
+      expect(
+        group.domElement.style.getPropertyValue("--background-color"),
+      ).toBe("");
+      expect(cssText()).toMatch(
+        new RegExp(
+          `\\.${material.className} \\{[^}]*rgba\\(255, ?0, ?0, ?1\\)`,
+        ),
+      );
+
+      using other = new Material();
+      group.material = other;
+      group.updateMaterial();
+      expect([...group.domElement.classList]).toEqual([
+        "c3r-group",
+        other.className,
+      ]);
+
+      group.material = material;
+    }
+    expect(cssText()).not.toContain(`.${group.material.className} `);
   });
 });
 

@@ -24,9 +24,11 @@ It bundles gl-matrix and exposes a `C3R` global.
 
 TypeScript declarations are included.
 
+A `Material` is a class rule in a shared stylesheet, so the objects using it share one style. The rule stays until `material[Symbol.dispose]()` is called, or the material leaves a `using` block; otherwise it may be removed once the material and its elements are garbage-collected. c3r-three does this on the three.js material's `dispose()`.
+
 ## Node
 
-C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline the exported `css`. There is no layout either, so set the size explicitly.
+C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline `cssText()`, the base styles plus the material rules, after building the scene. There is no layout either, so set the size explicitly.
 
 ```sh
 npm install c3r @happy-dom/global-registrator
@@ -36,13 +38,13 @@ npm install c3r @happy-dom/global-registrator
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 
-const { Container, css } = await import("c3r");
+const { Container, cssText } = await import("c3r");
 
 const container = new Container();
 container.setSize(800, 600);
 // ... build the scene
 
-const html = `<!doctype html><style>${css}</style>${container.domElement.outerHTML}`;
+const html = `<!doctype html><style>${cssText()}</style>${container.domElement.outerHTML}`;
 ```
 
 See the [examples](https://k-adam.github.io/CSS3D-Renderer/).

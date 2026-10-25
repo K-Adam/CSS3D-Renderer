@@ -4,10 +4,15 @@ export { css };
 
 let sheet: CSSStyleSheet | undefined;
 
-// No constructable stylesheets server-side, inline `css` there
-export function ensureStyles(): void {
-  if (sheet || typeof CSSStyleSheet === "undefined") return;
-  sheet = new CSSStyleSheet();
-  sheet.replaceSync(css);
-  document.adoptedStyleSheets.push(sheet);
+export function ensureStyles(): CSSStyleSheet {
+  if (!sheet) {
+    sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    document.adoptedStyleSheets.push(sheet);
+  }
+  return sheet;
 }
+
+// Base styles and material rules, for static html
+export const cssText = (): string =>
+  Array.from(ensureStyles().cssRules, (r) => r.cssText).join("\n");

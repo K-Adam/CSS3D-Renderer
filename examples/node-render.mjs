@@ -5,7 +5,7 @@ GlobalRegistrator.register();
 
 const THREE = await import("three");
 const { C3RRenderer } = await import("c3r-three");
-const { css } = await import("c3r");
+const { cssText } = await import("c3r");
 
 const width = 800;
 const height = 600;
@@ -36,7 +36,7 @@ process.stdout.write(`<!doctype html>
   <head>
     <meta charset="utf-8" />
     <title>C3R static render</title>
-    <style>${css}</style>
+    <style>${cssText()}</style>
   </head>
   <body>${renderer.domElement.outerHTML}</body>
 </html>

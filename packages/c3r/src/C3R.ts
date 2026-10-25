@@ -1,5 +1,5 @@
 export { Material } from "./css/Material.js";
-export { css } from "./css/styles.js";
+export { css, cssText } from "./css/styles.js";
 
 export { Object3D } from "./dom/Object3D.js";
 export { Group } from "./dom/Group.js";

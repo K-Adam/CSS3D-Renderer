@@ -24,6 +24,6 @@ renderer.render(scene, camera);
 
 ## Node
 
-Set up a DOM and inline the `css` as described in [c3r](../c3r/README.md#node), then render and serialize `renderer.domElement.outerHTML`. `TextureLoader` needs a browser, so set the image directly: `new Texture(Object.assign(document.createElement("img"), { src }))`. See [node-render.mjs](../../examples/node-render.mjs).
+Set up a DOM and inline `cssText()` as described in [c3r](../c3r/README.md#node), then render and serialize `renderer.domElement.outerHTML`. `TextureLoader` needs a browser, so set the image directly: `new Texture(Object.assign(document.createElement("img"), { src }))`. See [node-render.mjs](../../examples/node-render.mjs).
 
 See the [examples](https://k-adam.github.io/CSS3D-Renderer/).
