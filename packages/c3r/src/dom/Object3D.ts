@@ -29,15 +29,20 @@ export abstract class Object3D {
     return this.#material;
   }
 
+  protected get materialElement(): HTMLElement {
+    return this.domElement;
+  }
+
   set material(material: Material | null) {
     if (material === this.#material) return;
-    const { classList } = this.domElement;
+    const element = this.materialElement;
+    const { classList } = element;
     if (this.#material) classList.remove(this.#material.className);
     if (material) {
       classList.add(material.className);
-      elementMaterials.set(this.domElement, material);
+      elementMaterials.set(element, material);
     } else {
-      elementMaterials.delete(this.domElement);
+      elementMaterials.delete(element);
     }
     this.#material = material;
   }

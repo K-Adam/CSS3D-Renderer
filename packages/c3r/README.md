@@ -48,20 +48,22 @@ cube.material.backgroundImageSrc = "crate.jpg";
 container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
 ```
 
-| Class                                     | What it is                                                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`                                   |
-| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons |
-| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`          |
-| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`         |
-| `Material`                                | `backgroundColor`, `backgroundImageSrc`, `opacity`, inherited by the object's descendants         |
-| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (inverse world) and `fov`, or `left`, `right`, `top`, `bottom`                           |
+| Class                                     | What it is                                                                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`                                                                                   |
+| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons                                                 |
+| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                          |
+| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                         |
+| `Material`                                | `backgroundColor`, `backgroundImageSrc`, `opacity`, `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only |
+| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (inverse world) and `fov`, or `left`, `right`, `top`, `bottom`                                                                           |
 
 Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
 
 A `Material` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
 
 An orthographic camera needs `setSize()`: without it the container takes the window size at construction and does not follow resizes.
+
+The stylesheet is adopted by `document` only, so a container inside a shadow root is unstyled.
 
 ## Node
 

@@ -20,6 +20,10 @@ export class ElementObject extends Group {
     this.#updateTransform();
   }
 
+  protected override get materialElement(): HTMLElement {
+    return this.element;
+  }
+
   setSize(width: number, height: number): void {
     this.element.style.width = `${width}px`;
     this.element.style.height = `${height}px`;

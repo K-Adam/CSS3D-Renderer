@@ -95,7 +95,8 @@
   transform-origin: 0 0;
 }
 
-.c3r-element {
+/* No specificity, so the user's own styles win */
+:where(.c3r-element) {
   background-color: var(--c3r-background-color, transparent);
   background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;

@@ -73,6 +73,30 @@ describe("Polygon", () => {
     expect(vec3.dot(front, normal)).toBeGreaterThan(0.999);
   });
 
+  it("drops repeated vertices, also a repeated closing one", () => {
+    const poly = new Polygon([
+      vertex(0, 0, 0),
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(1, 1, 0),
+      vertex(0, 1, 0),
+      vertex(0, 0, 0),
+      vertex(0, 0, 0),
+    ]);
+    expect(poly.vertices).toHaveLength(4);
+
+    // A collinear midpoint next to its duplicate
+    const square = new Polygon([
+      vertex(0, 0, 0),
+      vertex(0.5, 0, 0),
+      vertex(0.5, 0, 0),
+      vertex(1, 0, 0),
+      vertex(1, 1, 0),
+      vertex(0, 1, 0),
+    ]);
+    expect(square.vertices).toHaveLength(4);
+  });
+
   it("falls back to the plain color for collinear uvs", () => {
     const poly = new Polygon([
       vertex(0, 0, 0, 0, 0),
@@ -198,6 +222,18 @@ describe("ElementObject", () => {
       "translate(-50%,-50%)scale(2,-3)translate(50%,50%)rotate(1rad)",
     );
   });
+
+  it("applies its material to its element, not to its children", () => {
+    const node = new ElementObject(document.createElement("div"));
+    const child = new Group();
+    node.addChild(child);
+    using material = new Material();
+    node.material = material;
+
+    expect(node.element.classList).toContain(material.className);
+    expect(node.domElement.classList).not.toContain(material.className);
+    expect(child.domElement.closest(`.${material.className}`)).toBeNull();
+  });
 });
 
 describe("Material", () => {
@@ -228,6 +264,20 @@ describe("Material", () => {
       group.material = material;
     }
     expect(cssText()).not.toContain(`.${group.material.className} `);
+  });
+
+  it("shows back faces when double-sided", () => {
+    using material = new Material();
+    const rule = () =>
+      cssText()
+        .split("\n")
+        .find((r) => r.startsWith(`.${material.className} `));
+
+    material.doubleSided = true;
+    expect(rule()).toMatch(/backface-visibility: ?visible/);
+
+    material.doubleSided = false;
+    expect(rule()).not.toContain("backface-visibility");
   });
 });
 

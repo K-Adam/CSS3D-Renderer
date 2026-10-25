@@ -10,6 +10,7 @@ export class Material {
   #backgroundImageSrc: string | null = null;
   #backgroundColor: ReadonlyVec4 | null = null;
   #opacity = 1;
+  #doubleSided = false;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -53,6 +54,16 @@ export class Material {
     if (opacity === this.#opacity) return;
     this.#opacity = opacity;
     this.#set("--c3r-opacity", opacity === 1 ? null : String(opacity));
+  }
+
+  get doubleSided(): boolean {
+    return this.#doubleSided;
+  }
+
+  set doubleSided(doubleSided: boolean) {
+    if (doubleSided === this.#doubleSided) return;
+    this.#doubleSided = doubleSided;
+    this.#set("backface-visibility", doubleSided ? "visible" : null);
   }
 
   #set(name: string, value: string | null): void {

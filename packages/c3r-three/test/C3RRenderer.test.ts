@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { mat4 } from "gl-matrix";
 import {
   BoxGeometry,
+  DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -13,7 +14,7 @@ import {
   Vector3,
 } from "three";
 import { cssText } from "c3r";
-import { C3RRenderer } from "../src/C3RRenderer.js";
+import { C3RRenderer, CSS3DObject } from "../src/C3RRenderer.js";
 
 const setup = () => {
   const renderer = new C3RRenderer();
@@ -177,6 +178,44 @@ it("ignores opacity unless the material is transparent, as WebGL", () => {
   renderer.render(scene, camera);
   expect(cssText()).toMatch(/--c3r-opacity: ?0\.5/);
   material.dispose();
+});
+
+it("keeps a sprite's material off its child elements", () => {
+  const { renderer, scene, camera } = setup();
+
+  const material = new SpriteMaterial({ color: 0xff0000 });
+  const sprite = new Sprite(material);
+  const child = new CSS3DObject(document.createElement("div"));
+  sprite.add(child);
+  scene.add(sprite);
+  renderer.render(scene, camera);
+
+  expect(child.element.closest("[class*=c3r-material-]")).toBeNull();
+  material.dispose();
+});
+
+it("shows back faces unless the material is FrontSide", () => {
+  const { renderer, scene, camera, root } = setup();
+
+  const front = new MeshBasicMaterial();
+  const double = new MeshBasicMaterial({ side: DoubleSide });
+  scene.add(new Mesh(new BoxGeometry(), front));
+  scene.add(new Mesh(new BoxGeometry(), double));
+  renderer.render(scene, camera);
+
+  const [frontRule, doubleRule] = [...root().children].map((mesh) => {
+    const className = /c3r-material-\d+/.exec(
+      mesh.firstElementChild!.className,
+    )![0];
+    return cssText()
+      .split("\n")
+      .find((r) => r.startsWith(`.${className} `))!;
+  });
+  expect(frontRule).not.toContain("backface-visibility");
+  expect(doubleRule).toMatch(/backface-visibility: ?visible/);
+
+  front.dispose();
+  double.dispose();
 });
 
 it("removes the scenes and camera rules on dispose", () => {

@@ -88,9 +88,22 @@ const dilate = (points: ReadonlyVec2[], d: number): vec2[] => {
   });
 };
 
-// Remove collinear vertices
-const simplify = (vertices: readonly Vertex[]): Vertex[] =>
-  vertices.filter((vertex, i) => {
+const dedupe = (vertices: readonly Vertex[]): Vertex[] => {
+  const unique = vertices.filter(
+    (v, i) => i === 0 || !vec3.equals(v.position, vertices[i - 1].position),
+  );
+  while (
+    unique.length > 1 &&
+    vec3.equals(unique[unique.length - 1].position, unique[0].position)
+  )
+    unique.pop();
+  return unique;
+};
+
+// Remove duplicate and collinear vertices
+const simplify = (input: readonly Vertex[]): Vertex[] => {
+  const vertices = dedupe(input);
+  return vertices.filter((vertex, i) => {
     if (i === 0) return true;
 
     const p1 = vertices[i - 1].position;
@@ -107,6 +120,7 @@ const simplify = (vertices: readonly Vertex[]): Vertex[] =>
 
     return Math.abs(vec3.dot(e1, e2)) < 0.9999;
   });
+};
 
 export interface PolygonOptions {
   contentElement?: HTMLElement;

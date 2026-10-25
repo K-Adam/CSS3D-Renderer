@@ -37,7 +37,13 @@
     "c3r": "^0.2.0"
   },
   "peerDependencies": {
+    "@types/three": ">=0.160.0",
     "three": ">=0.160.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/three": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/three": "^0.186.0",

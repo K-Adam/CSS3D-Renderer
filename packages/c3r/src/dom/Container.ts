@@ -3,6 +3,9 @@ import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 
 import { Group } from "./Group.js";
 
+// Keeps a Camera, and its rules, alive while its element is
+const elementCameras = new WeakMap<Element, Camera>();
+
 export class Container {
   readonly domElement: HTMLDivElement = document.createElement("div");
   // Camera transform
@@ -20,6 +23,7 @@ export class Container {
       this.#camera.className,
     );
     this.viewElement.classList.add("c3r-group", "c3r-view");
+    elementCameras.set(this.domElement, this.#camera);
 
     this.domElement.appendChild(this.viewElement);
     this.viewElement.appendChild(this.#root.domElement);
@@ -46,6 +50,7 @@ export class Container {
     const { classList } = this.domElement;
     classList.remove(this.#camera.projectionClass, this.#camera.className);
     classList.add(camera.projectionClass, camera.className);
+    elementCameras.set(this.domElement, camera);
     this.#camera = camera;
   }
 

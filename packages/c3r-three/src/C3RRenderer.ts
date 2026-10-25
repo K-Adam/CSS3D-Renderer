@@ -1,4 +1,5 @@
 import {
+  FrontSide,
   InterleavedBufferAttribute,
   Matrix4,
   Mesh,
@@ -298,10 +299,12 @@ export class C3RRenderer {
         map: undefined,
         version: -1,
       };
+      // Not this.#materials, the listener would keep the renderer alive
+      const materials = this.#materials;
       const onDispose = () => {
         material.removeEventListener("dispose", onDispose);
         created.material[Symbol.dispose]();
-        this.#materials.delete(material);
+        materials.delete(material);
       };
       material.addEventListener("dispose", onDispose);
       this.#materials.set(material, (state = created));
@@ -331,6 +334,8 @@ export class C3RRenderer {
     }
 
     target.opacity = material.transparent ? material.opacity : 1;
+    // ponytail: BackSide renders as double-sided, CSS can't cull front faces only
+    target.doubleSided = material.side !== FrontSide;
 
     return map;
   }
