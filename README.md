@@ -16,7 +16,7 @@ Try the examples live [here](https://k-adam.github.io/CSS3D-Renderer/).
 
 ## Development
 
-Requires Node 24+. The packages are written in TypeScript.
+Requires Node 24+.
 
 ```sh
 npm install

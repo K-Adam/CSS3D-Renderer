@@ -1,6 +1,6 @@
 # c3r
 
-**C3R.js** is a lightweight library for displaying 3D scenes with CSS. It is designed to be used as a CSS3D backend for existing libraries. It provides classes to construct textured polygons, nest 3D transformed elements and handle camera.
+Renders textured 3D scenes with plain DOM elements and CSS transforms, as a CSS3D backend for libraries like three.js. You build the scene from textured polygons and HTML elements, nest them in transformed groups and view them through a perspective or orthographic camera.
 
 ## Usage
 
