@@ -1,4 +1,5 @@
 import {
+  ClampToEdgeWrapping,
   FrontSide,
   InterleavedBufferAttribute,
   Matrix4,
@@ -259,7 +260,14 @@ export class C3RRenderer {
     let state = this.#meshes.get(node);
     if (!state || !sameKey(state.key, key)) {
       state?.groups.forEach((g) => node.removeChild(g.node));
-      state = { key, groups: ranges.map((r) => buildGroup(geometry, r)) };
+      const builder = new C3R.MeshBuilder(
+        ranges.map((r) => readTriangles(geometry, r)),
+      );
+      const groups = ranges.map((_, i) => {
+        const node = new C3R.Group();
+        return { node, polygons: node.addFaces(builder.faces(i)) };
+      });
+      state = { key, groups };
       state.groups.forEach((g) => node.addChild(g.node));
       this.#meshes.set(node, state);
     }
@@ -269,10 +277,8 @@ export class C3RRenderer {
       : [mesh.material];
     ranges.forEach((r, i) => {
       const group = state.groups[i];
-      const map = this.#syncMaterial(
-        materials[r.materialIndex % materials.length],
-        group.node,
-      );
+      const material = materials[r.materialIndex % materials.length];
+      const map = this.#syncMaterial(material, group.node);
 
       const repeat: [number, number] = map
         ? [map.repeat.x, map.repeat.y]
@@ -283,6 +289,10 @@ export class C3RRenderer {
       for (const polygon of group.polygons) {
         polygon.uvScale = repeat;
         polygon.uvOffset = offset;
+        polygon.overlapFolds = !material.transparent;
+        polygon.clampUV =
+          map?.wrapS === ClampToEdgeWrapping &&
+          map.wrapT === ClampToEdgeWrapping;
       }
     });
   }
@@ -373,10 +383,10 @@ function createNode(object: Object3D): C3R.Group {
   return new C3R.Group();
 }
 
-function buildGroup(
+function readTriangles(
   geometry: BufferGeometry,
   { start, count }: Range,
-): MeshState["groups"][number] {
+): C3R.Vertex[][] {
   const { index } = geometry;
   const { position, uv } = geometry.attributes;
 
@@ -393,6 +403,5 @@ function buildGroup(
     triangles.push([vertex(i), vertex(i + 1), vertex(i + 2)]);
   }
 
-  const node = new C3R.Group();
-  return { node, polygons: node.addTriangles(triangles) };
+  return triangles;
 }

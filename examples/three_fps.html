@@ -271,18 +271,22 @@
         return new THREE.Mesh(geometry, materials);
       }
 
-      function makePlatform(jsonUrl, textureUrl) {
+      function makePlatform(jsonUrl, textureUrl, plateUrl) {
         const placeholder = new THREE.Object3D();
 
         const texture = new THREE.TextureLoader().load(textureUrl);
         texture.minFilter = THREE.LinearFilter;
 
+        // The diamond plate tiles in world space, so neighbouring faces line up
+        const plate = new THREE.TextureLoader().load(plateUrl);
+        plate.wrapS = plate.wrapT = THREE.RepeatWrapping;
+
         const loader = new THREE.BufferGeometryLoader();
         loader.load(jsonUrl, function (geometry) {
-          const platform = new THREE.Mesh(
-            geometry,
+          const platform = new THREE.Mesh(geometry, [
             new THREE.MeshBasicMaterial({ map: texture }),
-          );
+            new THREE.MeshBasicMaterial({ map: plate }),
+          ]);
 
           platform.name = "platform";
 
@@ -318,6 +322,7 @@
         makePlatform(
           "models/platform/platform.json",
           "models/platform/platform.jpg",
+          "models/platform/plate.jpg",
         ),
       );
 

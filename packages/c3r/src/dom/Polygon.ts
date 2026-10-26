@@ -1,48 +1,18 @@
-import { mat2, mat3, vec2, vec3, type ReadonlyVec2 } from "gl-matrix";
+import { mat3, mat4, vec2, vec3, type ReadonlyVec2 } from "gl-matrix";
 
 import { Object3D } from "./Object3D.js";
+import {
+  bounds,
+  convexHull,
+  cross2,
+  minRect,
+  simplify,
+  toPlane,
+  type EdgeNeighbour,
+  type NeighbourSide,
+} from "../math/planar.js";
 import { Triangle } from "../math/Triangle.js";
 import type { Vertex } from "../math/Vertex.js";
-
-type Bounds = [xmin: number, xmax: number, ymin: number, ymax: number];
-
-const cross2 = (a: ReadonlyVec2, b: ReadonlyVec2, o: ReadonlyVec2) =>
-  (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-
-const bounds = (points: ReadonlyVec2[]): Bounds =>
-  points.reduce<Bounds>(
-    ([xmin, xmax, ymin, ymax], [x, y]) => [
-      Math.min(xmin, x),
-      Math.max(xmax, x),
-      Math.min(ymin, y),
-      Math.max(ymax, y),
-    ],
-    [Infinity, -Infinity, Infinity, -Infinity],
-  );
-
-// Monotone chain, https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain
-const convexHull = (points: ReadonlyVec2[]): ReadonlyVec2[] => {
-  const sorted = points
-    .slice()
-    .sort((a, b) => (a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]));
-
-  const chain = (pts: ReadonlyVec2[]) => {
-    const out: ReadonlyVec2[] = [];
-    for (const p of pts) {
-      while (
-        out.length >= 2 &&
-        cross2(out[out.length - 2], out[out.length - 1], p) <= 0
-      ) {
-        out.pop();
-      }
-      out.push(p);
-    }
-    out.pop();
-    return out;
-  };
-
-  return [...chain(sorted), ...chain(sorted.slice().reverse())];
-};
 
 // Newell's method
 const newellNormal = (vertices: readonly Vertex[]): vec3 => {
@@ -60,8 +30,28 @@ const newellNormal = (vertices: readonly Vertex[]): vec3 => {
 
 const MITER_LIMIT = 4;
 
-// Offsets every edge outward by d
-const dilate = (points: ReadonlyVec2[], d: number): vec2[] => {
+interface Edge {
+  offset: number;
+  sides: [ReadonlyVec2 | null, ReadonlyVec2 | null];
+}
+
+// Ends the overlap on the neighbour's side instead of past it
+const cap = (
+  p: ReadonlyVec2,
+  n: ReadonlyVec2,
+  d: number,
+  side: ReadonlyVec2 | null,
+): vec2 => {
+  if (side) {
+    const u = vec2.normalize(vec2.create(), vec2.sub(vec2.create(), side, p));
+    const k = vec2.dot(u, n);
+    if (k > 1e-6)
+      return vec2.scaleAndAdd(u, p, u, Math.min(d / k, MITER_LIMIT * d));
+  }
+  return vec2.scaleAndAdd(vec2.create(), p, n, d);
+};
+
+const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
   const n = points.length;
   const area = points.reduce(
     (s, p, i) => s + cross2(p, points[(i + 1) % n], [0, 0]),
@@ -74,53 +64,40 @@ const dilate = (points: ReadonlyVec2[], d: number): vec2[] => {
     return vec2.fromValues(e[1] * sign, -e[0] * sign);
   };
 
-  return points.map((p, i) => {
-    const n1 = normal(points[(i + n - 1) % n], p);
-    const n2 = normal(p, points[(i + 1) % n]);
+  return points.flatMap((p, i) => {
+    const prev = (i + n - 1) % n;
+    const next = (i + 1) % n;
+    const n1 = normal(points[prev], p);
+    const n2 = normal(p, points[next]);
+    const d1 = edges[prev].offset;
+    const d2 = edges[i].offset;
+    if (!d1 && !d2) return [vec2.clone(p)];
 
-    const m = vec2.add(vec2.create(), n1, n2);
-    vec2.scale(m, m, d / Math.max(1 + vec2.dot(n1, n2), 1e-6));
+    // A miter at a convex corner pokes out of the mesh where the corner is on its border
+    if (cross2(p, points[next], points[prev]) * sign > 0) {
+      const c1 = d1 ? cap(p, n1, d1, edges[prev].sides[1]) : vec2.clone(p);
+      const c2 = d2 ? cap(p, n2, d2, edges[i].sides[0]) : vec2.clone(p);
+      if (vec2.equals(c1, c2)) return [c1];
+      // Around a vertex of many faces the caps would cut off the corner
+      const cut = cross2(c2, p, c1) * sign < 0;
+      return cut ? [c1, vec2.clone(p), c2] : [c1, c2];
+    }
 
+    const c = vec2.dot(n1, n2);
+    const det = Math.max(1 - c * c, 1e-6);
+    const m = vec2.scale(vec2.create(), n1, (d1 - d2 * c) / det);
+    vec2.scaleAndAdd(m, m, n2, (d2 - d1 * c) / det);
+
+    const limit = MITER_LIMIT * Math.max(d1, d2);
     const len = vec2.len(m);
-    if (len > MITER_LIMIT * d) vec2.scale(m, m, (MITER_LIMIT * d) / len);
+    if (len > limit) vec2.scale(m, m, limit / len);
 
-    return vec2.add(m, m, p);
+    return [vec2.add(m, m, p)];
   });
 };
 
-const dedupe = (vertices: readonly Vertex[]): Vertex[] => {
-  const unique = vertices.filter(
-    (v, i) => i === 0 || !vec3.equals(v.position, vertices[i - 1].position),
-  );
-  while (
-    unique.length > 1 &&
-    vec3.equals(unique[unique.length - 1].position, unique[0].position)
-  )
-    unique.pop();
-  return unique;
-};
-
-// Remove duplicate and collinear vertices
-const simplify = (input: readonly Vertex[]): Vertex[] => {
-  const vertices = dedupe(input);
-  return vertices.filter((vertex, i) => {
-    if (i === 0) return true;
-
-    const p1 = vertices[i - 1].position;
-    const p3 = vertices[(i + 1) % vertices.length].position;
-
-    const e1 = vec3.normalize(
-      vec3.create(),
-      vec3.sub(vec3.create(), p1, vertex.position),
-    );
-    const e2 = vec3.normalize(
-      vec3.create(),
-      vec3.sub(vec3.create(), vertex.position, p3),
-    );
-
-    return Math.abs(vec3.dot(e1, e2)) < 0.9999;
-  });
-};
+export const defaultDomSize = (size: number) =>
+  Math.max(250, Math.min(size, 1200));
 
 export interface PolygonOptions {
   contentElement?: HTMLElement;
@@ -128,6 +105,10 @@ export interface PolygonOptions {
   getDomSize?: (size: number) => number;
   // Outward edge offset in DOM pixels, hides seams between neighbours
   edgeOverlap?: number;
+  // Over a convex fold the overlap sticks out as a lip
+  convexOverlap?: number;
+  // Per edge from each vertex, edges without a neighbour would only overhang
+  edges?: readonly EdgeNeighbour[];
 }
 
 export class Polygon extends Object3D {
@@ -141,6 +122,10 @@ export class Polygon extends Object3D {
 
   #getDomSize: (size: number) => number;
   #edgeOverlap: number;
+  #convexOverlap: number;
+  #edges: readonly EdgeNeighbour[];
+  #overlapFolds = true;
+  #clampUV = false;
 
   #clipPath: ReadonlyVec2[] = []; // path of the dilated polygon on a rectangular element
   #vertexPoints: ReadonlyVec2[] = [];
@@ -152,15 +137,19 @@ export class Polygon extends Object3D {
     vertices: readonly Vertex[],
     {
       contentElement = document.createElement("div"),
-      getDomSize = (size) => Math.max(250, Math.min(size, 1200)),
+      getDomSize = defaultDomSize,
       edgeOverlap = 1,
+      convexOverlap = 0.4,
+      edges,
     }: PolygonOptions = {},
   ) {
     super();
 
     this.vertices = simplify(vertices);
+    this.#edges = edges ?? this.vertices.map(() => [null, null]);
     this.#getDomSize = getDomSize;
     this.#edgeOverlap = edgeOverlap;
+    this.#convexOverlap = convexOverlap;
 
     this.domElement.classList.add("c3r-polygon");
 
@@ -171,6 +160,28 @@ export class Polygon extends Object3D {
     this.domElement.appendChild(this.#clipElement);
 
     this.#fit();
+    this.#updateContent();
+  }
+
+  // Overlapping a fold leaves a lip, which shows through a transparent surface
+  get overlapFolds(): boolean {
+    return this.#overlapFolds;
+  }
+
+  set overlapFolds(overlap: boolean) {
+    if (overlap === this.#overlapFolds) return;
+    this.#overlapFolds = overlap;
+    this.#fit();
+    this.#updateContent();
+  }
+
+  get clampUV(): boolean {
+    return this.#clampUV;
+  }
+
+  set clampUV(clamp: boolean) {
+    if (clamp === this.#clampUV) return;
+    this.#clampUV = clamp;
     this.#updateContent();
   }
 
@@ -247,60 +258,9 @@ export class Polygon extends Object3D {
   }
 
   #fitPolygon(tri: Triangle): void {
-    const b1 = tri.norm;
-    const b2 =
-      Math.abs(vec3.dot(b1, [0, 0, 1])) < 0.9
-        ? vec3.cross(vec3.create(), b1, [0, 0, 1])
-        : vec3.cross(vec3.create(), b1, [0, 1, 0]);
-    const b3 = vec3.cross(vec3.create(), b2, b1);
-
-    // Project the points to the polygon's plane
-    // prettier-ignore
-    const BT = mat3.fromValues(
-            b2[0], b2[1], b2[2],
-            b3[0], b3[1], b3[2],
-            b1[0], b1[1], b1[2],
-        );
-    const BTI = mat3.invert(BT, BT);
-    if (!BTI) throw new Error("Degenerate polygon");
-
-    const points2d = this.vertices.map((v) => {
-      const p = vec3.transformMat3(vec3.create(), v.position, BTI);
-      return vec2.fromValues(p[0], p[1]);
-    });
-
-    const hull = convexHull(points2d);
-
-    // For each edge of the hull, transform the points to make it axis aligned
-    // and keep the AABB with the smallest area
-
-    let minArea = Infinity;
-    let minBounds: Bounds = [0, 0, 0, 0];
-    let minTI = mat2.create();
-
-    hull.forEach((point, i) => {
-      const side = vec2.sub(vec2.create(), point, hull[(i + 1) % hull.length]);
-      vec2.normalize(side, side);
-
-      const ATI = mat2.invert(mat2.create(), [
-        side[0],
-        side[1],
-        side[1],
-        -side[0],
-      ]);
-      if (!ATI) return;
-
-      const box = bounds(
-        hull.map((p) => vec2.transformMat2(vec2.create(), p, ATI)),
-      );
-
-      const area = (box[1] - box[0]) * (box[3] - box[2]);
-      if (area < minArea) {
-        minArea = area;
-        minBounds = box;
-        minTI = ATI;
-      }
-    });
+    const plane = toPlane(tri.norm);
+    const points2d = this.vertices.map((v) => plane(v.position));
+    const { bounds: minBounds, TI: minTI } = minRect(convexHull(points2d));
 
     const [xmin, xmax, ymin, ymax] = minBounds;
     const boxWidth = xmax - xmin;
@@ -319,7 +279,30 @@ export class Polygon extends Object3D {
 
   // Fits the element around the dilated polygon
   #layout(points: ReadonlyVec2[], tri: Triangle): void {
-    const dilated = dilate(points, this.#edgeOverlap);
+    const [c0, c1, c2] = points.map(([x, y]) => vec3.fromValues(x, y, 0));
+    const toMesh = new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(tri);
+    const fromMesh = mat4.invert(mat4.create(), toMesh);
+    // A folded side projects close to the edge, the plain offset fits it better
+    const project = (side: NeighbourSide | null) => {
+      if (side?.fold !== "smooth" || !fromMesh) return null;
+      const [x, y] = vec3.transformMat4(vec3.create(), side.point, fromMesh);
+      return vec2.fromValues(x, y);
+    };
+
+    const edges = this.#edges.map((sides): Edge => {
+      const offsets = sides.map((side) => {
+        if (side?.fold === "smooth") return this.#edgeOverlap;
+        if (!side || !this.#overlapFolds) return 0;
+        return side.fold === "concave"
+          ? this.#edgeOverlap
+          : this.#convexOverlap;
+      });
+      return {
+        offset: Math.max(...offsets),
+        sides: [project(sides[0]), project(sides[1])],
+      };
+    });
+    const dilated = dilate(points, edges);
 
     const [xmin, xmax, ymin, ymax] = bounds(dilated);
     this.#blockWidth = xmax - xmin;
@@ -334,12 +317,7 @@ export class Polygon extends Object3D {
     this.#clipPath = dilated.map(fit);
     this.#vertexPoints = points.map(fit);
 
-    const [c0, c1, c2] = points.map(([x, y]) =>
-      vec3.fromValues(x - xmin, y - ymin, 0),
-    );
-    this.setMatrix(
-      new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(tri),
-    );
+    this.setMatrix(mat4.translate(toMesh, toMesh, [xmin, ymin, 0]));
   }
 
   #updateContent(): void {
@@ -379,6 +357,22 @@ export class Polygon extends Object3D {
     const clipUVs = this.#clipPath.map((p) =>
       vec2.transformMat3(vec2.create(), p, toUV),
     );
+
+    // CSS has no clamped background, squeeze the mapping onto the texture instead
+    if (this.#clampUV) {
+      for (const k of [0, 1]) {
+        const values = uvs.map((uv) => uv[k]);
+        const lo = Math.min(0, ...values);
+        const hi = Math.max(1, ...values);
+        const c = (Math.min(...values) + Math.max(...values)) / 2;
+        let s = 1;
+        for (const uv of clipUVs) {
+          if (uv[k] < lo) s = Math.min(s, (c - lo) / (c - uv[k]));
+          if (uv[k] > hi) s = Math.min(s, (hi - c) / (uv[k] - c));
+        }
+        for (const uv of [...uvs, ...clipUVs]) uv[k] = c + s * (uv[k] - c);
+      }
+    }
 
     const [txmin, txmax, tymin, tymax] = bounds([...uvs, ...clipUVs]);
 

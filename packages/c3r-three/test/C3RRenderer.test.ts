@@ -183,6 +183,33 @@ it("ignores opacity and map alpha unless the material is transparent, as WebGL",
   material.dispose();
 });
 
+it("overlaps the folds of opaque meshes, convex ones thinly", () => {
+  const { renderer, scene, camera } = setup();
+
+  const width = () =>
+    [...renderer.domElement.querySelectorAll<HTMLElement>(".c3r-polygon")].map(
+      (d) => d.style.getPropertyValue("--c3r-width"),
+    );
+
+  const box = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
+  scene.add(box);
+  renderer.render(scene, camera);
+  for (const w of width()) expect(parseFloat(w)).toBeCloseTo(250.8);
+  scene.remove(box);
+  box.material.dispose();
+
+  // Inside out, as a skybox
+  const material = new MeshBasicMaterial();
+  scene.add(new Mesh(new BoxGeometry().scale(-1, 1, 1), material));
+  renderer.render(scene, camera);
+  expect(new Set(width())).toEqual(new Set(["252px"]));
+
+  material.transparent = true;
+  renderer.render(scene, camera);
+  expect(new Set(width())).toEqual(new Set(["250px"]));
+  material.dispose();
+});
+
 it("keeps a sprite's material off its child elements", () => {
   const { renderer, scene, camera } = setup();
 
