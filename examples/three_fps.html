@@ -9,6 +9,7 @@
         background-color: rgb(200, 200, 200);
         margin: 0px;
         overflow: hidden;
+        touch-action: none;
       }
 
       #info {
@@ -26,6 +27,24 @@
       a {
         color: #ffffff;
       }
+
+      #joystick {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 160px;
+        height: 160px;
+      }
+
+      #jump {
+        position: absolute;
+        right: 40px;
+        bottom: 50px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+      }
     </style>
   </head>
   <body>
@@ -36,12 +55,16 @@
       <a href="http://www.zfight.com/" target="_blank" rel="noopener"
         >Jochum Skoglund</a
       >.<br />Click to look around with the mouse, WASD to move, SHIFT to run
-      and SPACE to jump.
+      and SPACE to jump.<br />On touch: joystick to move, drag to look, button
+      to jump.
     </div>
+    <div id="joystick"></div>
+    <div id="jump"></div>
 
     <script type="module">
       import * as THREE from "three";
       import { C3RRenderer } from "c3r-three";
+      import nipplejs from "nipplejs";
 
       // player motion parameters
 
@@ -63,18 +86,18 @@
         }
       };
 
+      const keys = {
+        SP: "Space",
+        W: "KeyW",
+        A: "KeyA",
+        S: "KeyS",
+        D: "KeyD",
+        SH: "ShiftLeft",
+      };
+
+      const keysPressed = {};
+
       const keyboardControls = (function () {
-        const keys = {
-          SP: "Space",
-          W: "KeyW",
-          A: "KeyA",
-          S: "KeyS",
-          D: "KeyD",
-          SH: "ShiftLeft",
-        };
-
-        const keysPressed = {};
-
         (function (watchedKeyCodes) {
           const handler = function (down) {
             return function (e) {
@@ -129,8 +152,8 @@
         const element = document.getElementById("container");
         const sensitivity = 0.002;
 
-        element.addEventListener("click", function () {
-          element.requestPointerLock();
+        element.addEventListener("click", function (e) {
+          if (e.pointerType !== "touch") element.requestPointerLock();
         });
 
         document.addEventListener("mousemove", function (e) {
@@ -140,6 +163,71 @@
           motion.rotation.x -= e.movementY * sensitivity;
           motion.rotation.x = Math.max(-1.2, Math.min(1.2, motion.rotation.x));
         });
+      })();
+
+      (function () {
+        const zone = document.getElementById("joystick");
+        const jump = document.getElementById("jump");
+        if (!matchMedia("(pointer: coarse)").matches) {
+          zone.remove();
+          jump.remove();
+          return;
+        }
+
+        const setMove = function (x, y, force) {
+          keysPressed[keys.W] = y > 0.3;
+          keysPressed[keys.S] = y < -0.3;
+          keysPressed[keys.A] = x < -0.3;
+          keysPressed[keys.D] = x > 0.3;
+          keysPressed[keys.SH] = force > 0.9;
+        };
+
+        const joystick = nipplejs.create({
+          zone: zone,
+          mode: "static",
+          position: { left: "50%", top: "50%" },
+          color: "white",
+        });
+        joystick.on("move", function (e) {
+          setMove(e.data.vector.x, e.data.vector.y, e.data.force);
+        });
+        joystick.on("end", function () {
+          setMove(0, 0, 0);
+        });
+
+        const press = function (down) {
+          return function () {
+            keysPressed[keys.SP] = down;
+          };
+        };
+        jump.addEventListener("pointerdown", press(true));
+        jump.addEventListener("pointerup", press(false));
+        jump.addEventListener("pointercancel", press(false));
+
+        const sensitivity = 0.005;
+        const touches = {};
+
+        document.addEventListener("pointerdown", function (e) {
+          if (e.pointerType !== "touch") return;
+          if (zone.contains(e.target) || e.target === jump) return;
+          touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+        });
+
+        document.addEventListener("pointermove", function (e) {
+          const t = touches[e.pointerId];
+          if (!t) return;
+          motion.rotation.y -= (e.clientX - t.x) * sensitivity;
+          motion.rotation.x -= (e.clientY - t.y) * sensitivity;
+          motion.rotation.x = Math.max(-1.2, Math.min(1.2, motion.rotation.x));
+          t.x = e.clientX;
+          t.y = e.clientY;
+        });
+
+        const end = function (e) {
+          delete touches[e.pointerId];
+        };
+        document.addEventListener("pointerup", end);
+        document.addEventListener("pointercancel", end);
       })();
 
       const jumpPads = (function () {

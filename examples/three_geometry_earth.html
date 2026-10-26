@@ -14,6 +14,7 @@
         background-color: #ffffff;
         margin: 0px;
         overflow: hidden;
+        touch-action: none;
       }
 
       #info {
@@ -121,7 +122,7 @@
         stats = new Stats();
         container.appendChild(stats.dom);
 
-        document.addEventListener("mousemove", onDocumentMouseMove);
+        document.addEventListener("pointermove", onDocumentMouseMove);
 
         window.addEventListener("resize", onWindowResize);
       }
