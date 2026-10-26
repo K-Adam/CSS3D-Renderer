@@ -74,6 +74,53 @@ describe("Polygon", () => {
     expect(vec3.dot(front, normal)).toBeGreaterThan(0.999);
   });
 
+  it("stays cullable at a small world scale", () => {
+    const poly = new Polygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    const M = poly.matrix;
+    const det = mat4.determinant(M);
+    // Chrome's IsBackFaceVisible test
+    const cofactor = mat4.invert(mat4.create(), M)![10] * det;
+
+    expect(Math.abs(cofactor * det)).toBeGreaterThan(1e-6);
+  });
+
+  it("sizes a textured element to the texels it shows", () => {
+    const poly = new Polygon([
+      vertex(0, 0, 0, 0, 0),
+      vertex(1, 0, 0, 1, 0),
+      vertex(0, 1, 0, 0, 1),
+    ]);
+    const width = () =>
+      parseFloat(poly.domElement.style.getPropertyValue("--c3r-width"));
+
+    poly.textureSize = [256, 256];
+    expect(width()).toBeCloseTo(256 * Math.SQRT2);
+    poly.uvScale = [2, 2];
+    expect(width()).toBeCloseTo(512 * Math.SQRT2);
+    poly.pixelRatio = 2;
+    expect(width()).toBeCloseTo(256 * Math.SQRT2);
+    poly.uvScale = [100, 100];
+    expect(width()).toBeCloseTo(4096 / 2);
+    poly.textureSize = null;
+    expect(width()).toBeCloseTo(250);
+  });
+
+  it("sizes by the most stretched direction, not by the edges", () => {
+    // 256 texels per unit along the diagonal, the edges alone measure 187
+    const poly = new Polygon([
+      vertex(0, 0, 0, 0, 0),
+      vertex(1, 0, 0, 0.625, 0.375),
+      vertex(0, 1, 0, 0.375, 0.625),
+    ]);
+    poly.textureSize = [256, 256];
+    const width = poly.domElement.style.getPropertyValue("--c3r-width");
+    expect(parseFloat(width)).toBeCloseTo(256 * Math.SQRT2);
+  });
+
   it("drops repeated vertices, also a repeated closing one", () => {
     const poly = new Polygon([
       vertex(0, 0, 0),
@@ -208,23 +255,6 @@ describe("Group.addTriangles", () => {
     group.addTriangles([a, ...rest.reverse(), b]);
 
     expect(group.children).toHaveLength(6);
-  });
-
-  it("keeps the detail of the triangles it merges", () => {
-    const at = (x: number, y: number) => vertex(x, y, 0, x / 4, y);
-    const group = new Group();
-    group.addTriangles(
-      [0, 1, 2, 3].flatMap((x) => [
-        [at(x, 0), at(x + 1, 0), at(x + 1, 1)],
-        [at(x, 0), at(x + 1, 1), at(x, 1)],
-      ]),
-    );
-
-    expect(group.children).toHaveLength(1);
-    // 250px per triangle diagonal
-    expect(Math.max(...size(group.children[0] as Polygon))).toBeCloseTo(
-      (250 / Math.SQRT2) * 4,
-    );
   });
 
   it("overlaps concave folds unless told not to", () => {

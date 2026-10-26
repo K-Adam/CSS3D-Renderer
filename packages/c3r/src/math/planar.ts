@@ -1,5 +1,6 @@
 import {
   mat2,
+  mat3,
   vec2,
   vec3,
   type ReadonlyVec2,
@@ -62,6 +63,21 @@ export const toPlane = (normal: ReadonlyVec3) => {
   vec3.normalize(u, u);
   const v = vec3.cross(vec3.create(), u, normal);
   return (p: ReadonlyVec3) => vec2.fromValues(vec3.dot(p, u), vec3.dot(p, v));
+};
+
+// Maps toPlane coordinates to uv, fitted to the first three corners
+export const uvTransform = (
+  corners: readonly Vertex[],
+  normal: ReadonlyVec3,
+): mat3 | null => {
+  const plane = toPlane(normal);
+  const columns = ([a, b, c]: ReadonlyVec2[]) =>
+    mat3.fromValues(a[0], a[1], 1, b[0], b[1], 1, c[0], c[1], 1);
+  const M = mat3.invert(
+    mat3.create(),
+    columns(corners.map((v) => plane(v.position))),
+  );
+  return M && mat3.mul(M, columns(corners.map((v) => v.uv)), M);
 };
 
 const direction = (a: ReadonlyVec3, b: ReadonlyVec3) => {

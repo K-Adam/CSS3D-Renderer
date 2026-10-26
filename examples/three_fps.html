@@ -38,12 +38,22 @@
 
       #jump {
         position: absolute;
-        right: 40px;
-        bottom: 50px;
-        width: 70px;
-        height: 70px;
+        right: 30px;
+        bottom: 30px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      #jump::after {
+        content: "";
+        position: absolute;
+        inset: 25px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: translate(var(--x, 0), var(--y, 0));
+        pointer-events: none;
       }
     </style>
   </head>
@@ -55,8 +65,8 @@
       <a href="http://www.zfight.com/" target="_blank" rel="noopener"
         >Jochum Skoglund</a
       >.<br />Click to look around with the mouse, WASD to move, SHIFT to run
-      and SPACE to jump.<br />On touch: joystick to move, drag to look, button
-      to jump.
+      and SPACE to jump.<br />On touch: left stick to move, drag to look, tap
+      the right stick to jump.
     </div>
     <div id="joystick"></div>
     <div id="jump"></div>
@@ -96,6 +106,18 @@
       };
 
       const keysPressed = {};
+
+      // Right stick deflection in -1..1, turns the view while held
+      const look = new THREE.Vector2();
+
+      const turn = function (dx, dy) {
+        motion.rotation.y -= dx;
+        motion.rotation.x = THREE.MathUtils.clamp(
+          motion.rotation.x - dy,
+          -1.2,
+          1.2,
+        );
+      };
 
       const keyboardControls = (function () {
         (function (watchedKeyCodes) {
@@ -159,9 +181,7 @@
         document.addEventListener("mousemove", function (e) {
           if (document.pointerLockElement !== element) return;
 
-          motion.rotation.y -= e.movementX * sensitivity;
-          motion.rotation.x -= e.movementY * sensitivity;
-          motion.rotation.x = Math.max(-1.2, Math.min(1.2, motion.rotation.x));
+          turn(e.movementX * sensitivity, e.movementY * sensitivity);
         });
       })();
 
@@ -186,7 +206,7 @@
           zone: zone,
           mode: "static",
           position: { left: "50%", top: "50%" },
-          color: "white",
+          color: { front: "white", back: "rgba(255, 255, 255, 0.5)" },
         });
         joystick.on("move", function (e) {
           setMove(e.data.vector.x, e.data.vector.y, e.data.force);
@@ -195,36 +215,52 @@
           setMove(0, 0, 0);
         });
 
-        const press = function (down) {
-          return function () {
-            keysPressed[keys.SP] = down;
-          };
-        };
-        jump.addEventListener("pointerdown", press(true));
-        jump.addEventListener("pointerup", press(false));
-        jump.addEventListener("pointercancel", press(false));
-
         const sensitivity = 0.005;
+        const knobRadius = 25;
         const touches = {};
 
         document.addEventListener("pointerdown", function (e) {
-          if (e.pointerType !== "touch") return;
-          if (zone.contains(e.target) || e.target === jump) return;
-          touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+          if (e.pointerType !== "touch" || zone.contains(e.target)) return;
+          touches[e.pointerId] = {
+            x: e.clientX,
+            y: e.clientY,
+            startX: e.clientX,
+            startY: e.clientY,
+            knob: e.target === jump,
+            moved: false,
+          };
         });
+
+        const moveKnob = function (dx, dy) {
+          const scale = Math.min(1, knobRadius / (Math.hypot(dx, dy) || 1));
+          jump.style.setProperty("--x", dx * scale + "px");
+          jump.style.setProperty("--y", dy * scale + "px");
+          look.set(dx, dy).multiplyScalar(scale / knobRadius);
+        };
 
         document.addEventListener("pointermove", function (e) {
           const t = touches[e.pointerId];
           if (!t) return;
-          motion.rotation.y -= (e.clientX - t.x) * sensitivity;
-          motion.rotation.x -= (e.clientY - t.y) * sensitivity;
-          motion.rotation.x = Math.max(-1.2, Math.min(1.2, motion.rotation.x));
+          const [dx, dy] = [e.clientX - t.startX, e.clientY - t.startY];
+          if (Math.hypot(dx, dy) > 10) t.moved = true;
+          if (t.knob) return moveKnob(dx, dy);
+          turn(
+            (e.clientX - t.x) * sensitivity,
+            (e.clientY - t.y) * sensitivity,
+          );
           t.x = e.clientX;
           t.y = e.clientY;
         });
 
         const end = function (e) {
+          const t = touches[e.pointerId];
           delete touches[e.pointerId];
+          if (!t?.knob) return;
+          moveKnob(0, 0);
+          if (!t.moved && e.type === "pointerup") {
+            keysPressed[keys.SP] = true;
+            setTimeout(() => (keysPressed[keys.SP] = false), 100);
+          }
         };
         document.addEventListener("pointerup", end);
         document.addEventListener("pointercancel", end);
@@ -452,6 +488,7 @@
       const gameLoop = function (dt) {
         resetPlayer();
         keyboardControls();
+        turn(look.x * 0.0015 * dt, look.y * 0.0015 * dt);
         jumpPads();
         applyPhysics(dt);
         updateCamera();

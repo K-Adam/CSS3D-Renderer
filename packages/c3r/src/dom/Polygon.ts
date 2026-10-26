@@ -1,4 +1,4 @@
-import { mat3, mat4, vec2, vec3, type ReadonlyVec2 } from "gl-matrix";
+import { mat2, mat3, mat4, vec2, vec3, type ReadonlyVec2 } from "gl-matrix";
 
 import { Object3D } from "./Object3D.js";
 import {
@@ -8,6 +8,7 @@ import {
   minRect,
   simplify,
   toPlane,
+  uvTransform,
   type EdgeNeighbour,
   type NeighbourSide,
 } from "../math/planar.js";
@@ -96,12 +97,14 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
   });
 };
 
-export const defaultDomSize = (size: number) =>
-  Math.max(250, Math.min(size, 1200));
+const defaultDomSize = (size: number) => Math.max(250, Math.min(size, 1200));
+
+// Largest raster side in device pixels, a tiled face gets blurry instead of huge
+const MAX_RASTER = 4096;
 
 export interface PolygonOptions {
   contentElement?: HTMLElement;
-  // Base size of the dom element, too small makes the content blurry
+  // Element size for a world size, used without a texture size
   getDomSize?: (size: number) => number;
   // Outward edge offset in DOM pixels, hides seams between neighbours
   edgeOverlap?: number;
@@ -119,6 +122,8 @@ export class Polygon extends Object3D {
 
   #uvScale: ReadonlyVec2 = [1, 1];
   #uvOffset: ReadonlyVec2 = [0, 0];
+  #textureSize: ReadonlyVec2 | null = null;
+  #pixelRatio = globalThis.devicePixelRatio || 1;
 
   #getDomSize: (size: number) => number;
   #edgeOverlap: number;
@@ -192,6 +197,33 @@ export class Polygon extends Object3D {
   set uvScale(scale: ReadonlyVec2) {
     if (vec2.exactEquals(scale, this.#uvScale)) return;
     this.#uvScale = vec2.clone(scale);
+    if (this.#textureSize) this.#fit();
+    this.#updateContent();
+  }
+
+  // In pixels, the element then rasterizes at one pixel per texel
+  get textureSize(): ReadonlyVec2 | null {
+    return this.#textureSize;
+  }
+
+  set textureSize(size: ReadonlyVec2 | null) {
+    const old = this.#textureSize;
+    if (size === old || (size && old && vec2.exactEquals(size, old))) return;
+    this.#textureSize = size && vec2.clone(size);
+    this.#fit();
+    this.#updateContent();
+  }
+
+  // The devicePixelRatio, update it after zoom or a screen change
+  get pixelRatio(): number {
+    return this.#pixelRatio;
+  }
+
+  set pixelRatio(ratio: number) {
+    if (ratio === this.#pixelRatio) return;
+    this.#pixelRatio = ratio;
+    if (!this.#textureSize) return;
+    this.#fit();
     this.#updateContent();
   }
 
@@ -225,8 +257,7 @@ export class Polygon extends Object3D {
       .join();
     this.#clipElement.style.clipPath = `polygon(${clip})`;
 
-    // We need the width/height information in the childNode to properly position and scale the texture
-    // If we use width/height CSS values, then we can rescale this element, without calling updateContent
+    // As variables, the content follows a resize without updateContent
 
     this.domElement.style.setProperty("--c3r-width", `${this.#blockWidth}px`);
     this.domElement.style.setProperty("--c3r-height", `${this.#blockHeight}px`);
@@ -247,7 +278,7 @@ export class Polygon extends Object3D {
     const Ax = -(b * b - c * c - a * a) / (2 * a);
     const Ay = Math.sqrt(Math.max(0, c * c - Ax * Ax));
 
-    const scale = this.#getDomSize(a) / a;
+    const scale = this.#domSize(a, tri) / a;
 
     const points: vec2[] = [];
     points[ai] = vec2.fromValues(0, 0);
@@ -267,7 +298,7 @@ export class Polygon extends Object3D {
     const boxHeight = ymax - ymin;
 
     const longest = Math.max(boxWidth, boxHeight);
-    const scale = this.#getDomSize(longest) / longest;
+    const scale = this.#domSize(longest, tri) / longest;
 
     const points = points2d.map((p) => {
       const t = vec2.transformMat2(vec2.create(), p, minTI);
@@ -277,10 +308,42 @@ export class Polygon extends Object3D {
     this.#layout(points, tri);
   }
 
+  // Chrome rasterizes a 3d element at its size times the pixel ratio, so the
+  // size follows the texels it shows
+  #domSize(size: number, tri: Triangle): number {
+    const density = this.#texelDensity(tri);
+    if (!density) return this.#getDomSize(size);
+    const raster = Math.min(size * density, MAX_RASTER);
+    return Math.max(raster / this.#pixelRatio, 16);
+  }
+
+  // Texels per world unit in the most stretched direction
+  #texelDensity(tri: Triangle): number {
+    if (!this.#textureSize) return 0;
+    const M = uvTransform(this.vertices, tri.norm);
+    if (!M) return 0;
+    const [sx, sy] = vec2.mul(vec2.create(), this.#uvScale, this.#textureSize);
+    const L = mat2.fromValues(M[0] * sx, M[1] * sy, M[3] * sx, M[4] * sy);
+    // Largest singular value, from σ1² + σ2² = frob² and σ1·σ2 = |det|
+    const frob2 = mat2.frob(L) ** 2;
+    const twoDet = 2 * Math.abs(mat2.determinant(L));
+    const sigma =
+      (Math.sqrt(frob2 + twoDet) + Math.sqrt(Math.max(frob2 - twoDet, 0))) / 2;
+    // NaN uvs fall back to getDomSize
+    return sigma || 0;
+  }
+
   // Fits the element around the dilated polygon
   #layout(points: ReadonlyVec2[], tri: Triangle): void {
     const [c0, c1, c2] = points.map(([x, y]) => vec3.fromValues(x, y, 0));
-    const toMesh = new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(tri);
+    // Chrome culls a back face only when cofactor33 * det passes an epsilon,
+    // that product shrinks with scale⁴, a longer normal restores it
+    const scale = vec3.dist(c0, c1) / vec3.dist(tri.p1, tri.p2);
+    const normal = vec3.scale(vec3.create(), tri.norm, scale ** 4);
+    const target = new Triangle(tri.p1, tri.p2, tri.p3, normal);
+    const toMesh = new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(
+      target,
+    );
     const fromMesh = mat4.invert(mat4.create(), toMesh);
     // A folded side projects close to the edge, the plain offset fits it better
     const project = (side: NeighbourSide | null) => {

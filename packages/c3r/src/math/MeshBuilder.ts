@@ -1,7 +1,13 @@
-import { mat3, vec2, vec3 } from "gl-matrix";
-import type { ReadonlyVec2, ReadonlyVec3 } from "gl-matrix";
+import { vec2, vec3 } from "gl-matrix";
+import type { ReadonlyVec3 } from "gl-matrix";
 
-import { collinear, convexHull, minRect, toPlane } from "./planar.js";
+import {
+  collinear,
+  convexHull,
+  minRect,
+  toPlane,
+  uvTransform,
+} from "./planar.js";
 import type { EdgeNeighbour, NeighbourSide } from "./planar.js";
 import { Triangle } from "./Triangle.js";
 import type { Vertex } from "./Vertex.js";
@@ -9,13 +15,12 @@ import type { Vertex } from "./Vertex.js";
 export interface MeshFace {
   vertices: Vertex[];
   edges: EdgeNeighbour[];
-  unit: number;
 }
 
 // cos 45°
 const SMOOTH_FOLD = 0.7;
 
-// Of the mesh size, models round their coordinates
+// Weld distance as a share of the mesh size, models round their coordinates
 const WELD = 1e-3;
 
 // A separate polygon costs a layer and a seam, worth some rasterized area
@@ -41,13 +46,7 @@ const edgesOf = (ids: number[]) => ids.map((a, i) => [a, at(ids, i + 1)]);
 
 const uvMap = ({ corners, triangle }: Tri) => {
   const plane = toPlane(triangle.norm);
-  const columns = ([a, b, c]: ReadonlyVec2[]) =>
-    mat3.fromValues(a[0], a[1], 1, b[0], b[1], 1, c[0], c[1], 1);
-  const M = mat3.invert(
-    mat3.create(),
-    columns(corners.map((v) => plane(v.position))),
-  )!;
-  mat3.mul(M, columns(corners.map((v) => v.uv)), M);
+  const M = uvTransform(corners, triangle.norm)!;
   return (p: ReadonlyVec3) => vec2.transformMat3(vec2.create(), plane(p), M);
 };
 
@@ -111,7 +110,6 @@ export class MeshBuilder {
     });
     this.#eps = WELD * Math.hypot(...span) || 1e-9;
 
-    // ponytail: linear scan, a spatial grid when meshes get large
     const weld = (p: ReadonlyVec3) => {
       const id = this.#positions.findIndex((q) => vec3.dist(p, q) <= this.#eps);
       return id >= 0 ? id : this.#positions.push(p) - 1;
@@ -130,7 +128,7 @@ export class MeshBuilder {
     );
   }
 
-  // So a long edge pairs up with the shorter edges of its neighbours
+  // Splits long edges at the vertices on them, to pair with shorter neighbours
   #splitTJunctions(tris: Tri[], owners: Map<string, Tri>): void {
     const all = [...this.#positions.keys()];
     for (const t of tris)
@@ -200,11 +198,6 @@ export class MeshBuilder {
       collinear(point(i - 1), point(i), point(i + 1)) ? [] : [i],
     );
 
-    const sizes = face.tris.map(({ triangle: t }) => [
-      t.calculateArea(),
-      Math.max(...t.calculateEdgeLengths()),
-    ]);
-    const area = sizes.reduce((sum, [w]) => sum + w, 0);
     return {
       vertices: corners.map((i) => ({
         position: point(i),
@@ -217,7 +210,6 @@ export class MeshBuilder {
           this.#side(face, at(ids, j - 1), at(ids, j), 1),
         ];
       }),
-      unit: sizes.reduce((sum, [w, l]) => sum + w * l, 0) / area,
     };
   }
 }

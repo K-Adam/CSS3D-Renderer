@@ -4,9 +4,7 @@ import { MeshBuilder, type MeshFace } from "../math/MeshBuilder.js";
 import type { Vertex } from "../math/Vertex.js";
 
 import { Object3D } from "./Object3D.js";
-import { defaultDomSize, Polygon, type PolygonOptions } from "./Polygon.js";
-
-const MAX_DOM_SIZE = 4096;
+import { Polygon, type PolygonOptions } from "./Polygon.js";
 
 const parents = new WeakMap<Object3D, Group>();
 
@@ -58,17 +56,8 @@ export class Group extends Object3D {
   }
 
   addFaces(faces: readonly MeshFace[], options?: PolygonOptions): Polygon[] {
-    const domSize = options?.getDomSize ?? defaultDomSize;
-    return faces.map(({ vertices, edges, unit }) =>
-      this.addPolygon(vertices, {
-        ...options,
-        edges,
-        getDomSize: (size) =>
-          Math.min(
-            Math.max(domSize(size), (domSize(unit) / unit) * size),
-            MAX_DOM_SIZE,
-          ),
-      }),
+    return faces.map(({ vertices, edges }) =>
+      this.addPolygon(vertices, { ...options, edges }),
     );
   }
 

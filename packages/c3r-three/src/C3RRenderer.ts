@@ -246,7 +246,18 @@ export class C3RRenderer {
       materialIndex: g.materialIndex ?? 0,
     }));
 
+    const materials: MappedMaterial[] = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    const textures = ranges.map((r) =>
+      textureSize(materials[r.materialIndex % materials.length].map),
+    );
+    // Exported uvs are off by a texel or two, which must not block merging
+    const sides = textures.flatMap((size) => (size ? [...size] : []));
+    const uvTolerance = sides.length ? 2 / Math.min(...sides) : undefined;
+
     const key: unknown[] = [
+      uvTolerance,
       geometry,
       index,
       index?.version,
@@ -262,6 +273,7 @@ export class C3RRenderer {
       state?.groups.forEach((g) => node.removeChild(g.node));
       const builder = new C3R.MeshBuilder(
         ranges.map((r) => readTriangles(geometry, r)),
+        { uvTolerance },
       );
       const groups = ranges.map((_, i) => {
         const node = new C3R.Group();
@@ -272,9 +284,6 @@ export class C3RRenderer {
       this.#meshes.set(node, state);
     }
 
-    const materials: MappedMaterial[] = Array.isArray(mesh.material)
-      ? mesh.material
-      : [mesh.material];
     ranges.forEach((r, i) => {
       const group = state.groups[i];
       const material = materials[r.materialIndex % materials.length];
@@ -289,6 +298,8 @@ export class C3RRenderer {
       for (const polygon of group.polygons) {
         polygon.uvScale = repeat;
         polygon.uvOffset = offset;
+        polygon.textureSize = textures[i];
+        polygon.pixelRatio = devicePixelRatio;
         polygon.overlapFolds = !material.transparent;
         polygon.clampUV =
           map?.wrapS === ClampToEdgeWrapping &&
@@ -357,6 +368,35 @@ const version = (
   attribute instanceof InterleavedBufferAttribute
     ? attribute.data.version
     : attribute?.version;
+
+const textureSize = (map?: Texture | null): [number, number] | null => {
+  const image = map?.image as
+    | {
+        naturalWidth?: number;
+        naturalHeight?: number;
+        width?: number;
+        height?: number;
+      }
+    | undefined;
+  const width = image?.naturalWidth || image?.width;
+  const height = image?.naturalHeight || image?.height;
+  if (width && height) return [width, height];
+  return image instanceof HTMLImageElement && image.src
+    ? probeSize(image.src)
+    : null;
+};
+
+const probes = new Map<string, HTMLImageElement>();
+
+// Sized like the CSS background, which loads without crossOrigin
+const probeSize = (src: string): [number, number] | null => {
+  let probe = probes.get(src);
+  if (!probe) {
+    probes.set(src, (probe = new Image()));
+    probe.src = src;
+  }
+  return probe.naturalWidth ? [probe.naturalWidth, probe.naturalHeight] : null;
+};
 
 const sameKey = (a: unknown[], b: unknown[]) =>
   a.length === b.length && a.every((v, i) => v === b[i]);
