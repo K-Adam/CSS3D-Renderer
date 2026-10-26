@@ -334,7 +334,7 @@ export class C3RRenderer {
     }
 
     target.opacity = material.transparent ? material.opacity : 1;
-    // ponytail: BackSide renders as double-sided, CSS can't cull front faces only
+    target.transparent = material.transparent;
     target.doubleSided = material.side !== FrontSide;
 
     return map;

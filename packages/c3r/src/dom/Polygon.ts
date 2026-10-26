@@ -354,6 +354,8 @@ export class Polygon extends Object3D {
     if (!cross2(uvs[1], uvs[2], uvs[0])) {
       style.removeProperty("background-position");
       style.removeProperty("background-size");
+      style.removeProperty("mask-position");
+      style.removeProperty("mask-size");
       style.removeProperty("transform");
       return;
     }
@@ -386,8 +388,10 @@ export class Polygon extends Object3D {
     const scx = 1 / xsize;
     const scy = 1 / ysize;
 
-    style.backgroundPosition = `calc(var(--c3r-width) * ${-txmin * scx}) calc(var(--c3r-height) * ${1 + tymin * scy})`;
-    style.backgroundSize = `${100 * scx}% ${100 * scy}%`;
+    const position = `calc(var(--c3r-width) * ${-txmin * scx}) calc(var(--c3r-height) * ${1 + tymin * scy})`;
+    const size = `${100 * scx}% ${100 * scy}%`;
+    style.backgroundPosition = style.maskPosition = position;
+    style.backgroundSize = style.maskSize = size;
 
     const uvPoint = ([u, v]: vec2): Point => [
       (u - txmin) * scx,

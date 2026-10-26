@@ -83,7 +83,6 @@ export class Container {
     const { style } = this.domElement;
     style.removeProperty("--c3r-viewport-width");
     style.removeProperty("--c3r-viewport-height");
-    // ponytail: window size at reset, ortho needs setSize for other sizes or resizes
     style.setProperty("--c3r-viewport-x", String(innerWidth));
     style.setProperty("--c3r-viewport-y", String(innerHeight));
   }

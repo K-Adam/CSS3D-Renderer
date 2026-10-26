@@ -71,6 +71,7 @@ it("places a nested sprite at its world position, facing the camera", () => {
     expect(Math.hypot(...column)).toBeCloseTo(s, 6);
     column.forEach((c, j) => expect(c / s).toBeCloseTo(cam[i * 4 + j], 6));
   });
+  sprite.material.dispose();
 });
 
 it("follows visibility, geometry updates and removal", () => {
@@ -166,17 +167,19 @@ it("applies the camera zoom", () => {
   expect(cssText()).toMatch(/--c3r-camera-fov: ?53\.13/);
 });
 
-it("ignores opacity unless the material is transparent, as WebGL", () => {
+it("ignores opacity and map alpha unless the material is transparent, as WebGL", () => {
   const { renderer, scene, camera } = setup();
 
   const material = new MeshBasicMaterial({ opacity: 0.5 });
   scene.add(new Mesh(new BoxGeometry(), material));
   renderer.render(scene, camera);
   expect(cssText()).not.toMatch(/--c3r-opacity:/);
+  expect(cssText()).not.toMatch(/--c3r-mask-image:/);
 
   material.transparent = true;
   renderer.render(scene, camera);
   expect(cssText()).toMatch(/--c3r-opacity: ?0\.5/);
+  expect(cssText()).toMatch(/--c3r-mask-image: ?var\(--c3r-background-image/);
   material.dispose();
 });
 

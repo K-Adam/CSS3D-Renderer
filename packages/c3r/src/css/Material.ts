@@ -13,6 +13,7 @@ export class Material {
   #backgroundColor: ReadonlyVec4 | null = null;
   #opacity = 1;
   #doubleSided = false;
+  #transparent = false;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -66,6 +67,19 @@ export class Material {
     if (doubleSided === this.#doubleSided) return;
     this.#doubleSided = doubleSided;
     this.#set("backface-visibility", doubleSided ? "visible" : null);
+  }
+
+  get transparent(): boolean {
+    return this.#transparent;
+  }
+
+  set transparent(transparent: boolean) {
+    if (transparent === this.#transparent) return;
+    this.#transparent = transparent;
+    this.#set(
+      "--c3r-mask-image",
+      transparent ? "var(--c3r-background-image, none)" : null,
+    );
   }
 
   #set(name: string, value: string | null): void {

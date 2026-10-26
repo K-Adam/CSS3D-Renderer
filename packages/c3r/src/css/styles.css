@@ -91,6 +91,8 @@
   background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;
   background-blend-mode: multiply;
+  mask-image: var(--c3r-mask-image, none);
+  mask-size: 100% 100%;
   transform: matrix(1, 0, 0, 1, 0, 0);
   transform-origin: 0 0;
 }
