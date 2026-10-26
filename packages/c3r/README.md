@@ -50,7 +50,7 @@ container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
 
 | Class                                     | What it is                                                                                                                                                       |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`                                                                                                  |
+| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `toHTML()`                                                                                      |
 | `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons                                                                |
 | `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                                         |
 | `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                        |
@@ -61,13 +61,15 @@ A `transparent` material's image alpha also cuts out its color. Every property a
 
 A `Material` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
 
+On a live page, call `container.fitUnitScale()` after building or heavily scaling the scene; `toHTML()` calls it for you.
+
 An orthographic camera needs `setSize()`: without it the container takes the window size at construction and does not follow resizes.
 
 The stylesheet is adopted by `document` only, so a container inside a shadow root is unstyled.
 
 ## Node
 
-C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline `cssText()`, the base styles plus the material and camera rules, after building the scene. There is no layout either, so set the size explicitly.
+C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so export with `toHTML()`: the container markup after a `<style>` of the base styles plus the material and camera rules. There is no layout either, so set the size explicitly.
 
 ```sh
 npm install c3r @happy-dom/global-registrator
@@ -77,13 +79,13 @@ npm install c3r @happy-dom/global-registrator
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 
-const { Container, cssText } = await import("c3r");
+const { Container } = await import("c3r");
 
 const container = new Container();
 container.setSize(800, 600);
 // ... build the scene
 
-const html = `<!doctype html><style>${cssText()}</style>${container.domElement.outerHTML}`;
+const html = `<!doctype html>${container.toHTML()}`;
 ```
 
 See the [examples](https://k-adam.github.io/CSS3D-Renderer/).

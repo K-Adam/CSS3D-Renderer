@@ -194,7 +194,7 @@ it("overlaps the folds of opaque meshes, convex ones thinly", () => {
   const box = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
   scene.add(box);
   renderer.render(scene, camera);
-  for (const w of width()) expect(parseFloat(w)).toBeCloseTo(250.8);
+  for (const w of width()) expect(parseFloat(w)).toBeCloseTo(128.8);
   scene.remove(box);
   box.material.dispose();
 
@@ -202,11 +202,11 @@ it("overlaps the folds of opaque meshes, convex ones thinly", () => {
   const material = new MeshBasicMaterial();
   scene.add(new Mesh(new BoxGeometry().scale(-1, 1, 1), material));
   renderer.render(scene, camera);
-  expect(new Set(width())).toEqual(new Set(["252px"]));
+  expect(new Set(width())).toEqual(new Set(["130px"]));
 
   material.transparent = true;
   renderer.render(scene, camera);
-  expect(new Set(width())).toEqual(new Set(["250px"]));
+  expect(new Set(width())).toEqual(new Set(["128px"]));
   material.dispose();
 });
 
@@ -261,4 +261,30 @@ it("removes the scenes and camera rules on dispose", () => {
 
   renderer.render(scene, camera);
   expect(renderer.domElement.children).toHaveLength(1);
+});
+
+it("scales the view by its densest polygon, flat faces stay small", () => {
+  const { renderer, scene, camera } = setup();
+  const mesh = new Mesh(
+    new BoxGeometry(0.01, 0.01, 0.01),
+    new MeshBasicMaterial(),
+  );
+  scene.add(mesh);
+  renderer.render(scene, camera);
+
+  const container = renderer.domElement.firstElementChild as HTMLElement;
+  const unitScale = () =>
+    container.style.getPropertyValue("--c3r-unit-scale") || "1";
+  const face = renderer.domElement.querySelector(".c3r-polygon")!;
+  const width = parseFloat(
+    (face as HTMLElement).style.getPropertyValue("--c3r-width"),
+  );
+  expect(width).toBeLessThanOrEqual(129);
+  const unit = Number(unitScale());
+  expect(Math.log2(unit) % 1).toBe(0);
+  expect((unit * 0.01) / width).toBeGreaterThanOrEqual(1);
+
+  mesh.scale.setScalar(0);
+  renderer.render(scene, camera);
+  expect(unitScale()).toBe("1");
 });

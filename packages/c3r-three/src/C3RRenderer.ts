@@ -51,6 +51,8 @@ interface MaterialState {
 }
 
 const DEFAULT_CENTER = { x: 0.5, y: 0.5 };
+// A plain color needs pixels only for its edges, smaller saves tile memory
+const flatDomSize = (size: number) => Math.max(128, Math.min(size, 1200));
 const _matrix = new Matrix4();
 const _parent = new Matrix4();
 const _position = new Vector3();
@@ -109,6 +111,7 @@ export class C3RRenderer {
 
     this.#syncCamera(container, camera);
     this.#syncObject(scene, container.root, container);
+    container.fitUnitScale();
   }
 
   #syncCamera(container: C3R.Container, camera: Camera): void {
@@ -249,9 +252,10 @@ export class C3RRenderer {
     const materials: MappedMaterial[] = Array.isArray(mesh.material)
       ? mesh.material
       : [mesh.material];
-    const textures = ranges.map((r) =>
-      textureSize(materials[r.materialIndex % materials.length].map),
+    const maps = ranges.map(
+      (r) => materials[r.materialIndex % materials.length].map,
     );
+    const textures = maps.map(textureSize);
     // Exported uvs are off by a texel or two, which must not block merging
     const sides = textures.flatMap((size) => (size ? [...size] : []));
     const uvTolerance = sides.length ? 2 / Math.min(...sides) : undefined;
@@ -266,7 +270,7 @@ export class C3RRenderer {
       uv,
       version(uv),
     ];
-    for (const r of ranges) key.push(r.start, r.count);
+    ranges.forEach((r, i) => key.push(r.start, r.count, !maps[i]));
 
     let state = this.#meshes.get(node);
     if (!state || !sameKey(state.key, key)) {
@@ -277,7 +281,8 @@ export class C3RRenderer {
       );
       const groups = ranges.map((_, i) => {
         const node = new C3R.Group();
-        return { node, polygons: node.addFaces(builder.faces(i)) };
+        const options = maps[i] ? {} : { getDomSize: flatDomSize };
+        return { node, polygons: node.addFaces(builder.faces(i), options) };
       });
       state = { key, groups };
       state.groups.forEach((g) => node.addChild(g.node));

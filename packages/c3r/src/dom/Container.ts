@@ -1,7 +1,12 @@
+import { mat4, type ReadonlyMat4 } from "gl-matrix";
+
 import type { Camera } from "../css/Camera.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
+import { cssText } from "../css/styles.js";
 
 import { Group } from "./Group.js";
+import type { Object3D } from "./Object3D.js";
+import { Polygon } from "./Polygon.js";
 
 // Keeps a Camera, and its rules, alive while its element is
 const elementCameras = new WeakMap<Element, Camera>();
@@ -15,6 +20,7 @@ export class Container {
   #camera: Camera = new PerspectiveCamera();
   #width = 0;
   #height = 0;
+  #unitScale = 1;
 
   constructor() {
     this.domElement.classList.add(
@@ -60,6 +66,46 @@ export class Container {
 
   get height(): number {
     return this.#height;
+  }
+
+  // Chrome culls back faces only when polygons aren't tiny in view space
+  get unitScale(): number {
+    return this.#unitScale;
+  }
+
+  set unitScale(scale: number) {
+    if (!(scale > 0 && Number.isFinite(scale)))
+      throw new RangeError(`Invalid unit scale ${scale}`);
+    if (scale === this.#unitScale) return;
+    this.#unitScale = scale;
+    this.domElement.style.setProperty("--c3r-unit-scale", String(scale));
+  }
+
+  // The densest polygon at one view pixel per DOM pixel, a power of two scales
+  // exactly and holds still while objects move
+  fitUnitScale(): void {
+    let density = 0;
+    const visit = (node: Object3D, parent: ReadonlyMat4) => {
+      if (node.domElement.style.display === "none") return;
+      const m = mat4.mul(mat4.create(), parent, node.matrix);
+      if (node instanceof Polygon) {
+        const scale = Math.min(
+          Math.hypot(m[0], m[1], m[2]),
+          Math.hypot(m[4], m[5], m[6]),
+        );
+        if (scale > 0) density = Math.max(density, 1 / scale);
+      } else if (node instanceof Group) {
+        for (const child of node.children) visit(child, m);
+      }
+    };
+    visit(this.#root, this.#camera.matrix);
+    const exponent = Math.ceil(Math.log2(density || 1));
+    this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
+  }
+
+  toHTML(): string {
+    this.fitUnitScale();
+    return `<style>${cssText()}</style>${this.domElement.outerHTML}`;
   }
 
   setSize(width: number, height: number): void {

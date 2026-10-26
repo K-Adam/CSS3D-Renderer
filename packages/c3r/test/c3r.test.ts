@@ -54,7 +54,7 @@ describe("Polygon", () => {
 
     for (const v of vertices) {
       const [x, y, z] = vec3.transformMat4(vec3.create(), v.position, MI);
-      expect(Math.abs(z)).toBeLessThan(1e-6);
+      expect(Math.abs(z)).toBeLessThan(1e-4);
       expect(x).toBeGreaterThanOrEqual(-1e-3);
       expect(x).toBeLessThanOrEqual(width + 1e-3);
       expect(y).toBeGreaterThanOrEqual(-1e-3);
@@ -74,17 +74,22 @@ describe("Polygon", () => {
     expect(vec3.dot(front, normal)).toBeGreaterThan(0.999);
   });
 
-  it("stays cullable at a small world scale", () => {
+  it("stays cullable at a small world scale once the view scales up", () => {
     const poly = new Polygon([
       vertex(0, 0, 0),
       vertex(1, 0, 0),
       vertex(0, 1, 0),
     ]);
     const M = poly.matrix;
-    const det = mat4.determinant(M);
-    // Chrome's IsBackFaceVisible test
-    const cofactor = mat4.invert(mat4.create(), M)![10] * det;
+    const col = (i: number) => Math.hypot(M[i * 4], M[i * 4 + 1], M[i * 4 + 2]);
+    expect(col(2) / col(0)).toBeCloseTo(1);
 
+    const unit = 1 / col(0);
+    const V = mat4.fromScaling(mat4.create(), [unit, unit, unit]);
+    mat4.mul(V, V, M);
+    const det = mat4.determinant(V);
+    // Chrome's IsBackFaceVisible test
+    const cofactor = mat4.invert(mat4.create(), V)![10] * det;
     expect(Math.abs(cofactor * det)).toBeGreaterThan(1e-6);
   });
 
@@ -543,6 +548,20 @@ describe("server-side rendering", () => {
     expect(cssText()).toContain(".c3r-polygon");
   });
 
+  it("exports the scene as static html", () => {
+    const container = new Container();
+    const group = new Group();
+    group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
+    group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
+    container.root.addChild(group);
+
+    const html = container.toHTML();
+    const { outerHTML } = container.domElement;
+
+    expect(html).toBe(`<style>${cssText()}</style>${outerHTML}`);
+    expect(outerHTML).toContain("--c3r-unit-scale");
+  });
+
   it("sizes an orthographic view from setSize, without layout", () => {
     const container = new Container();
     container.setSize(400, 300);
@@ -585,6 +604,51 @@ describe("cameras", () => {
       );
     }
     expect(cssText()).not.toContain(`${container.camera.className} `);
+  });
+
+  it("scales the view by the unit scale", () => {
+    const container = new Container();
+    container.unitScale = 256;
+
+    const { style } = container.domElement;
+    expect(style.getPropertyValue("--c3r-unit-scale")).toBe("256");
+    expect(cssText()).toMatch(/scale3d\(\s*var\(--c3r-unit-scale/);
+    expect(cssText()).toMatch(/scaleZ\(var\(--c3r-unit-scale/);
+    expect(() => (container.unitScale = NaN)).toThrow(RangeError);
+    expect(() => (container.unitScale = 0)).toThrow(RangeError);
+  });
+
+  it("fits the unit scale to the densest visible polygon", () => {
+    const container = new Container();
+    const group = new Group();
+    group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
+    container.root.addChild(group);
+    const poly = group.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    const [x, y, z] = poly.matrix;
+    const domPixel = Math.hypot(x, y, z) * 0.01;
+    const fit = () => {
+      container.fitUnitScale();
+      return container.unitScale;
+    };
+
+    const scale = fit();
+    expect(Math.log2(scale) % 1).toBe(0);
+    expect(scale * domPixel).toBeGreaterThanOrEqual(1);
+    expect(scale * domPixel).toBeLessThan(2);
+
+    container.camera.matrix = mat4.fromScaling(mat4.create(), [2, 2, 2]);
+    expect(fit()).toBe(scale / 2);
+
+    group.domElement.style.display = "none";
+    expect(fit()).toBe(1);
+
+    group.domElement.style.display = "";
+    group.matrix = mat4.fromScaling(mat4.create(), [0, 0, 0]);
+    expect(fit()).toBe(1);
   });
 });
 

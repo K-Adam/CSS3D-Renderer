@@ -336,10 +336,9 @@ export class Polygon extends Object3D {
   // Fits the element around the dilated polygon
   #layout(points: ReadonlyVec2[], tri: Triangle): void {
     const [c0, c1, c2] = points.map(([x, y]) => vec3.fromValues(x, y, 0));
-    // Chrome culls a back face only when cofactor33 * det passes an epsilon,
-    // that product shrinks with scale⁴, a longer normal restores it
+    // A uniform scale, Firefox drops faces of a stretched matrix
     const scale = vec3.dist(c0, c1) / vec3.dist(tri.p1, tri.p2);
-    const normal = vec3.scale(vec3.create(), tri.norm, scale ** 4);
+    const normal = vec3.scale(vec3.create(), tri.norm, 1 / scale);
     const target = new Triangle(tri.p1, tri.p2, tri.p3, normal);
     const toMesh = new Triangle(c0, c1, c2, [0, 0, 1]).getTransformationTo(
       target,
