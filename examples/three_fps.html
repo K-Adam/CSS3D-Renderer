@@ -1,339 +1,379 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<title>three.js - css3d - platformer demo</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-			body {
-				background-color: rgb(200,200,200);
-				margin: 0px;
-				overflow: hidden;
-			}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - FPS</title>
+    <style>
+      body {
+        background-color: rgb(200, 200, 200);
+        margin: 0px;
+        overflow: hidden;
+      }
 
-			#info {
-				position: absolute;
-				top: 0px; width: 100%;
-				color: #ffffff;
-				padding: 5px;
-				font-family:Monospace;
-				font-size:13px;
-				font-weight: bold;
-				text-align:center;
-			}
+      #info {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        color: #ffffff;
+        padding: 5px;
+        font-family: Monospace;
+        font-size: 13px;
+        font-weight: bold;
+        text-align: center;
+      }
 
-			a {
-				color: #ffffff;
-			}
-		</style>
-	</head>
-	<body>
+      a {
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div id="info">
+      <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
+      platformer demo. cubemap by
+      <a href="http://www.zfight.com/" target="_blank" rel="noopener"
+        >Jochum Skoglund</a
+      >.<br />Click to look around with the mouse, WASD to move, SHIFT to run
+      and SPACE to jump.
+    </div>
 
-		<div id="container"></div>
-		<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - platformer demo. cubemap by <a href="http://www.zfight.com/" target="_blank" rel="noopener">Jochum Skoglund</a>.<br />Use arrow keys to look around, WASD to move and SPACE to jump.</div>
+    <script type="module">
+      import * as THREE from "three";
+      import { C3RRenderer } from "c3r-three";
 
-        <script src="js/libs/three.min.js"></script>
+      // player motion parameters
 
-        <script src="build/C3R.standalone.js"></script>
+      const motion = {
+        airborne: false,
+        position: new THREE.Vector3(),
+        velocity: new THREE.Vector3(),
+        rotation: new THREE.Vector2(),
+      };
 
-        <script src="js/renderers/CSS3DRenderer.js"></script>
-    
-		<script>
+      motion.position.y = -150;
 
-			// player motion parameters
+      // game systems code
 
-			var motion = {
-				airborne : false,
-				position : new THREE.Vector3(), velocity : new THREE.Vector3(),
-				rotation : new THREE.Vector2(), spinning : new THREE.Vector2()
-			};
+      const resetPlayer = function () {
+        if (motion.position.y < -123) {
+          motion.position.set(-2, 7.7, 25);
+          motion.velocity.multiplyScalar(0);
+        }
+      };
 
-			motion.position.y = -150;
+      const keyboardControls = (function () {
+        const keys = {
+          SP: "Space",
+          W: "KeyW",
+          A: "KeyA",
+          S: "KeyS",
+          D: "KeyD",
+          SH: "ShiftLeft",
+        };
 
+        const keysPressed = {};
 
-			// game systems code
+        (function (watchedKeyCodes) {
+          const handler = function (down) {
+            return function (e) {
+              const index = watchedKeyCodes.indexOf(e.code);
+              if (index >= 0) {
+                keysPressed[watchedKeyCodes[index]] = down;
+                e.preventDefault();
+              }
+            };
+          };
+          window.addEventListener("keydown", handler(true));
+          window.addEventListener("keyup", handler(false));
+        })([keys.SP, keys.W, keys.A, keys.S, keys.D, keys.SH]);
 
-			var resetPlayer = function() {
-				if( motion.position.y < -123 ) {
-					motion.position.set( -2, 7.7, 25 );
-					motion.velocity.multiplyScalar( 0 );
-				}
-			};
+        const forward = new THREE.Vector3();
+        const sideways = new THREE.Vector3();
 
-			var keyboardControls = (function() {
+        return function () {
+          if (!motion.airborne) {
+            // move around
+            forward.set(
+              Math.sin(motion.rotation.y),
+              0,
+              Math.cos(motion.rotation.y),
+            );
+            sideways.set(forward.z, 0, -forward.x);
 
-				var keys = { SP : 32, W : 87, A : 65, S : 83, D : 68, UP : 38, LT : 37, DN : 40, RT : 39 };
+            const speed = keysPressed[keys.SH] ? 0.2 : 0.1;
+            forward.multiplyScalar(
+              keysPressed[keys.W] ? -speed : keysPressed[keys.S] ? speed : 0,
+            );
+            sideways.multiplyScalar(
+              keysPressed[keys.A] ? -speed : keysPressed[keys.D] ? speed : 0,
+            );
 
-				var keysPressed = {};
+            const combined = forward.add(sideways);
+            if (Math.abs(combined.x) >= Math.abs(motion.velocity.x))
+              motion.velocity.x = combined.x;
+            if (Math.abs(combined.y) >= Math.abs(motion.velocity.y))
+              motion.velocity.y = combined.y;
+            if (Math.abs(combined.z) >= Math.abs(motion.velocity.z))
+              motion.velocity.z = combined.z;
 
-				(function( watchedKeyCodes ) {
-					var handler = function( down ) {
-						return function( e ) {
-							var index = watchedKeyCodes.indexOf( e.keyCode );
-							if( index >= 0 ) {
-								keysPressed[watchedKeyCodes[index]] = down; e.preventDefault();
-							}
-						};
-					};
-					window.addEventListener( "keydown", handler( true ), false );
-					window.addEventListener( "keyup", handler( false ), false );
-				})([
-					keys.SP, keys.W, keys.A, keys.S, keys.D, keys.UP, keys.LT, keys.DN, keys.RT
-				]);
+            //jump
+            const vy = keysPressed[keys.SP] ? 0.7 : 0;
+            motion.velocity.y += vy;
+          }
+        };
+      })();
 
-				var forward = new THREE.Vector3();
-				var sideways = new THREE.Vector3();
+      (function () {
+        const element = document.getElementById("container");
+        const sensitivity = 0.002;
 
-				return function() {
-					if( !motion.airborne ) {
+        element.addEventListener("click", function () {
+          element.requestPointerLock();
+        });
 
-						// look around
-						var sx = keysPressed[keys.UP] ? 0.03 : ( keysPressed[keys.DN] ? -0.03 : 0 );
-						var sy = keysPressed[keys.LT] ? 0.03 : ( keysPressed[keys.RT] ? -0.03 : 0 );
+        document.addEventListener("mousemove", function (e) {
+          if (document.pointerLockElement !== element) return;
 
-						if( Math.abs( sx ) >= Math.abs( motion.spinning.x ) ) motion.spinning.x = sx;
-						if( Math.abs( sy ) >= Math.abs( motion.spinning.y ) ) motion.spinning.y = sy;
+          motion.rotation.y -= e.movementX * sensitivity;
+          motion.rotation.x -= e.movementY * sensitivity;
+          motion.rotation.x = Math.max(-1.2, Math.min(1.2, motion.rotation.x));
+        });
+      })();
 
-						// move around
-						forward.set( Math.sin( motion.rotation.y ), 0, Math.cos( motion.rotation.y ) );
-						sideways.set( forward.z, 0, -forward.x );
+      const jumpPads = (function () {
+        const pads = [
+          new THREE.Vector3(-17.5, 8, -10),
+          new THREE.Vector3(17.5, 8, -10),
+          new THREE.Vector3(0, 8, 21),
+        ];
+        const temp = new THREE.Vector3();
 
-						forward.multiplyScalar( keysPressed[keys.W] ? -0.1 : (keysPressed[keys.S] ? 0.1 : 0));
-						sideways.multiplyScalar( keysPressed[keys.A] ? -0.1 : (keysPressed[keys.D] ? 0.1 : 0));
+        return function () {
+          if (!motion.airborne) {
+            for (let j = 0, n = pads.length; j < n; j++) {
+              if (pads[j].distanceToSquared(motion.position) < 2.3) {
+                // calculate velocity towards another side of platform from jump pad position
+                temp.copy(pads[j]);
+                temp.y = 0;
+                temp.setLength(-0.8);
+                temp.y = 0.7;
 
-						var combined = forward.add( sideways );
-						if( Math.abs( combined.x ) >= Math.abs( motion.velocity.x ) ) motion.velocity.x = combined.x;
-						if( Math.abs( combined.y ) >= Math.abs( motion.velocity.y ) ) motion.velocity.y = combined.y;
-						if( Math.abs( combined.z ) >= Math.abs( motion.velocity.z ) ) motion.velocity.z = combined.z;
+                motion.airborne = true;
+                motion.velocity.copy(temp);
+                break;
+              }
+            }
+          }
+        };
+      })();
 
-						//jump
- 						var vy = keysPressed[keys.SP] ? 0.7 : 0;
- 						motion.velocity.y += vy;
-					}
-				};
-			})();
+      const applyPhysics = (function () {
+        const timeStep = 5;
+        let timeLeft = timeStep + 1;
 
-			var jumpPads = (function() {
-				var pads = [ new THREE.Vector3( -17.5, 8, -10 ), new THREE.Vector3( 17.5, 8, -10 ), new THREE.Vector3( 0, 8, 21 ) ];
-				var temp = new THREE.Vector3();
+        const birdsEye = 100;
+        const kneeDeep = 0.4;
 
-				return function() {
-					if( !motion.airborne ) {
-						for( var j = 0, n = pads.length; j < n; j++ ) {
-							if ( pads[j].distanceToSquared( motion.position ) < 2.3 ) {
+        const raycaster = new THREE.Raycaster();
+        raycaster.ray.direction.set(0, -1, 0);
 
-								// calculate velocity towards another side of platform from jump pad position
-								temp.copy( pads[j] ); temp.y = 0; temp.setLength( -0.8 ); temp.y = 0.7;
+        const displacement = new THREE.Vector3();
 
-								motion.airborne = true; motion.velocity.copy( temp ); break;
-							}
-						}
-					}
-				};
-			})();
+        return function (dt) {
+          const platform = scene.getObjectByName("platform", true);
+          if (platform) {
+            timeLeft += dt;
 
-			var applyPhysics = (function() {
-				var timeStep = 5;
-				var timeLeft = timeStep + 1;
+            // run several fixed-step iterations to approximate varying-step
 
-				var birdsEye = 100;
-				var kneeDeep = 0.4;
+            dt = 5;
+            while (timeLeft >= dt) {
+              const time = 0.3,
+                damping = 0.93,
+                gravity = 0.01,
+                tau = 2 * Math.PI;
 
-				var raycaster = new THREE.Raycaster();
-				raycaster.ray.direction.set( 0, -1, 0 );
+              raycaster.ray.origin.copy(motion.position);
+              raycaster.ray.origin.y += birdsEye;
 
-				var angles = new THREE.Vector2();
-				var displacement = new THREE.Vector3();
+              const hits = raycaster.intersectObject(platform);
 
-				return function( dt ) {
-					var platform = scene.getObjectByName( "platform", true );
-					if( platform ) {
+              motion.airborne = true;
 
-						timeLeft += dt;
+              // are we above, or at most knee deep in, the platform?
 
-						// run several fixed-step iterations to approximate varying-step
+              if (hits.length > 0 && hits[0].face.normal.y > 0) {
+                const actualHeight = hits[0].distance - birdsEye;
 
-						dt = 5;
-						while( timeLeft >= dt ) {
+                // collision: stick to the surface if landing on it
 
-							var time = 0.3, damping = 0.93, gravity = 0.01, tau = 2 * Math.PI;
-
-							raycaster.ray.origin.copy( motion.position );
-							raycaster.ray.origin.y += birdsEye;
-
-							var hits = raycaster.intersectObject( platform );
-
-							motion.airborne = true;
-
-							// are we above, or at most knee deep in, the platform?
-
-							if( ( hits.length > 0 ) && ( hits[0].face.normal.y > 0 ) ) {
-								var actualHeight = hits[0].distance - birdsEye;
-
-								// collision: stick to the surface if landing on it
-
-								if( ( motion.velocity.y <= 0 ) && ( Math.abs( actualHeight ) < kneeDeep ) ) {
-									motion.position.y -= actualHeight;
-									motion.velocity.y = 0;
-									motion.airborne = false;
-								}
-							}
-
-							if( motion.airborne ) motion.velocity.y -= gravity;
-
-							angles.copy( motion.spinning ).multiplyScalar( time );
-							if( !motion.airborne ) motion.spinning.multiplyScalar( damping );
-
-							displacement.copy( motion.velocity ).multiplyScalar( time );
-							if( !motion.airborne ) motion.velocity.multiplyScalar( damping );
-
-							motion.rotation.add( angles );
-							motion.position.add( displacement );
-
-							// limit the tilt at ±0.4 radians
-
-							motion.rotation.x = Math.max( -0.4, Math.min ( +0.4, motion.rotation.x ) );
-
-							// wrap horizontal rotation to 0...2π
-
-							motion.rotation.y += tau; motion.rotation.y %= tau;
-
-							timeLeft -= dt;
-						}
-					}
-				};
-			})();
-
-			var updateCamera = (function() {
-				var euler = new THREE.Euler( 0, 0, 0, 'YXZ' );
-
-				return function() {
-					euler.x = motion.rotation.x;
-					euler.y = motion.rotation.y;
-					camera.quaternion.setFromEuler( euler );
-
-					camera.position.copy( motion.position );
-
-					camera.position.y += 3.0;
-				};
-			})();
-
-
-			// init 3D stuff
-
-			function makeSkybox( urls, size ) {
-            
-				var materials = []
-                
-                for(var i=0; i<urls.length; i++) {
-                    materials.push(new THREE.MeshBasicMaterial( { map: new THREE.TextureLoader().load( urls[i] ) } ));
+                if (
+                  motion.velocity.y <= 0 &&
+                  Math.abs(actualHeight) < kneeDeep
+                ) {
+                  motion.position.y -= actualHeight;
+                  motion.velocity.y = 0;
+                  motion.airborne = false;
                 }
-                
-				var geometry = new THREE.BoxBufferGeometry( size, size, size, 1, 1, 1 );
-				geometry.scale( - 1, 1, 1 );
-                return new THREE.Mesh( geometry, materials );
-                
-			}
+              }
 
-			function makePlatform( jsonUrl, textureUrl ) {
-				var placeholder = new THREE.Object3D();
+              if (motion.airborne) motion.velocity.y -= gravity;
 
-				var texture = new THREE.TextureLoader().load( textureUrl );
-				texture.minFilter = THREE.LinearFilter;
+              displacement.copy(motion.velocity).multiplyScalar(time);
+              if (!motion.airborne) motion.velocity.multiplyScalar(damping);
 
-				var loader = new THREE.JSONLoader();
-				loader.load( jsonUrl, function( geometry ) {
+              motion.position.add(displacement);
 
-					geometry.computeFaceNormals();
-                    
-					var platform = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({ map : texture }) );
+              // wrap horizontal rotation to 0...2π
 
-					platform.name = "platform";
+              motion.rotation.y += tau;
+              motion.rotation.y %= tau;
 
-					placeholder.add( platform );
-				});
+              timeLeft -= dt;
+            }
+          }
+        };
+      })();
 
-				return placeholder;
-			}
+      const updateCamera = (function () {
+        const euler = new THREE.Euler(0, 0, 0, "YXZ");
 
-			//var renderer = new THREE.WebGLRenderer({ antialias : true });
-			var renderer = new THREE.CSS3DRenderer();
-			renderer.setPixelRatio( window.devicePixelRatio );
+        return function () {
+          euler.x = motion.rotation.x;
+          euler.y = motion.rotation.y;
+          camera.quaternion.setFromEuler(euler);
 
-			var camera = new THREE.PerspectiveCamera( 60, 1, 0.1, 9000 );
+          camera.position.copy(motion.position);
 
-			var scene = new THREE.Scene();
+          camera.position.y += 3.0;
 
-			scene.add( camera );
+          skybox.position.copy(camera.position);
+        };
+      })();
 
-			scene.add( makeSkybox( [
-				'textures/cube/skybox/px.jpg', // right
-				'textures/cube/skybox/nx.jpg', // left
-				'textures/cube/skybox/py.jpg', // top
-				'textures/cube/skybox/ny.jpg', // bottom
-				'textures/cube/skybox/pz.jpg', // back
-				'textures/cube/skybox/nz.jpg'  // front
-			], 2000 ));
+      // init 3D stuff
 
-			scene.add( makePlatform(
-				'models/platform/platform.json',
-				'models/platform/platform.jpg'
-			));
+      function makeSkybox(urls, size) {
+        const materials = [];
 
+        for (let i = 0; i < urls.length; i++) {
+          materials.push(
+            new THREE.MeshBasicMaterial({
+              map: new THREE.TextureLoader().load(urls[i]),
+            }),
+          );
+        }
 
-			// start the game
+        const geometry = new THREE.BoxGeometry(size, size, size, 1, 1, 1);
+        geometry.scale(-1, 1, 1);
+        return new THREE.Mesh(geometry, materials);
+      }
 
-			var start = function( gameLoop, gameViewportSize ) {
-				var resize = function() {
-					var viewport = gameViewportSize();
-					renderer.setSize( viewport.width, viewport.height );
-					camera.aspect = viewport.width / viewport.height;
-					camera.updateProjectionMatrix();
-				};
+      function makePlatform(jsonUrl, textureUrl) {
+        const placeholder = new THREE.Object3D();
 
-				window.addEventListener( 'resize', resize, false );
-				resize();
+        const texture = new THREE.TextureLoader().load(textureUrl);
+        texture.minFilter = THREE.LinearFilter;
 
-				var lastTimeStamp;
-				var render = function( timeStamp ) {
-					var timeElapsed = lastTimeStamp ? timeStamp - lastTimeStamp : 0; lastTimeStamp = timeStamp;
+        const loader = new THREE.BufferGeometryLoader();
+        loader.load(jsonUrl, function (geometry) {
+          const platform = new THREE.Mesh(
+            geometry,
+            new THREE.MeshBasicMaterial({ map: texture }),
+          );
 
-					// call our game loop with the time elapsed since last rendering, in ms
-					gameLoop( timeElapsed );
+          platform.name = "platform";
 
-					renderer.render( scene, camera );
-					requestAnimationFrame( render );
-				};
+          placeholder.add(platform);
+        });
 
-				requestAnimationFrame( render );
-                
-                if( navigator.userAgent.toLowerCase().indexOf('firefox') > -1 ){
-                
-                    // The scene is not rendered in Firefox, without an initial move
-                    setTimeout(function(){
-                        motion.velocity.y = 0.5;
-                    }, 1500);
-                    
-                }
-                
-			};
+        return placeholder;
+      }
 
+      const renderer = new C3RRenderer();
 
-			var gameLoop = function( dt ) {
-				resetPlayer();
-				keyboardControls();
-				jumpPads();
-				applyPhysics( dt );
-				updateCamera();
-			};
+      const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 9000);
 
-			var gameViewportSize = function() { return {
-				width: window.innerWidth, height: window.innerHeight
-			}};
+      const scene = new THREE.Scene();
 
-			document.getElementById( 'container' ).appendChild( renderer.domElement );
+      scene.add(camera);
 
-			start( gameLoop, gameViewportSize );
-		</script>
-	</body>
+      const skybox = makeSkybox(
+        [
+          "textures/cube/skybox/px.jpg", // right
+          "textures/cube/skybox/nx.jpg", // left
+          "textures/cube/skybox/py.jpg", // top
+          "textures/cube/skybox/ny.jpg", // bottom
+          "textures/cube/skybox/pz.jpg", // back
+          "textures/cube/skybox/nz.jpg", // front
+        ],
+        2000,
+      );
+
+      scene.add(skybox);
+
+      scene.add(
+        makePlatform(
+          "models/platform/platform.json",
+          "models/platform/platform.jpg",
+        ),
+      );
+
+      // start the game
+
+      const start = function (gameLoop, gameViewportSize) {
+        const resize = function () {
+          const viewport = gameViewportSize();
+          renderer.setSize(viewport.width, viewport.height);
+          camera.aspect = viewport.width / viewport.height;
+          camera.updateProjectionMatrix();
+        };
+
+        window.addEventListener("resize", resize);
+        resize();
+
+        let lastTimeStamp;
+        const render = function (timeStamp) {
+          const timeElapsed = lastTimeStamp ? timeStamp - lastTimeStamp : 0;
+          lastTimeStamp = timeStamp;
+
+          // call our game loop with the time elapsed since last rendering, in ms
+          gameLoop(timeElapsed);
+
+          renderer.render(scene, camera);
+          requestAnimationFrame(render);
+        };
+
+        requestAnimationFrame(render);
+
+        if (navigator.userAgent.toLowerCase().indexOf("firefox") > -1) {
+          // The scene is not rendered in Firefox, without an initial move
+          setTimeout(function () {
+            motion.velocity.y = 0.5;
+          }, 1500);
+        }
+      };
+
+      const gameLoop = function (dt) {
+        resetPlayer();
+        keyboardControls();
+        jumpPads();
+        applyPhysics(dt);
+        updateCamera();
+      };
+
+      const gameViewportSize = function () {
+        return {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+      };
+
+      document.getElementById("container").appendChild(renderer.domElement);
+
+      start(gameLoop, gameViewportSize);
+    </script>
+  </body>
 </html>

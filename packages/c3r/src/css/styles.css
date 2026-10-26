@@ -1,0 +1,104 @@
+/* .c3r-view must come after .c3r-group, both are on the view element */
+
+/* Not inherited, so a camera move restyles only .c3r-view */
+@property --c3r-camera-view {
+  syntax: "*";
+  inherits: false;
+}
+
+.c3r-container {
+  overflow: hidden;
+  position: relative;
+  contain: strict;
+  --c3r-viewport-width: 100vw;
+  --c3r-viewport-height: 100vh;
+  width: var(--c3r-viewport-width);
+  height: var(--c3r-viewport-height);
+}
+
+.c3r-group,
+.c3r-polygon {
+  position: absolute;
+  transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+  transform-origin: 0 0;
+  -webkit-user-select: none;
+  user-select: none;
+  backface-visibility: inherit;
+}
+
+.c3r-group {
+  width: 0px;
+  height: 0px;
+  transform-style: preserve-3d;
+}
+
+.c3r-view {
+  width: 100%;
+  height: 100%;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  backface-visibility: hidden;
+}
+
+.c3r-perspective {
+  --c3r-focal-length: calc(
+    var(--c3r-viewport-height) / 2 / tan(var(--c3r-camera-fov) / 2)
+  );
+  perspective: var(--c3r-focal-length);
+}
+
+.c3r-perspective > .c3r-view {
+  transform: translateZ(var(--c3r-focal-length)) scaleY(-1)
+    var(--c3r-camera-view);
+}
+
+.c3r-orthographic > .c3r-view {
+  transform: scale(
+      calc(
+        var(--c3r-viewport-x) /
+          (var(--c3r-camera-right) - var(--c3r-camera-left))
+      ),
+      calc(
+        var(--c3r-viewport-y) /
+          (var(--c3r-camera-top) - var(--c3r-camera-bottom))
+      )
+    )
+    translate(
+      calc((var(--c3r-camera-right) + var(--c3r-camera-left)) * -0.5px),
+      calc((var(--c3r-camera-top) + var(--c3r-camera-bottom)) * 0.5px)
+    )
+    scaleY(-1) var(--c3r-camera-view);
+}
+
+.c3r-polygon {
+  width: var(--c3r-width, 0px);
+  height: var(--c3r-height, 0px);
+  opacity: var(--c3r-opacity, 1);
+  transform-style: flat;
+  overflow: hidden;
+}
+
+.c3r-polygon-clip {
+  width: 100%;
+  height: 100%;
+}
+
+.c3r-polygon-content {
+  width: 100%;
+  height: 100%;
+  background-color: var(--c3r-background-color, white);
+  background-image: var(--c3r-background-image, none);
+  background-size: 100% 100%;
+  background-blend-mode: multiply;
+  transform: matrix(1, 0, 0, 1, 0, 0);
+  transform-origin: 0 0;
+}
+
+/* No specificity, so the user's own styles win */
+:where(.c3r-element) {
+  background-color: var(--c3r-background-color, transparent);
+  background-image: var(--c3r-background-image, none);
+  background-size: 100% 100%;
+  opacity: var(--c3r-opacity, 1);
+}
