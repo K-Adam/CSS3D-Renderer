@@ -249,10 +249,13 @@ describe("Group.addTriangles", () => {
     expect(group.children).toHaveLength(6);
     for (const child of group.children) {
       const poly = child as Polygon;
+      const { style } = poly.contentElement.parentElement!;
       expect(poly.vertices).toHaveLength(4);
       for (const length of size(poly)) expect(length).toBeCloseTo(250.8);
+      expect(style.clipPath).toBe("");
       poly.overlapFolds = false;
       expect(size(poly)).toEqual([250, 250]);
+      expect(style.clipPath).toBe("");
     }
   });
 

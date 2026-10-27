@@ -77,8 +77,12 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
     const d2 = edges[i].offset;
     if (!d1 && !d2) return [vec2.clone(p)];
 
+    const c = vec2.dot(n1, n2);
+    const square =
+      Math.abs(c) < NEAR_ZERO && !edges[prev].sides[1] && !edges[i].sides[0];
+
     // A miter at a convex corner pokes out of the mesh where the corner is on its border
-    if (cross2(p, points[next], points[prev]) * sign > 0) {
+    if (!square && cross2(p, points[next], points[prev]) * sign > 0) {
       const c1 = d1 ? cap(p, n1, d1, edges[prev].sides[1]) : vec2.clone(p);
       const c2 = d2 ? cap(p, n2, d2, edges[i].sides[0]) : vec2.clone(p);
       if (vec2.equals(c1, c2)) return [c1];
@@ -87,7 +91,6 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
       return cut ? [c1, vec2.clone(p), c2] : [c1, c2];
     }
 
-    const c = vec2.dot(n1, n2);
     const det = Math.max(1 - c * c, NEAR_ZERO);
     const m = vec2.scale(vec2.create(), n1, (d1 - d2 * c) / det);
     vec2.scaleAndAdd(m, m, n2, (d2 - d1 * c) / det);
@@ -255,10 +258,16 @@ export class Polygon extends Object3D {
       this.#fitPolygon(tri);
     }
 
+    // A path on the element's box clips nothing
+    const box =
+      this.#clipPath.length === 4 &&
+      this.#clipPath.every(([x, y]) =>
+        [x, y].every((v) => Math.abs(v - Math.round(v)) < NEAR_ZERO),
+      );
     const clip = this.#clipPath
       .map((p) => `${p[0] * 100}% ${p[1] * 100}%`)
       .join();
-    this.#clipElement.style.clipPath = `polygon(${clip})`;
+    this.#clipElement.style.clipPath = box ? "" : `polygon(${clip})`;
 
     // As variables, the content follows a resize without updateContent
 
