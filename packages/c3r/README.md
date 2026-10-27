@@ -1,6 +1,6 @@
 # c3r
 
-**C3R.js** is a lightweight library for displaying 3D scenes with CSS. It is designed to be used as a CSS3D backend for existing libraries. It provides classes to construct textured polygons, nest 3D transformed elements and handle camera.
+Renders textured 3D scenes with plain DOM elements and CSS transforms, as a CSS3D backend for libraries like three.js. You build the scene from textured polygons and HTML elements, nest them in transformed groups and view them through a perspective or orthographic camera.
 
 ## Usage
 
@@ -48,18 +48,20 @@ cube.material.backgroundImageSrc = "crate.jpg";
 container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
 ```
 
-| Class                                     | What it is                                                                                                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`                                                                                   |
-| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons                                                 |
-| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                          |
-| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                         |
-| `Material`                                | `backgroundColor`, `backgroundImageSrc`, `opacity`, `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only |
-| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (inverse world) and `fov`, or `left`, `right`, `top`, `bottom`                                                                           |
+| Class                                     | What it is                                                                                                                                                       |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `toHTML()`                                                                                      |
+| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons                                                                |
+| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                                         |
+| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                        |
+| `Material`                                | `backgroundColor`, `backgroundImageSrc`, `opacity`, `transparent`, `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only |
+| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (inverse world) and `fov`, or `left`, `right`, `top`, `bottom`                                                                                          |
 
-Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
+A `transparent` material's image alpha also cuts out its color. Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
 
 A `Material` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
+
+On a live page, call `container.fitUnitScale()` after building or heavily scaling the scene; `toHTML()` calls it for you.
 
 An orthographic camera needs `setSize()`: without it the container takes the window size at construction and does not follow resizes.
 
@@ -67,7 +69,7 @@ The stylesheet is adopted by `document` only, so a container inside a shadow roo
 
 ## Node
 
-C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so inline `cssText()`, the base styles plus the material and camera rules, after building the scene. There is no layout either, so set the size explicitly.
+C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so export with `toHTML()`: the container markup after a `<style>` of the base styles plus the material and camera rules. There is no layout either, so set the size explicitly.
 
 ```sh
 npm install c3r @happy-dom/global-registrator
@@ -77,13 +79,13 @@ npm install c3r @happy-dom/global-registrator
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 
-const { Container, cssText } = await import("c3r");
+const { Container } = await import("c3r");
 
 const container = new Container();
 container.setSize(800, 600);
 // ... build the scene
 
-const html = `<!doctype html><style>${cssText()}</style>${container.domElement.outerHTML}`;
+const html = `<!doctype html>${container.toHTML()}`;
 ```
 
 See the [examples](https://k-adam.github.io/CSS3D-Renderer/).

@@ -9,6 +9,7 @@
         background-color: rgb(200, 200, 200);
         margin: 0px;
         overflow: hidden;
+        touch-action: none;
       }
 
       #info {
@@ -26,22 +27,54 @@
       a {
         color: #ffffff;
       }
+
+      #joystick {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 160px;
+        height: 160px;
+      }
+
+      #jump {
+        position: absolute;
+        right: 30px;
+        bottom: 30px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      #jump::after {
+        content: "";
+        position: absolute;
+        inset: 25px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: translate(var(--x, 0), var(--y, 0));
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
     <div id="container"></div>
     <div id="info">
-      <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
-      platformer demo. cubemap by
+      <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+      - platformer demo. cubemap by
       <a href="http://www.zfight.com/" target="_blank" rel="noopener"
         >Jochum Skoglund</a
       >.<br />Click to look around with the mouse, WASD to move, SHIFT to run
-      and SPACE to jump.
+      and SPACE to jump.<br />On touch: left stick to move, drag to look, tap
+      the right stick to jump.
     </div>
+    <div id="joystick"></div>
+    <div id="jump"></div>
 
     <script type="module">
       import * as THREE from "three";
       import { C3RRenderer } from "c3r-three";
+      import nipplejs from "nipplejs";
 
       // player motion parameters
 
@@ -63,18 +96,30 @@
         }
       };
 
+      const keys = {
+        SP: "Space",
+        W: "KeyW",
+        A: "KeyA",
+        S: "KeyS",
+        D: "KeyD",
+        SH: "ShiftLeft",
+      };
+
+      const keysPressed = {};
+
+      // Right stick deflection in -1..1, turns the view while held
+      const look = new THREE.Vector2();
+
+      const turn = function (dx, dy) {
+        motion.rotation.y -= dx;
+        motion.rotation.x = THREE.MathUtils.clamp(
+          motion.rotation.x - dy,
+          -1.2,
+          1.2,
+        );
+      };
+
       const keyboardControls = (function () {
-        const keys = {
-          SP: "Space",
-          W: "KeyW",
-          A: "KeyA",
-          S: "KeyS",
-          D: "KeyD",
-          SH: "ShiftLeft",
-        };
-
-        const keysPressed = {};
-
         (function (watchedKeyCodes) {
           const handler = function (down) {
             return function (e) {
@@ -129,17 +174,96 @@
         const element = document.getElementById("container");
         const sensitivity = 0.002;
 
-        element.addEventListener("click", function () {
-          element.requestPointerLock();
+        element.addEventListener("click", function (e) {
+          if (e.pointerType !== "touch") element.requestPointerLock();
         });
 
         document.addEventListener("mousemove", function (e) {
           if (document.pointerLockElement !== element) return;
 
-          motion.rotation.y -= e.movementX * sensitivity;
-          motion.rotation.x -= e.movementY * sensitivity;
-          motion.rotation.x = Math.max(-1.2, Math.min(1.2, motion.rotation.x));
+          turn(e.movementX * sensitivity, e.movementY * sensitivity);
         });
+      })();
+
+      (function () {
+        const zone = document.getElementById("joystick");
+        const jump = document.getElementById("jump");
+        if (!matchMedia("(pointer: coarse)").matches) {
+          zone.remove();
+          jump.remove();
+          return;
+        }
+
+        const setMove = function (x, y, force) {
+          keysPressed[keys.W] = y > 0.3;
+          keysPressed[keys.S] = y < -0.3;
+          keysPressed[keys.A] = x < -0.3;
+          keysPressed[keys.D] = x > 0.3;
+          keysPressed[keys.SH] = force > 0.9;
+        };
+
+        const joystick = nipplejs.create({
+          zone: zone,
+          mode: "static",
+          position: { left: "50%", top: "50%" },
+          color: { front: "white", back: "rgba(255, 255, 255, 0.5)" },
+        });
+        joystick.on("move", function (e) {
+          setMove(e.data.vector.x, e.data.vector.y, e.data.force);
+        });
+        joystick.on("end", function () {
+          setMove(0, 0, 0);
+        });
+
+        const sensitivity = 0.005;
+        const knobRadius = 25;
+        const touches = {};
+
+        document.addEventListener("pointerdown", function (e) {
+          if (e.pointerType !== "touch" || zone.contains(e.target)) return;
+          touches[e.pointerId] = {
+            x: e.clientX,
+            y: e.clientY,
+            startX: e.clientX,
+            startY: e.clientY,
+            knob: e.target === jump,
+            moved: false,
+          };
+        });
+
+        const moveKnob = function (dx, dy) {
+          const scale = Math.min(1, knobRadius / (Math.hypot(dx, dy) || 1));
+          jump.style.setProperty("--x", dx * scale + "px");
+          jump.style.setProperty("--y", dy * scale + "px");
+          look.set(dx, dy).multiplyScalar(scale / knobRadius);
+        };
+
+        document.addEventListener("pointermove", function (e) {
+          const t = touches[e.pointerId];
+          if (!t) return;
+          const [dx, dy] = [e.clientX - t.startX, e.clientY - t.startY];
+          if (Math.hypot(dx, dy) > 10) t.moved = true;
+          if (t.knob) return moveKnob(dx, dy);
+          turn(
+            (e.clientX - t.x) * sensitivity,
+            (e.clientY - t.y) * sensitivity,
+          );
+          t.x = e.clientX;
+          t.y = e.clientY;
+        });
+
+        const end = function (e) {
+          const t = touches[e.pointerId];
+          delete touches[e.pointerId];
+          if (!t?.knob) return;
+          moveKnob(0, 0);
+          if (!t.moved && e.type === "pointerup") {
+            keysPressed[keys.SP] = true;
+            setTimeout(() => (keysPressed[keys.SP] = false), 100);
+          }
+        };
+        document.addEventListener("pointerup", end);
+        document.addEventListener("pointercancel", end);
       })();
 
       const jumpPads = (function () {
@@ -271,18 +395,22 @@
         return new THREE.Mesh(geometry, materials);
       }
 
-      function makePlatform(jsonUrl, textureUrl) {
+      function makePlatform(jsonUrl, textureUrl, plateUrl) {
         const placeholder = new THREE.Object3D();
 
         const texture = new THREE.TextureLoader().load(textureUrl);
         texture.minFilter = THREE.LinearFilter;
 
+        // The diamond plate tiles in world space, so neighbouring faces line up
+        const plate = new THREE.TextureLoader().load(plateUrl);
+        plate.wrapS = plate.wrapT = THREE.RepeatWrapping;
+
         const loader = new THREE.BufferGeometryLoader();
         loader.load(jsonUrl, function (geometry) {
-          const platform = new THREE.Mesh(
-            geometry,
+          const platform = new THREE.Mesh(geometry, [
             new THREE.MeshBasicMaterial({ map: texture }),
-          );
+            new THREE.MeshBasicMaterial({ map: plate }),
+          ]);
 
           platform.name = "platform";
 
@@ -318,6 +446,7 @@
         makePlatform(
           "models/platform/platform.json",
           "models/platform/platform.jpg",
+          "models/platform/plate.jpg",
         ),
       );
 
@@ -359,6 +488,7 @@
       const gameLoop = function (dt) {
         resetPlayer();
         keyboardControls();
+        turn(look.x * 0.0015 * dt, look.y * 0.0015 * dt);
         jumpPads();
         applyPhysics(dt);
         updateCamera();

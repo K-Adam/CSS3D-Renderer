@@ -8,6 +8,8 @@ export { Polygon, type PolygonOptions } from "./dom/Polygon.js";
 export { ElementObject } from "./dom/ElementObject.js";
 
 export type { Vertex } from "./math/Vertex.js";
+export { MeshBuilder, type MeshFace } from "./math/MeshBuilder.js";
+export type { EdgeNeighbour, Fold, NeighbourSide } from "./math/planar.js";
 
 export { Camera } from "./css/Camera.js";
 export { PerspectiveCamera } from "./css/PerspectiveCamera.js";

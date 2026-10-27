@@ -35,13 +35,14 @@
         right: 0px;
         z-index: 3000;
         cursor: crosshair;
+        touch-action: none;
       }
     </style>
   </head>
   <body>
     <div id="info">
-      <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
-      webgl - canvas as a texture
+      <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+      - webgl - canvas as a texture
       <div>click and draw in the white box</div>
     </div>
     <canvas id="drawing-canvas" height="128" width="128"></canvas>
@@ -51,7 +52,7 @@
       import { C3RRenderer } from "c3r-three";
 
       let camera, scene, renderer, mesh, material;
-      const drawStartPos = new THREE.Vector2();
+      let drawX, drawY;
 
       init();
       setupCanvasDrawing();
@@ -80,53 +81,37 @@
         window.addEventListener("resize", onWindowResize);
       }
 
-      // Sets up the drawing canvas and adds it as the material map.
       function setupCanvasDrawing() {
-        // get canvas and context
         const drawingCanvas = document.getElementById("drawing-canvas");
         const drawingContext = drawingCanvas.getContext("2d");
 
-        // draw white background
         drawingContext.fillStyle = "#FFFFFF";
         drawingContext.fillRect(0, 0, 128, 128);
+        drawingContext.strokeStyle = "#000000";
 
-        // set canvas as material.map (this could be done to any map, bump, displacement etc.)
-        material.map = new THREE.Texture(drawingCanvas);
-        // need to flag the map as needing updating.
-        material.map.needsUpdate = true;
+        material.map = new THREE.CanvasTexture(drawingCanvas);
 
-        // set the variable to keep track of when to draw
-        let paint = false;
-
-        // add canvas event listeners
-        drawingCanvas.addEventListener("mousedown", function (e) {
-          paint = true;
-          drawStartPos.set(e.offsetX, e.offsetY);
+        drawingCanvas.addEventListener("pointerdown", function (e) {
+          if (!e.isPrimary) return;
+          drawingCanvas.setPointerCapture(e.pointerId);
+          drawX = e.offsetX;
+          drawY = e.offsetY;
         });
 
-        drawingCanvas.addEventListener("mousemove", function (e) {
-          if (paint) {
+        drawingCanvas.addEventListener("pointermove", function (e) {
+          if (drawingCanvas.hasPointerCapture(e.pointerId)) {
             draw(drawingContext, e.offsetX, e.offsetY);
           }
-        });
-
-        drawingCanvas.addEventListener("mouseup", function () {
-          paint = false;
-        });
-
-        drawingCanvas.addEventListener("mouseleave", function () {
-          paint = false;
         });
       }
 
       function draw(drawContext, x, y) {
-        drawContext.moveTo(drawStartPos.x, drawStartPos.y);
-        drawContext.strokeStyle = "#000000";
+        drawContext.beginPath();
+        drawContext.moveTo(drawX, drawY);
         drawContext.lineTo(x, y);
         drawContext.stroke();
-        // reset drawing start position to current position.
-        drawStartPos.set(x, y);
-        // need to flag the map as needing updating.
+        drawX = x;
+        drawY = y;
         material.map.needsUpdate = true;
       }
 

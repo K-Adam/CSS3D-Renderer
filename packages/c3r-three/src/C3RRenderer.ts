@@ -1,4 +1,5 @@
 import {
+  ClampToEdgeWrapping,
   FrontSide,
   InterleavedBufferAttribute,
   Matrix4,
@@ -50,6 +51,8 @@ interface MaterialState {
 }
 
 const DEFAULT_CENTER = { x: 0.5, y: 0.5 };
+// A plain color needs pixels only for its edges, smaller saves tile memory
+const flatDomSize = (size: number) => Math.max(128, Math.min(size, 1200));
 const _matrix = new Matrix4();
 const _parent = new Matrix4();
 const _position = new Vector3();
@@ -108,6 +111,7 @@ export class C3RRenderer {
 
     this.#syncCamera(container, camera);
     this.#syncObject(scene, container.root, container);
+    container.fitUnitScale();
   }
 
   #syncCamera(container: C3R.Container, camera: Camera): void {
@@ -245,7 +249,19 @@ export class C3RRenderer {
       materialIndex: g.materialIndex ?? 0,
     }));
 
+    const materials: MappedMaterial[] = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    const maps = ranges.map(
+      (r) => materials[r.materialIndex % materials.length].map,
+    );
+    const textures = maps.map(textureSize);
+    // Exported uvs are off by a texel or two, which must not block merging
+    const sides = textures.flatMap((size) => (size ? [...size] : []));
+    const uvTolerance = sides.length ? 2 / Math.min(...sides) : undefined;
+
     const key: unknown[] = [
+      uvTolerance,
       geometry,
       index,
       index?.version,
@@ -254,25 +270,29 @@ export class C3RRenderer {
       uv,
       version(uv),
     ];
-    for (const r of ranges) key.push(r.start, r.count);
+    ranges.forEach((r, i) => key.push(r.start, r.count, !maps[i]));
 
     let state = this.#meshes.get(node);
     if (!state || !sameKey(state.key, key)) {
       state?.groups.forEach((g) => node.removeChild(g.node));
-      state = { key, groups: ranges.map((r) => buildGroup(geometry, r)) };
+      const builder = new C3R.MeshBuilder(
+        ranges.map((r) => readTriangles(geometry, r)),
+        { uvTolerance },
+      );
+      const groups = ranges.map((_, i) => {
+        const node = new C3R.Group();
+        const options = maps[i] ? {} : { getDomSize: flatDomSize };
+        return { node, polygons: node.addFaces(builder.faces(i), options) };
+      });
+      state = { key, groups };
       state.groups.forEach((g) => node.addChild(g.node));
       this.#meshes.set(node, state);
     }
 
-    const materials: MappedMaterial[] = Array.isArray(mesh.material)
-      ? mesh.material
-      : [mesh.material];
     ranges.forEach((r, i) => {
       const group = state.groups[i];
-      const map = this.#syncMaterial(
-        materials[r.materialIndex % materials.length],
-        group.node,
-      );
+      const material = materials[r.materialIndex % materials.length];
+      const map = this.#syncMaterial(material, group.node);
 
       const repeat: [number, number] = map
         ? [map.repeat.x, map.repeat.y]
@@ -283,6 +303,12 @@ export class C3RRenderer {
       for (const polygon of group.polygons) {
         polygon.uvScale = repeat;
         polygon.uvOffset = offset;
+        polygon.textureSize = textures[i];
+        polygon.pixelRatio = devicePixelRatio;
+        polygon.overlapFolds = !material.transparent;
+        polygon.clampUV =
+          map?.wrapS === ClampToEdgeWrapping &&
+          map.wrapT === ClampToEdgeWrapping;
       }
     });
   }
@@ -334,7 +360,7 @@ export class C3RRenderer {
     }
 
     target.opacity = material.transparent ? material.opacity : 1;
-    // ponytail: BackSide renders as double-sided, CSS can't cull front faces only
+    target.transparent = material.transparent;
     target.doubleSided = material.side !== FrontSide;
 
     return map;
@@ -347,6 +373,35 @@ const version = (
   attribute instanceof InterleavedBufferAttribute
     ? attribute.data.version
     : attribute?.version;
+
+const textureSize = (map?: Texture | null): [number, number] | null => {
+  const image = map?.image as
+    | {
+        naturalWidth?: number;
+        naturalHeight?: number;
+        width?: number;
+        height?: number;
+      }
+    | undefined;
+  const width = image?.naturalWidth || image?.width;
+  const height = image?.naturalHeight || image?.height;
+  if (width && height) return [width, height];
+  return image instanceof HTMLImageElement && image.src
+    ? probeSize(image.src)
+    : null;
+};
+
+const probes = new Map<string, HTMLImageElement>();
+
+// Sized like the CSS background, which loads without crossOrigin
+const probeSize = (src: string): [number, number] | null => {
+  let probe = probes.get(src);
+  if (!probe) {
+    probes.set(src, (probe = new Image()));
+    probe.src = src;
+  }
+  return probe.naturalWidth ? [probe.naturalWidth, probe.naturalHeight] : null;
+};
 
 const sameKey = (a: unknown[], b: unknown[]) =>
   a.length === b.length && a.every((v, i) => v === b[i]);
@@ -373,10 +428,10 @@ function createNode(object: Object3D): C3R.Group {
   return new C3R.Group();
 }
 
-function buildGroup(
+function readTriangles(
   geometry: BufferGeometry,
   { start, count }: Range,
-): MeshState["groups"][number] {
+): C3R.Vertex[][] {
   const { index } = geometry;
   const { position, uv } = geometry.attributes;
 
@@ -393,6 +448,5 @@ function buildGroup(
     triangles.push([vertex(i), vertex(i + 1), vertex(i + 2)]);
   }
 
-  const node = new C3R.Group();
-  return { node, polygons: node.addTriangles(triangles) };
+  return triangles;
 }

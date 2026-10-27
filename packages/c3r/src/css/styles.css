@@ -50,6 +50,11 @@
 
 .c3r-perspective > .c3r-view {
   transform: translateZ(var(--c3r-focal-length)) scaleY(-1)
+    scale3d(
+      var(--c3r-unit-scale, 1),
+      var(--c3r-unit-scale, 1),
+      var(--c3r-unit-scale, 1)
+    )
     var(--c3r-camera-view);
 }
 
@@ -68,7 +73,7 @@
       calc((var(--c3r-camera-right) + var(--c3r-camera-left)) * -0.5px),
       calc((var(--c3r-camera-top) + var(--c3r-camera-bottom)) * 0.5px)
     )
-    scaleY(-1) var(--c3r-camera-view);
+    scaleY(-1) scaleZ(var(--c3r-unit-scale, 1)) var(--c3r-camera-view);
 }
 
 .c3r-polygon {
@@ -91,6 +96,8 @@
   background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;
   background-blend-mode: multiply;
+  mask-image: var(--c3r-mask-image, none);
+  mask-size: 100% 100%;
   transform: matrix(1, 0, 0, 1, 0, 0);
   transform-origin: 0 0;
 }

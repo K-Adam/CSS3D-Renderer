@@ -26,11 +26,34 @@
       a {
         color: #a06851;
       }
+
+      #arm {
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      #arm button {
+        pointer-events: auto;
+        width: 64px;
+        height: 64px;
+        margin: 0 8px;
+        font-size: 24px;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
     </style>
   </head>
   <body>
     <div id="info">
-      Ammo.js physics soft body rope demo<br />Press Q or A to move the arm.
+      Ammo.js physics soft body rope demo<br />Press Q or A, or hold the arrow
+      buttons, to move the arm.
+    </div>
+    <div id="arm">
+      <button data-move="-1">◀</button><button data-move="1">▶</button>
     </div>
     <div id="container"><br /><br /><br /><br /><br />Loading...</div>
 
@@ -468,6 +491,17 @@
         window.addEventListener("keyup", function () {
           armMovement = 0;
         });
+
+        const stop = () => (armMovement = 0);
+        for (const button of document.querySelectorAll("#arm button")) {
+          button.addEventListener("pointerdown", function (event) {
+            armMovement = +button.dataset.move;
+            button.setPointerCapture(event.pointerId);
+          });
+          button.addEventListener("pointerup", stop);
+          button.addEventListener("pointercancel", stop);
+          button.addEventListener("contextmenu", (e) => e.preventDefault());
+        }
       }
 
       function onWindowResize() {

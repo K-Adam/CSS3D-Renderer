@@ -4,22 +4,24 @@ on:
   push:
     tags: ["v*"]
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+          registry-url: https://registry.npmjs.org
       - run: npm ci
+      - run: |
+          for p in c3r c3r-three; do
+            v=$(node -p "require('./packages/$p/package.json').version")
+            [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "$p is $v, tag is $GITHUB_REF_NAME"; exit 1; }
+          done
       - run: npm run typecheck
       - run: npm run format:check
       - run: npx playwright install --with-deps chromium
@@ -28,6 +30,11 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: examples/dist
+      - run: |
+          for p in c3r c3r-three; do
+            v=$(node -p "require('./packages/$p/package.json').version")
+            npm view "$p@$v" version > /dev/null 2>&1 || npm publish -w "$p" --ignore-scripts
+          done
       - run: gh release create "$GITHUB_REF_NAME" packages/c3r/dist/*.js packages/c3r-three/dist/*.js --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -35,6 +42,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write

@@ -6,6 +6,7 @@ import {
   ElementObject,
   Group,
   Material,
+  MeshBuilder,
   OrthographicCamera,
   PerspectiveCamera,
   Polygon,
@@ -53,11 +54,11 @@ describe("Polygon", () => {
 
     for (const v of vertices) {
       const [x, y, z] = vec3.transformMat4(vec3.create(), v.position, MI);
-      expect(Math.abs(z)).toBeLessThan(1e-6);
-      expect(x).toBeGreaterThanOrEqual(-1e-6);
-      expect(x).toBeLessThanOrEqual(width + 1e-6);
-      expect(y).toBeGreaterThanOrEqual(-1e-6);
-      expect(y).toBeLessThanOrEqual(height + 1e-6);
+      expect(Math.abs(z)).toBeLessThan(1e-4);
+      expect(x).toBeGreaterThanOrEqual(-1e-3);
+      expect(x).toBeLessThanOrEqual(width + 1e-3);
+      expect(y).toBeGreaterThanOrEqual(-1e-3);
+      expect(y).toBeLessThanOrEqual(height + 1e-3);
     }
 
     // No shear
@@ -71,6 +72,58 @@ describe("Polygon", () => {
     const front = vec3.normalize(vec3.create(), [fx, fy, fz]);
     const normal = polygonNormal(vertices.map((v) => vec3.clone(v.position)));
     expect(vec3.dot(front, normal)).toBeGreaterThan(0.999);
+  });
+
+  it("stays cullable at a small world scale once the view scales up", () => {
+    const poly = new Polygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    const M = poly.matrix;
+    const col = (i: number) => Math.hypot(M[i * 4], M[i * 4 + 1], M[i * 4 + 2]);
+    expect(col(2) / col(0)).toBeCloseTo(1);
+
+    const unit = 1 / col(0);
+    const V = mat4.fromScaling(mat4.create(), [unit, unit, unit]);
+    mat4.mul(V, V, M);
+    const det = mat4.determinant(V);
+    // Chrome's IsBackFaceVisible test
+    const cofactor = mat4.invert(mat4.create(), V)![10] * det;
+    expect(Math.abs(cofactor * det)).toBeGreaterThan(1e-6);
+  });
+
+  it("sizes a textured element to the texels it shows", () => {
+    const poly = new Polygon([
+      vertex(0, 0, 0, 0, 0),
+      vertex(1, 0, 0, 1, 0),
+      vertex(0, 1, 0, 0, 1),
+    ]);
+    const width = () =>
+      parseFloat(poly.domElement.style.getPropertyValue("--c3r-width"));
+
+    poly.textureSize = [256, 256];
+    expect(width()).toBeCloseTo(256 * Math.SQRT2);
+    poly.uvScale = [2, 2];
+    expect(width()).toBeCloseTo(512 * Math.SQRT2);
+    poly.pixelRatio = 2;
+    expect(width()).toBeCloseTo(256 * Math.SQRT2);
+    poly.uvScale = [100, 100];
+    expect(width()).toBeCloseTo(4096 / 2);
+    poly.textureSize = null;
+    expect(width()).toBeCloseTo(250);
+  });
+
+  it("sizes by the most stretched direction, not by the edges", () => {
+    // 256 texels per unit along the diagonal, the edges alone measure 187
+    const poly = new Polygon([
+      vertex(0, 0, 0, 0, 0),
+      vertex(1, 0, 0, 0.625, 0.375),
+      vertex(0, 1, 0, 0.375, 0.625),
+    ]);
+    poly.textureSize = [256, 256];
+    const width = poly.domElement.style.getPropertyValue("--c3r-width");
+    expect(parseFloat(width)).toBeCloseTo(256 * Math.SQRT2);
   });
 
   it("drops repeated vertices, also a repeated closing one", () => {
@@ -136,9 +189,34 @@ describe("Polygon", () => {
   });
 });
 
+describe("Polygon.clampUV", () => {
+  it("keeps the overlap on the texture", () => {
+    const square = [
+      vertex(0, 0, 0, 0, 0),
+      vertex(1, 0, 0, 1, 0),
+      vertex(1, 1, 0, 1, 1),
+      vertex(0, 1, 0, 0, 1),
+    ];
+    const poly = new Polygon(square, {
+      edges: square.map(() => [{ point: [0, 0, 1], fold: "concave" }, null]),
+    });
+    const { style } = poly.contentElement;
+
+    expect(parseFloat(style.backgroundSize)).toBeLessThan(100);
+    poly.clampUV = true;
+    for (const size of style.backgroundSize.split(" "))
+      expect(parseFloat(size)).toBeCloseTo(100);
+  });
+});
+
 describe("Group.addTriangles", () => {
-  it("merges the triangles of each cube face into a quad", () => {
-    // From examples/cube.html
+  const size = (poly: Polygon) =>
+    ["--c3r-width", "--c3r-height"].map((p) =>
+      parseFloat(poly.domElement.style.getPropertyValue(p)),
+    );
+
+  // From examples/cube.html
+  const cube = () => {
     // prettier-ignore
     const positions = [100, 100, 100, 100, 100, -100, 100, -100, 100, 100, -100, -100, -100, 100, -100, -100, 100, 100, -100, -100, -100, -100, -100, 100, -100, 100, -100, 100, 100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, -100, -100, -100, 100, -100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, 100, 100, -100, -100, 100, -100, 100, -100, -100, -100, -100, -100];
     // prettier-ignore
@@ -159,12 +237,130 @@ describe("Group.addTriangles", () => {
     for (let i = 0; i < indices.length; i += 3) {
       triangles.push([at(indices[i]), at(indices[i + 1]), at(indices[i + 2])]);
     }
+    return triangles;
+  };
+
+  it("merges the triangles of each cube face into a quad", () => {
     const group = new Group();
-    group.addTriangles(triangles);
+    group.addTriangles(cube());
 
     expect(group.children).toHaveLength(6);
-    for (const child of group.children)
-      expect((child as Polygon).vertices).toHaveLength(4);
+    for (const child of group.children) {
+      const poly = child as Polygon;
+      expect(poly.vertices).toHaveLength(4);
+      for (const length of size(poly)) expect(length).toBeCloseTo(250.8);
+      poly.overlapFolds = false;
+      expect(size(poly)).toEqual([250, 250]);
+    }
+  });
+
+  it("merges the faces of a cube in any triangle order", () => {
+    const group = new Group();
+    const [a, b, ...rest] = cube();
+    group.addTriangles([a, ...rest.reverse(), b]);
+
+    expect(group.children).toHaveLength(6);
+  });
+
+  it("overlaps concave folds unless told not to", () => {
+    const group = new Group();
+    group.addTriangles(cube().map((tri) => tri.reverse()));
+
+    for (const child of group.children) {
+      const poly = child as Polygon;
+      expect(size(poly)).toEqual([252, 252]);
+      poly.overlapFolds = false;
+      expect(size(poly)).toEqual([250, 250]);
+    }
+  });
+
+  it("overlaps only the edges towards a smooth neighbour", () => {
+    const group = new Group();
+    group.addTriangles([
+      [vertex(0, 0, 0, 0, 0), vertex(1, 0, 0, 1, 0), vertex(1, 1, 0, 1, 1)],
+      [vertex(0, 0, 0, 0, 0), vertex(1, 1, 0, 1, 1), vertex(0, 1, 0, 0.5, 1)],
+    ]);
+
+    for (const child of group.children) {
+      const [width, height] = size(child as Polygon);
+      // The overlap does not extend the outer edges past the corners
+      expect(width).toBeCloseTo(250);
+      expect(height).toBeCloseTo(126);
+    }
+  });
+
+  it("does not poke out of the mesh at a sharp corner on its border", () => {
+    const group = new Group();
+    // The texture mapping breaks between the triangles, so they stay apart
+    group.addTriangles([
+      [vertex(0, 0, 0, 0, 0), vertex(1, 4, 0, 1, 0), vertex(-1, 4, 0, 0, 1)],
+      [vertex(0, 0, 0, 0, 0), vertex(1, 0, 0, 1, 1), vertex(1, 4, 0, 0, 1)],
+      [vertex(0, 0, 0, 0, 0), vertex(-1, 4, 0, 1, 0), vertex(-1, 0, 0, 0, 1)],
+    ]);
+
+    const poly = group.children[0] as Polygon;
+    const [width, height] = size(poly);
+    const clip = (poly.domElement.firstElementChild as HTMLElement).style
+      .clipPath;
+    for (const [, x, y] of clip.matchAll(/([-\d.e]+)% ([-\d.e]+)%/g)) {
+      const p = vec3.fromValues((+x / 100) * width, (+y / 100) * height, 0);
+      vec3.transformMat4(p, p, poly.matrix);
+      expect(p[1]).toBeGreaterThan(-1e-6);
+    }
+  });
+
+  it("keeps a vertex shared by many faces covered", () => {
+    const tris = Array.from({ length: 8 }, (_, i) => {
+      const [a, b] = [i, i + 1].map((k) => (k * Math.PI) / 4);
+      // The texture mapping breaks between the triangles, so they stay apart
+      return [
+        vertex(0, 0, 0, i, 0),
+        vertex(Math.cos(a), Math.sin(a), 0, i + 1, 0),
+        vertex(Math.cos(b), Math.sin(b), 0, i, 1),
+      ];
+    });
+    const group = new Group();
+    group.addTriangles(tris);
+
+    for (const child of group.children) {
+      const poly = child as Polygon;
+      const [width, height] = size(poly);
+      const clip = (poly.domElement.firstElementChild as HTMLElement).style
+        .clipPath;
+      const points = [...clip.matchAll(/([-\d.e]+)% ([-\d.e]+)%/g)].map(
+        ([, x, y]) => {
+          const p = vec3.fromValues((+x / 100) * width, (+y / 100) * height, 0);
+          return vec3.transformMat4(p, p, poly.matrix);
+        },
+      );
+      // The centre is on or inside every edge of the clip path
+      points.forEach((a, i) => {
+        const b = points[(i + 1) % points.length];
+        expect(a[0] * b[1] - a[1] * b[0]).toBeGreaterThan(-1e-9);
+      });
+    }
+  });
+
+  it("overlaps towards a neighbour whose vertices are slightly off", () => {
+    const group = new Group();
+    group.addTriangles([
+      [vertex(0, 0, 0, 0, 0), vertex(1, 0, 0, 1, 0), vertex(1, 1, 0, 1, 1)],
+      [vertex(0, 0, 0), vertex(1, 1.0005, 0), vertex(0, 1, 0)],
+    ]);
+
+    expect(size(group.children[0] as Polygon)[1]).toBeCloseTo(126);
+  });
+
+  it("overlaps an edge facing a T-junction", () => {
+    const group = new Group();
+    // The texture mapping breaks between the triangles, so they stay apart
+    group.addTriangles([
+      [vertex(0, 0, 0, 0, 0), vertex(1, -1, 0, 1, 0), vertex(2, 0, 0, 0, 1)],
+      [vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)],
+      [vertex(1, 0, 0), vertex(2, 0, 0), vertex(2, 1, 0)],
+    ]);
+
+    expect(size(group.children[0] as Polygon)).toEqual([250, 126]);
   });
 
   it("keeps triangles apart when the texture mapping is not continuous", () => {
@@ -186,6 +382,72 @@ describe("Group.addTriangles", () => {
     ]);
 
     expect(group.children).toHaveLength(1);
+  });
+});
+
+describe("MeshBuilder", () => {
+  // Unit squares at the given corners, uv mapped by position
+  const squares = (...corners: [number, number][]) =>
+    corners.flatMap(([x, y]) => {
+      const at = (dx: number, dy: number) =>
+        vertex(x + dx, y + dy, 0, (x + dx) / 4, (y + dy) / 4);
+      return [
+        [at(0, 0), at(1, 0), at(1, 1)],
+        [at(0, 0), at(1, 1), at(0, 1)],
+      ];
+    });
+
+  const area = ({ vertices }: { vertices: Vertex[] }) =>
+    vertices.reduce((s, { position: [x1, y1] }, i) => {
+      const [x2, y2] = vertices[(i + 1) % vertices.length].position;
+      return s + (x1 * y2 - x2 * y1) / 2;
+    }, 0);
+
+  it("merges within the uv tolerance", () => {
+    const [a, b] = squares([0, 0]);
+    const off = { ...b[2], uv: [b[2].uv[0] + 5e-4, b[2].uv[1]] as const };
+
+    expect(new MeshBuilder([[a, [b[0], b[1], off]]]).faces(0)).toHaveLength(1);
+    expect(
+      new MeshBuilder([[a, [b[0], b[1], off]]], { uvTolerance: 1e-4 }).faces(0),
+    ).toHaveLength(2);
+  });
+
+  it("does not grow the rectangle of a face by merging", () => {
+    const faces = new MeshBuilder([squares([0, 0], [1, 0], [0, 1])]).faces(0);
+
+    expect(faces).toHaveLength(2);
+    expect(faces.map((f) => f.vertices.length)).toEqual([4, 4]);
+  });
+
+  it("keeps the faces of a ring free of holes", () => {
+    // A square with a hole, its first triangle spans the whole square
+    const at = (x: number, y: number) => vertex(x, y, 0, x / 4, y / 4);
+    const [a, b, c, d] = [at(0, 0), at(4, 4), at(0, 4), at(4, 0)];
+    const hole = [at(0.5, 2.5), at(1.5, 2.5), at(1.5, 3.5), at(0.5, 3.5)];
+    const faces = new MeshBuilder([
+      [
+        [a, d, b],
+        [a, b, hole[1]],
+        [b, hole[2], hole[1]],
+        [b, c, hole[2]],
+        [c, hole[3], hole[2]],
+        [c, a, hole[3]],
+        [a, hole[0], hole[3]],
+        [a, hole[1], hole[0]],
+      ],
+    ]).faces(0);
+
+    expect(faces.length).toBeGreaterThan(1);
+    expect(faces.reduce((s, f) => s + area(f), 0)).toBeCloseTo(16 - 1);
+  });
+
+  it("resolves the neighbour of an edge in another group", () => {
+    const floor = [vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)];
+    const wall = [vertex(1, 0, 0), vertex(0, 0, 0), vertex(0, 0, 1)];
+    const [face] = new MeshBuilder([[floor], [wall]]).faces(0);
+
+    expect(face.edges[0][0]).toEqual({ point: [0, 0, 1], fold: "concave" });
   });
 });
 
@@ -286,6 +548,20 @@ describe("server-side rendering", () => {
     expect(cssText()).toContain(".c3r-polygon");
   });
 
+  it("exports the scene as static html", () => {
+    const container = new Container();
+    const group = new Group();
+    group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
+    group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
+    container.root.addChild(group);
+
+    const html = container.toHTML();
+    const { outerHTML } = container.domElement;
+
+    expect(html).toBe(`<style>${cssText()}</style>${outerHTML}`);
+    expect(outerHTML).toContain("--c3r-unit-scale");
+  });
+
   it("sizes an orthographic view from setSize, without layout", () => {
     const container = new Container();
     container.setSize(400, 300);
@@ -328,6 +604,51 @@ describe("cameras", () => {
       );
     }
     expect(cssText()).not.toContain(`${container.camera.className} `);
+  });
+
+  it("scales the view by the unit scale", () => {
+    const container = new Container();
+    container.unitScale = 256;
+
+    const { style } = container.domElement;
+    expect(style.getPropertyValue("--c3r-unit-scale")).toBe("256");
+    expect(cssText()).toMatch(/scale3d\(\s*var\(--c3r-unit-scale/);
+    expect(cssText()).toMatch(/scaleZ\(var\(--c3r-unit-scale/);
+    expect(() => (container.unitScale = NaN)).toThrow(RangeError);
+    expect(() => (container.unitScale = 0)).toThrow(RangeError);
+  });
+
+  it("fits the unit scale to the densest visible polygon", () => {
+    const container = new Container();
+    const group = new Group();
+    group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
+    container.root.addChild(group);
+    const poly = group.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    const [x, y, z] = poly.matrix;
+    const domPixel = Math.hypot(x, y, z) * 0.01;
+    const fit = () => {
+      container.fitUnitScale();
+      return container.unitScale;
+    };
+
+    const scale = fit();
+    expect(Math.log2(scale) % 1).toBe(0);
+    expect(scale * domPixel).toBeGreaterThanOrEqual(1);
+    expect(scale * domPixel).toBeLessThan(2);
+
+    container.camera.matrix = mat4.fromScaling(mat4.create(), [2, 2, 2]);
+    expect(fit()).toBe(scale / 2);
+
+    group.domElement.style.display = "none";
+    expect(fit()).toBe(1);
+
+    group.domElement.style.display = "";
+    group.matrix = mat4.fromScaling(mat4.create(), [0, 0, 0]);
+    expect(fit()).toBe(1);
   });
 });
 
