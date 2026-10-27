@@ -1,12 +1,22 @@
 import type { ReadonlyMat4 } from "gl-matrix";
 
-import { MeshBuilder, type MeshFace } from "../math/MeshBuilder.js";
+import {
+  MeshBuilder,
+  type MeshFace,
+  type TriangleList,
+} from "../math/MeshBuilder.js";
 import type { Vertex } from "../math/Vertex.js";
 
 import { Object3D } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
 
 const parents = new WeakMap<Object3D, Group>();
+
+export interface IndexedMesh {
+  positions: ArrayLike<number>;
+  uvs: ArrayLike<number>;
+  cells: ArrayLike<number>;
+}
 
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
@@ -62,10 +72,26 @@ export class Group extends Object3D {
   }
 
   // Merges coplanar neighbours, e.g. two triangles into a quad
-  addTriangles(
-    triangles: readonly (readonly Vertex[])[],
+  addTriangles(triangles: TriangleList, options?: PolygonOptions): Polygon[] {
+    return this.addFaces(new MeshBuilder([triangles]).faces(0), options);
+  }
+
+  addMesh(
+    { positions, uvs, cells }: IndexedMesh,
     options?: PolygonOptions,
   ): Polygon[] {
-    return this.addFaces(new MeshBuilder([triangles]).faces(0), options);
+    const vertex = (i: number): Vertex => ({
+      position: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]],
+      uv: [uvs[i * 2], uvs[i * 2 + 1]],
+    });
+    const triangles: Vertex[][] = [];
+    for (let i = 0; i + 2 < cells.length; i += 3) {
+      triangles.push([
+        vertex(cells[i]),
+        vertex(cells[i + 1]),
+        vertex(cells[i + 2]),
+      ]);
+    }
+    return this.addTriangles(triangles, options);
   }
 }

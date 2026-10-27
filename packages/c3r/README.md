@@ -29,21 +29,17 @@ TypeScript declarations are included.
 ```js
 import { Container, Group, Material } from "c3r";
 import { mat4 } from "gl-matrix";
+import { cube } from "primitive-geometry";
 
 const container = new Container(); // fills the window until setSize()
 document.body.append(container.domElement);
 
-const cube = new Group();
-container.root.addChild(cube);
-cube.addPolygon([
-  { position: [-100, 100, 100], uv: [0, 1] },
-  { position: [-100, -100, 100], uv: [0, 0] },
-  { position: [100, -100, 100], uv: [1, 0] },
-  { position: [100, 100, 100], uv: [1, 1] },
-]);
+const box = new Group();
+container.root.addChild(box);
+box.addMesh(cube({ sx: 200 }));
 
-cube.material = new Material();
-cube.material.backgroundImageSrc = "crate.jpg";
+box.material = new Material();
+box.material.backgroundImageSrc = "crate.jpg";
 
 container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
 ```
@@ -51,7 +47,7 @@ container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
 | Class                                     | What it is                                                                                                                                                       |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `toHTML()`                                                                                      |
-| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons                                                                |
+| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons, `addMesh()` takes flat `positions`, `uvs`, `cells`            |
 | `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                                         |
 | `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                        |
 | `Material`                                | `backgroundColor`, `backgroundImageSrc`, `opacity`, `transparent`, `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only |

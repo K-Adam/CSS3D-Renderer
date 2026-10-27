@@ -31,6 +31,9 @@ const newellNormal = (vertices: readonly Vertex[]): vec3 => {
 
 const MITER_LIMIT = 4;
 
+// Keeps the miter divisions finite for parallel edges
+const NEAR_ZERO = 1e-6;
+
 interface Edge {
   offset: number;
   sides: [ReadonlyVec2 | null, ReadonlyVec2 | null];
@@ -46,7 +49,7 @@ const cap = (
   if (side) {
     const u = vec2.normalize(vec2.create(), vec2.sub(vec2.create(), side, p));
     const k = vec2.dot(u, n);
-    if (k > 1e-6)
+    if (k > NEAR_ZERO)
       return vec2.scaleAndAdd(u, p, u, Math.min(d / k, MITER_LIMIT * d));
   }
   return vec2.scaleAndAdd(vec2.create(), p, n, d);
@@ -85,7 +88,7 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
     }
 
     const c = vec2.dot(n1, n2);
-    const det = Math.max(1 - c * c, 1e-6);
+    const det = Math.max(1 - c * c, NEAR_ZERO);
     const m = vec2.scale(vec2.create(), n1, (d1 - d2 * c) / det);
     vec2.scaleAndAdd(m, m, n2, (d2 - d1 * c) / det);
 

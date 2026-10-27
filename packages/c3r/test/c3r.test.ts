@@ -215,15 +215,14 @@ describe("Group.addTriangles", () => {
       parseFloat(poly.domElement.style.getPropertyValue(p)),
     );
 
-  // From examples/cube.html
-  const cube = () => {
-    // prettier-ignore
-    const positions = [100, 100, 100, 100, 100, -100, 100, -100, 100, 100, -100, -100, -100, 100, -100, -100, 100, 100, -100, -100, -100, -100, -100, 100, -100, 100, -100, 100, 100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, -100, -100, -100, 100, -100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, 100, 100, -100, -100, 100, -100, 100, -100, -100, -100, -100, -100];
-    // prettier-ignore
-    const indices = [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21];
-    // prettier-ignore
-    const uvs = [0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0];
+  // prettier-ignore
+  const positions = [100, 100, 100, 100, 100, -100, 100, -100, 100, 100, -100, -100, -100, 100, -100, -100, 100, 100, -100, -100, -100, -100, -100, 100, -100, 100, -100, 100, 100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, -100, -100, -100, 100, -100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, 100, 100, -100, -100, 100, -100, 100, -100, -100, -100, -100, -100];
+  // prettier-ignore
+  const indices = [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21];
+  // prettier-ignore
+  const uvs = [0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0];
 
+  const cube = () => {
     const at = (i: number) =>
       vertex(
         positions[i * 3],
@@ -251,6 +250,16 @@ describe("Group.addTriangles", () => {
       for (const length of size(poly)) expect(length).toBeCloseTo(250.8);
       poly.overlapFolds = false;
       expect(size(poly)).toEqual([250, 250]);
+    }
+  });
+
+  it("builds the same quads from flat indexed arrays", () => {
+    const group = new Group();
+    group.addMesh({ positions, uvs, cells: indices });
+
+    expect(group.children).toHaveLength(6);
+    for (const child of group.children) {
+      expect((child as Polygon).vertices).toHaveLength(4);
     }
   });
 
