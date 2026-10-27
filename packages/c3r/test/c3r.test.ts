@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { mat4, vec3, vec4 } from "gl-matrix";
+import { cube, cylinder } from "primitive-geometry";
 import {
   Container,
   cssText,
@@ -218,14 +219,10 @@ describe("Group.addTriangles", () => {
       parseFloat(poly.domElement.style.getPropertyValue(p)),
     );
 
-  // prettier-ignore
-  const positions = [100, 100, 100, 100, 100, -100, 100, -100, 100, 100, -100, -100, -100, 100, -100, -100, 100, 100, -100, -100, -100, -100, -100, 100, -100, 100, -100, 100, 100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, -100, -100, -100, 100, -100, -100, -100, 100, 100, 100, 100, 100, -100, -100, 100, 100, -100, 100, 100, 100, -100, -100, 100, -100, 100, -100, -100, -100, -100, -100];
-  // prettier-ignore
-  const indices = [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21];
-  // prettier-ignore
-  const uvs = [0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0];
+  const box = cube({ sx: 200 });
 
-  const cube = () => {
+  const triangles = () => {
+    const { positions, uvs, cells } = box;
     const at = (i: number) =>
       vertex(
         positions[i * 3],
@@ -235,16 +232,16 @@ describe("Group.addTriangles", () => {
         uvs[i * 2 + 1],
       );
 
-    const triangles = [];
-    for (let i = 0; i < indices.length; i += 3) {
-      triangles.push([at(indices[i]), at(indices[i + 1]), at(indices[i + 2])]);
-    }
-    return triangles;
+    return Array.from({ length: cells.length / 3 }, (_, i) => [
+      at(cells[i * 3]),
+      at(cells[i * 3 + 1]),
+      at(cells[i * 3 + 2]),
+    ]);
   };
 
   it("merges the triangles of each cube face into a quad", () => {
     const group = new Group();
-    group.addTriangles(cube());
+    group.addTriangles(triangles());
 
     expect(group.children).toHaveLength(6);
     for (const child of group.children) {
@@ -261,7 +258,7 @@ describe("Group.addTriangles", () => {
 
   it("builds the same quads from flat indexed arrays", () => {
     const group = new Group();
-    group.addMesh({ positions, uvs, cells: indices });
+    group.addMesh(box);
 
     expect(group.children).toHaveLength(6);
     for (const child of group.children) {
@@ -271,7 +268,7 @@ describe("Group.addTriangles", () => {
 
   it("merges the faces of a cube in any triangle order", () => {
     const group = new Group();
-    const [a, b, ...rest] = cube();
+    const [a, b, ...rest] = triangles();
     group.addTriangles([a, ...rest.reverse(), b]);
 
     expect(group.children).toHaveLength(6);
@@ -279,7 +276,7 @@ describe("Group.addTriangles", () => {
 
   it("overlaps concave folds unless told not to", () => {
     const group = new Group();
-    group.addTriangles(cube().map((tri) => tri.reverse()));
+    group.addTriangles(triangles().map((tri) => tri.reverse()));
 
     for (const child of group.children) {
       const poly = child as Polygon;
@@ -301,6 +298,20 @@ describe("Group.addTriangles", () => {
       // The overlap does not extend the outer edges past the corners
       expect(width).toBeCloseTo(250);
       expect(height).toBeCloseTo(126);
+    }
+  });
+
+  it("does not clip the sides of a cylinder", () => {
+    const group = new Group();
+    group.addMesh(cylinder({ nx: 16 }));
+
+    const sides = group.children.filter(
+      (child) => (child as Polygon).vertices.length === 4,
+    );
+    expect(sides).toHaveLength(16);
+    for (const side of sides) {
+      const clip = side.domElement.firstElementChild as HTMLElement;
+      expect(clip.style.clipPath).toBe("");
     }
   });
 

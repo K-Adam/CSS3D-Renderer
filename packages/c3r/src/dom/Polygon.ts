@@ -77,9 +77,17 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
     const d2 = edges[i].offset;
     if (!d1 && !d2) return [vec2.clone(p)];
 
+    // cap() returns the plain offset for a side along the normal
+    const along = (side: ReadonlyVec2 | null, dir: ReadonlyVec2) => {
+      if (!side) return true;
+      const u = vec2.sub(vec2.create(), side, p);
+      return vec2.dot(vec2.normalize(u, u), dir) > 1 - NEAR_ZERO;
+    };
     const c = vec2.dot(n1, n2);
     const square =
-      Math.abs(c) < NEAR_ZERO && !edges[prev].sides[1] && !edges[i].sides[0];
+      Math.abs(c) < NEAR_ZERO &&
+      along(edges[prev].sides[1], n1) &&
+      along(edges[i].sides[0], n2);
 
     // A miter at a convex corner pokes out of the mesh where the corner is on its border
     if (!square && cross2(p, points[next], points[prev]) * sign > 0) {
