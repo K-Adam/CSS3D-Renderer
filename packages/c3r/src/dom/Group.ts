@@ -1,5 +1,6 @@
 import type { ReadonlyMat4 } from "gl-matrix";
 
+import { type Tween, tweenStyle } from "../css/Tween.js";
 import {
   MeshBuilder,
   type MeshFace,
@@ -12,6 +13,9 @@ import { Polygon, type PolygonOptions } from "./Polygon.js";
 
 const parents = new WeakMap<Object3D, Group>();
 
+// Keeps the tweens, and their rules, alive while their element is
+const elementTweens = new WeakMap<Element, readonly Tween[]>();
+
 export interface IndexedMesh {
   positions: ArrayLike<number>;
   uvs: ArrayLike<number>;
@@ -20,6 +24,7 @@ export interface IndexedMesh {
 
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
+  #tween: Tween | readonly Tween[] | null = null;
 
   constructor() {
     super();
@@ -33,6 +38,25 @@ export class Group extends Object3D {
 
   override set matrix(matrix: ReadonlyMat4) {
     this.setMatrix(matrix);
+  }
+
+  get tween(): Tween | readonly Tween[] | null {
+    return this.#tween;
+  }
+
+  set tween(tween: Tween | readonly Tween[] | null) {
+    const { classList, style } = this.domElement;
+    const tweens = [...new Set([tween ?? []].flat())];
+    const properties = tweenStyle(tweens);
+    for (const old of elementTweens.get(this.domElement) ?? [])
+      classList.remove(old.className);
+    for (const { className } of tweens) classList.add(className);
+    for (const [name, value] of Object.entries(properties)) {
+      if (value) style.setProperty(name, value);
+      else style.removeProperty(name);
+    }
+    elementTweens.set(this.domElement, tweens);
+    this.#tween = Array.isArray(tween) ? Object.freeze(tweens) : tween;
   }
 
   get children(): readonly Object3D[] {

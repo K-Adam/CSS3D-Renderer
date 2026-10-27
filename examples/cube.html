@@ -10,11 +10,33 @@
         background-color: #000;
         overflow: hidden;
       }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <div id="info">
+      A spinning box built from CSS 3D transforms, hover to fade
+    </div>
     <script type="module">
-      import { Container, Group, Material } from "c3r";
+      import {
+        Container,
+        Filter,
+        Group,
+        Material,
+        Transform,
+        Tween,
+      } from "c3r";
       import { mat4 } from "gl-matrix";
       import { cube } from "primitive-geometry";
 
@@ -34,16 +56,26 @@
         [0, 0, -400],
       );
 
-      function animate() {
-        box.matrix = mat4.fromRotation(
-          mat4.create(),
-          Date.now() / 1000,
-          [1, 1, 1],
-        );
-        requestAnimationFrame(animate);
-      }
+      const turn = 2 * Math.PI;
+      const spin = new Tween({
+        keyframes: [
+          [
+            Transform.rotateX(turn),
+            Transform.rotateY(turn),
+            Transform.rotateZ(turn),
+          ],
+        ],
+        duration: turn, // one radian per second
+        loop: true,
+      });
+      const fade = new Tween({
+        keyframes: [Filter.opacity(0.5)],
+        duration: 0.5,
+        hover: true,
+      });
+      box.tween = [spin, fade];
 
-      animate();
+      container.bake();
     </script>
   </body>
 </html>

@@ -4,12 +4,15 @@ import {
   Container,
   cssText,
   ElementObject,
+  Filter,
   Group,
   Material,
   MeshBuilder,
   OrthographicCamera,
   PerspectiveCamera,
   Polygon,
+  Transform,
+  Tween,
   type Vertex,
 } from "c3r";
 
@@ -507,6 +510,10 @@ describe("ElementObject", () => {
   });
 });
 
+// A class rule's declarations, or "" once it is gone
+const ruleOf = (className: string) =>
+  new RegExp(String.raw`\.${className} \{[^}]*`).exec(cssText())?.[0] ?? "";
+
 describe("Material", () => {
   it("styles objects through a class rule, removed on dispose", () => {
     const group = new Group();
@@ -519,11 +526,7 @@ describe("Material", () => {
       expect(
         group.domElement.style.getPropertyValue("--c3r-background-color"),
       ).toBe("");
-      expect(cssText()).toMatch(
-        new RegExp(
-          `\\.${material.className} \\{[^}]*rgba\\(255, ?0, ?0, ?1\\)`,
-        ),
-      );
+      expect(ruleOf(material.className)).toMatch(/rgba\(255, ?0, ?0, ?1\)/);
 
       using other = new Material();
       group.material = other;
@@ -534,15 +537,12 @@ describe("Material", () => {
 
       group.material = material;
     }
-    expect(cssText()).not.toContain(`.${group.material.className} `);
+    expect(ruleOf(group.material.className)).toBe("");
   });
 
   it("shows back faces when double-sided", () => {
     using material = new Material();
-    const rule = () =>
-      cssText()
-        .split("\n")
-        .find((r) => r.startsWith(`.${material.className} `));
+    const rule = () => ruleOf(material.className);
 
     material.doubleSided = true;
     expect(rule()).toMatch(/backface-visibility: ?visible/);
@@ -550,11 +550,284 @@ describe("Material", () => {
     material.doubleSided = false;
     expect(rule()).not.toContain("backface-visibility");
   });
+
+  it("masks a tint to the image in effect", () => {
+    using material = new Material();
+    const vars = () =>
+      ["--c3r-background-color", "--c3r-mask-image"].map(
+        (name) =>
+          new RegExp(`${name}: ?([^;]+)`).exec(
+            ruleOf(material.className),
+          )?.[1] ?? null,
+      );
+
+    expect(vars()).toEqual([null, null]);
+    material.backgroundImageSrc = "leaf.png";
+    expect(vars()).toEqual(["transparent", "none"]);
+    material.backgroundColor = [1, 0, 0, 1];
+    expect(vars()[0]).toMatch(/rgba\(255, ?0, ?0, ?1\)/);
+    expect(vars()[1]).toBe("var(--c3r-background-image, none)");
+    material.backgroundImageSrc = null;
+    expect(vars()[1]).toBe("var(--c3r-background-image, none)");
+    material.backgroundColor = null;
+    expect(vars()).toEqual([null, null]);
+  });
+
+  it("filters with Filter steps only", () => {
+    using material = new Material();
+    const rule = () => ruleOf(material.className);
+
+    const filter = [Filter.grayscale(1), Filter.brightness(1.2)];
+    material.filter = filter;
+    expect(material.filter).toEqual(filter);
+    expect(rule()).toContain("--c3r-filter: grayscale(1) brightness(1.2)");
+
+    material.filter = null;
+    expect(rule()).not.toContain("--c3r-filter");
+    expect(() => (material.filter = Transform.scale(2) as never)).toThrow(
+      TypeError,
+    );
+  });
+});
+
+describe("Tween", () => {
+  const turn = 2 * Math.PI;
+
+  it("animates groups through class rules, removed on dispose", () => {
+    const group = new Group();
+    group.matrix = mat4.fromTranslation(mat4.create(), [1, 2, 3]);
+    expect(group.domElement.style.getPropertyValue("--c3r-matrix")).toBe(
+      "matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,1,2,3,1)",
+    );
+
+    let className;
+    {
+      using spin = new Tween({
+        keyframes: [
+          [
+            Transform.rotateX(turn),
+            Transform.rotateZ(turn),
+            Transform.translate([0, 20, 0]),
+          ],
+        ],
+        duration: 2,
+        loop: true,
+      });
+      className = spin.className;
+      const track = `--${className}`;
+      group.tween = spin;
+
+      expect(group.domElement.classList).toContain(className);
+      expect(cssText()).toContain(
+        `@property ${track} { syntax: "<transform-list>"; inherits: false; initial-value: translate(0); }`,
+      );
+      expect(cssText()).toContain(
+        `${track}: rotateX(0rad) rotateZ(0rad) translate3d(0px,0px,0px)`,
+      );
+      expect(cssText()).toContain(
+        `${track}: rotateX(${turn}rad) rotateZ(${turn}rad) translate3d(0px,20px,0px)`,
+      );
+      expect(ruleOf(spin.className)).toContain(
+        `${track}-animation: ${className} 2s linear 0s infinite normal both var(${track}-state)`,
+      );
+      const { style } = group.domElement;
+      expect(style.getPropertyValue("--c3r-tween-transform")).toBe(
+        `var(${track},)`,
+      );
+      expect(style.animation).toBe(`var(${track}-animation, none)`);
+
+      spin.paused = true;
+      expect(ruleOf(spin.className)).toMatch(`${track}-state: paused`);
+
+      using other = new Tween({ keyframes: [Transform.scale(0.5)] });
+      expect(cssText()).toContain("scale3d(0.5,0.5,0.5)");
+      group.tween = other;
+      expect([...group.domElement.classList]).toEqual([
+        "c3r-group",
+        other.className,
+      ]);
+    }
+    expect(cssText()).not.toContain(`${className} `);
+  });
+
+  it("composes several tweens on one group", () => {
+    const group = new Group();
+    using spin = new Tween({
+      keyframes: [Transform.rotateY(turn)],
+      loop: true,
+    });
+    using fade = new Tween({ keyframes: [Filter.opacity(0.5)], hover: true });
+    using tint = new Tween({ keyframes: [Filter.sepia(1)] });
+    const tweens = [spin, fade, tint];
+    group.tween = tweens;
+    expect(group.tween).toEqual(tweens);
+
+    const { classList, style } = group.domElement;
+    expect([...classList]).toEqual([
+      "c3r-group",
+      ...tweens.map((t) => t.className),
+    ]);
+    expect(style.getPropertyValue("--c3r-tween-transform")).toBe(
+      `var(--${spin.className},)`,
+    );
+    expect(style.animation).toBe(
+      `var(--${spin.className}-animation, none), var(--${tint.className}-animation, none)`,
+    );
+    expect(style.transition).toBe(
+      `var(--${fade.className}-transition, --${fade.className} 0s)`,
+    );
+    expect(style.getPropertyValue("--c3r-tween-filter")).toBe(
+      `opacity(var(--${fade.className}-opacity, 1)) sepia(var(--${tint.className}-sepia, 0))`,
+    );
+
+    tweens.pop();
+    group.tween = tweens;
+    expect(classList).not.toContain(tint.className);
+    group.tween = [spin, spin];
+    expect(style.animation).toBe(`var(--${spin.className}-animation, none)`);
+
+    group.tween = null;
+    expect([...classList]).toEqual(["c3r-group"]);
+    expect(style.cssText).toBe("");
+  });
+
+  it("plays keyframes in sequence, holding what they don't list", () => {
+    using sequence = new Tween({
+      keyframes: [
+        Transform.translate([0, 50, 0]),
+        { steps: Transform.rotateY(turn), duration: 2 },
+        [],
+        Filter.opacity(0),
+      ],
+    });
+    const track = `--${sequence.className}`;
+    const stop = (offset: number, y: number, angle: number, opacity: number) =>
+      `${offset}% { ${track}: translate3d(0px,${y}px,0px) rotateY(${angle}rad); ${track}-opacity: ${opacity}; }`;
+    for (const block of [
+      stop(0, 0, 0, 1),
+      stop(20, 50, 0, 1),
+      stop(60, 50, turn, 1),
+      stop(80, 50, turn, 1),
+      stop(100, 50, turn, 0),
+    ])
+      expect(cssText()).toContain(block);
+    expect(ruleOf(sequence.className)).toContain(`${sequence.className} 5s`);
+  });
+
+  it("plays a loop on hover only, removed on dispose", () => {
+    let selector;
+    {
+      using pulse = new Tween({
+        keyframes: [Transform.scale(2)],
+        loop: true,
+        hover: true,
+      });
+      selector = `.${pulse.className}:not(:hover)`;
+      expect(ruleOf(pulse.className)).toMatch(/pointer-events: ?auto/);
+      expect(cssText()).toContain(
+        `${selector} { --${pulse.className}-state: paused; }`,
+      );
+    }
+    expect(cssText()).not.toContain(selector);
+  });
+
+  it("transitions to its end while hovered, disabled when paused", () => {
+    let className;
+    {
+      using fade = new Tween({
+        keyframes: [Filter.opacity(0.5)],
+        duration: 2,
+        hover: true,
+      });
+      className = fade.className;
+      const opacity = `--${className}-opacity`;
+      expect(cssText()).not.toContain(`@keyframes ${className}`);
+      const rule = ruleOf(fade.className);
+      expect(rule).toContain(`${opacity}: 1`);
+      expect(rule).toContain(
+        `--${className}-transition: ${opacity} 2s linear 0s`,
+      );
+      expect(rule).toMatch(/pointer-events: ?auto/);
+      expect(rule).not.toContain("animation");
+
+      const hovered = `.${className}:hover { ${opacity}: 0.5; }`;
+      expect(cssText()).toContain(hovered);
+      fade.paused = true;
+      expect(cssText()).not.toContain(hovered);
+      fade.paused = false;
+      expect(cssText()).toContain(hovered);
+    }
+    expect(cssText()).not.toContain(className);
+  });
+
+  it("rejects invalid steps and timing", () => {
+    expect(() => new Tween({ keyframes: [] })).toThrow(RangeError);
+    expect(() => new Tween({ keyframes: [[]] })).toThrow(RangeError);
+    expect(() => new Tween({ keyframes: [{} as Transform] })).toThrow(
+      TypeError,
+    );
+    expect(() => Transform.translate([0, NaN, 0])).toThrow(RangeError);
+    expect(() => Transform.scale([1, 1] as never)).toThrow(RangeError);
+    expect(() => Transform.rotateY(Infinity)).toThrow(RangeError);
+    expect(() => Filter.brightness(-1)).toThrow(RangeError);
+    expect(() => Filter.blur(NaN)).toThrow(RangeError);
+    expect(
+      () => new Tween({ keyframes: [[Filter.sepia(1), Filter.sepia(0.5)]] }),
+    ).toThrow(RangeError);
+    const scale = Transform.scale(2);
+    expect(
+      () => new Tween({ keyframes: [{ steps: scale, duration: 0 }] }),
+    ).toThrow(RangeError);
+    expect(() => new Tween({ keyframes: [scale, scale], hover: true })).toThrow(
+      RangeError,
+    );
+    for (const timing of [
+      { duration: NaN },
+      { duration: -1 },
+      { easing: "ease-in, ease-out" },
+      { easing: " inherit " },
+      { easing: "var(--ease)" },
+      { easing: "ease; } body { display: none } .x {" },
+      { easing: "steps(2" },
+      { easing: "ease)(" },
+      { delay: NaN },
+      { alternate: true },
+    ])
+      expect(() => new Tween({ keyframes: [scale], ...timing })).toThrow(
+        RangeError,
+      );
+    const easing = "cubic-bezier(0.2, 0, 0.4, 1)";
+    new Tween({ keyframes: [scale], easing })[Symbol.dispose]();
+  });
+
+  it("chains filters in order, each through its own property", () => {
+    using look = new Tween({
+      keyframes: [
+        [Filter.brightness(2), Filter.hueRotate(turn), Filter.blur(3)],
+      ],
+    });
+    const p = `--${look.className}`;
+    expect(cssText()).toContain(
+      `0% { ${p}-brightness: 1; ${p}-hue-rotate: 0rad; ${p}-blur: 0px; }`,
+    );
+    expect(cssText()).toContain(
+      `100% { ${p}-brightness: 2; ${p}-hue-rotate: ${turn}rad; ${p}-blur: 3px; }`,
+    );
+    expect(cssText()).toContain(
+      `@property ${p}-hue-rotate { syntax: "<angle>"; inherits: false; initial-value: 0rad; }`,
+    );
+    const group = new Group();
+    group.tween = look;
+    expect(group.domElement.style.getPropertyValue("--c3r-tween-filter")).toBe(
+      `brightness(var(${p}-brightness, 1)) hue-rotate(var(${p}-hue-rotate, 0rad)) blur(var(${p}-blur, 0px))`,
+    );
+  });
 });
 
 describe("server-side rendering", () => {
   it("exports the stylesheet for static html", () => {
     expect(cssText()).toContain(".c3r-polygon");
+    expect(cssText()).toContain("@property --c3r-matrix");
   });
 
   it("exports the scene as static html", () => {
@@ -567,8 +840,23 @@ describe("server-side rendering", () => {
     const html = container.toHTML();
     const { outerHTML } = container.domElement;
 
-    expect(html).toBe(`<style>${cssText()}</style>${outerHTML}`);
+    const css = cssText().replaceAll("<", "\\3c ");
+    expect(html).toBe(`<style>${css}</style>${outerHTML}`);
     expect(outerHTML).toContain("--c3r-unit-scale");
+  });
+
+  it("keeps every value inside the exported style element", () => {
+    const container = new Container();
+    const group = new Group();
+    group.material = new Material();
+    group.material.backgroundImageSrc = "a</style><script>x</script>";
+    container.root.addChild(group);
+
+    expect(container.toHTML()).not.toContain("</style><script>");
+
+    group.material.backgroundImageSrc = 'x\n") } .c3r-polygon { display: none';
+    expect(container.toHTML()).not.toMatch(/[\n"]\) \} \.c3r-polygon/);
+    group.material[Symbol.dispose]();
   });
 
   it("sizes an orthographic view from setSize, without layout", () => {
@@ -640,7 +928,7 @@ describe("cameras", () => {
     const [x, y, z] = poly.matrix;
     const domPixel = Math.hypot(x, y, z) * 0.01;
     const fit = () => {
-      container.fitUnitScale();
+      container.bake();
       return container.unitScale;
     };
 

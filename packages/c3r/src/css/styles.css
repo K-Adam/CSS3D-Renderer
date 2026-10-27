@@ -6,6 +6,17 @@
   inherits: false;
 }
 
+/* Not inherited, a group without a matrix must not take its parent's */
+@property --c3r-matrix {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --c3r-tween-transform {
+  syntax: "*";
+  inherits: false;
+}
+
 .c3r-container {
   overflow: hidden;
   position: relative;
@@ -19,7 +30,11 @@
 .c3r-group,
 .c3r-polygon {
   position: absolute;
-  transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+  transform: var(
+      --c3r-matrix,
+      matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+    )
+    var(--c3r-tween-transform,);
   transform-origin: 0 0;
   -webkit-user-select: none;
   user-select: none;
@@ -79,7 +94,8 @@
 .c3r-polygon {
   width: var(--c3r-width, 0px);
   height: var(--c3r-height, 0px);
-  opacity: var(--c3r-opacity, 1);
+  /* Empty, so no filter, unless a material or tween sets one */
+  filter: var(--c3r-filter,) var(--c3r-tween-filter,);
   transform-style: flat;
   overflow: hidden;
 }
@@ -107,5 +123,5 @@
   background-color: var(--c3r-background-color, transparent);
   background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;
-  opacity: var(--c3r-opacity, 1);
+  filter: var(--c3r-filter,) var(--c3r-tween-filter,);
 }

@@ -1,4 +1,11 @@
 export { Material } from "./css/Material.js";
+export {
+  Filter,
+  type Keyframe,
+  Transform,
+  Tween,
+  type TweenOptions,
+} from "./css/Tween.js";
 export { cssText } from "./css/styles.js";
 
 export { Object3D } from "./dom/Object3D.js";

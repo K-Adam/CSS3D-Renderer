@@ -81,9 +81,9 @@ export class Container {
     this.domElement.style.setProperty("--c3r-unit-scale", String(scale));
   }
 
-  // The densest polygon at one view pixel per DOM pixel, a power of two scales
-  // exactly and holds still while objects move
-  fitUnitScale(): void {
+  // Fits the unit scale: the densest polygon at one view pixel per DOM pixel, a
+  // power of two scales exactly and holds still while objects move
+  bake(): void {
     let density = 0;
     const visit = (node: Object3D, parent: ReadonlyMat4) => {
       if (node.domElement.style.display === "none") return;
@@ -104,8 +104,10 @@ export class Container {
   }
 
   toHTML(): string {
-    this.fitUnitScale();
-    return `<style>${cssText()}</style>${this.domElement.outerHTML}`;
+    this.bake();
+    // So no value can close the style element
+    const css = cssText().replaceAll("<", "\\3c ");
+    return `<style>${css}</style>${this.domElement.outerHTML}`;
   }
 
   setSize(width: number, height: number): void {

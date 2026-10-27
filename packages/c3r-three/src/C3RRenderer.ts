@@ -111,7 +111,7 @@ export class C3RRenderer {
 
     this.#syncCamera(container, camera);
     this.#syncObject(scene, container.root, container);
-    container.fitUnitScale();
+    container.bake();
   }
 
   #syncCamera(container: C3R.Container, camera: Camera): void {
@@ -352,15 +352,19 @@ export class C3RRenderer {
     }
     target.backgroundImageSrc = src;
 
-    if (material.color) {
+    // White multiplies to the map unchanged, and needs no mask
+    if (material.color && (!src || material.color.getHex() !== 0xffffff)) {
       material.color.getRGB(_rgb, SRGBColorSpace);
       target.backgroundColor = [_rgb.r, _rgb.g, _rgb.b, 1];
     } else {
       target.backgroundColor = null;
     }
 
-    target.opacity = material.transparent ? material.opacity : 1;
-    target.transparent = material.transparent;
+    // Unclamped in three.js
+    target.filter =
+      material.transparent && material.opacity < 1
+        ? C3R.Filter.opacity(Math.max(0, material.opacity))
+        : null;
     target.doubleSided = material.side !== FrontSide;
 
     return map;

@@ -22,7 +22,10 @@ export abstract class Object3D {
   protected setMatrix(matrix: ReadonlyMat4): void {
     if (mat4.exactEquals(matrix, this.#matrix)) return;
     mat4.copy(this.#matrix, matrix);
-    this.domElement.style.transform = `matrix3d(${[...matrix].join()})`;
+    this.domElement.style.setProperty(
+      "--c3r-matrix",
+      `matrix3d(${[...matrix].join()})`,
+    );
   }
 
   get material(): Material | null {

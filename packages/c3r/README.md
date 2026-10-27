@@ -44,20 +44,24 @@ box.material.backgroundImageSrc = "crate.jpg";
 container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
 ```
 
-| Class                                     | What it is                                                                                                                                                       |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `toHTML()`                                                                                      |
-| `Group`                                   | A transformed node: `matrix`, `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons, `addMesh()` takes flat `positions`, `uvs`, `cells`            |
-| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                                         |
-| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                        |
-| `Material`                                | `backgroundColor`, `backgroundImageSrc`, `opacity`, `transparent`, `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only |
-| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (inverse world) and `fov`, or `left`, `right`, `top`, `bottom`                                                                                          |
+| Class                                     | What it is                                                                                                                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `unitScale`, `bake()` fits it, `toHTML()`                                                                                                                     |
+| `Group`                                   | A transformed node: `matrix`, `tween` (one or an array), `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons, `addMesh()` takes flat `positions`, `uvs`, `cells`                                               |
+| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`                                                                                                                                       |
+| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                                                                                      |
+| `Tween`                                   | A CSS animation of a group: `keyframes` of `Transform` and `Filter` steps, `duration`, `delay`, `easing`, `loop`, `alternate`, `paused`, `hover`                                                                               |
+| `Transform`, `Filter`                     | Steps from factories: `translate` (scene units), `rotateX`, `rotateY`, `rotateZ`, `scale`; `opacity`, `brightness`, `contrast`, `saturate`, `grayscale`, `sepia`, `invert`, `hueRotate`, `blur` (px of each polygon's element) |
+| `Material`                                | `backgroundColor`, `backgroundImageSrc`, `filter` (one or an array of `Filter` steps, before a tween's), `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only                         |
+| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (inverse world) and `fov`, or `left`, `right`, `top`, `bottom`                                                                                                                                                        |
 
-A `transparent` material's image alpha also cuts out its color. Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
+An image's alpha shows through, also when a color tints it; a material with only an image drops an inherited tint. Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
 
-A `Material` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
+A `Material`, `Tween` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
 
-On a live page, call `container.fitUnitScale()` after building or heavily scaling the scene; `toHTML()` calls it for you.
+A tween animates a group after its `matrix`, from rest, and a group's tweens apply in array order. Its keyframes play in sequence, `duration` seconds each unless written as `{ steps, duration }`, and `easing` applies to each; a keyframe is one step or an array of steps, and what it doesn't list holds. Transforms apply in the order they first appear. Angles are radians and may exceed a half turn. `Filter` steps apply to the polygons and `ElementObject` elements, and a nested group's filters replace its parent's. With `hover`, a `loop` plays only while hovered; any other tween takes one keyframe and eases to it and back. Setting `paused` later pauses every group using the tween; a hover transition can't pause, so it stops responding to hover instead. It runs on the main thread and `bake()` ignores its scale. Use a negative `delay`, in seconds, to offset the phase.
+
+On a live page, call `container.bake()` after building or heavily scaling the scene; `toHTML()` calls it for you.
 
 An orthographic camera needs `setSize()`: without it the container takes the window size at construction and does not follow resizes.
 
@@ -65,7 +69,7 @@ The stylesheet is adopted by `document` only, so a container inside a shadow roo
 
 ## Node
 
-C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so export with `toHTML()`: the container markup after a `<style>` of the base styles plus the material and camera rules. There is no layout either, so set the size explicitly.
+C3R builds plain DOM elements, so it runs on a server-side DOM like [happy-dom](https://github.com/capricorn86/happy-dom). Stylesheets are not serialized, so export with `toHTML()`: the container markup after a `<style>` of the base styles plus the material, tween and camera rules. There is no layout either, so set the size explicitly.
 
 ```sh
 npm install c3r @happy-dom/global-registrator

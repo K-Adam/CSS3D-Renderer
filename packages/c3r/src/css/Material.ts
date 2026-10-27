@@ -3,6 +3,7 @@ import "../polyfill.js";
 import { vec4, type ReadonlyVec4 } from "gl-matrix";
 
 import { deleteRule, insertRule } from "./styles.js";
+import { type Filter, filterText } from "./Tween.js";
 
 let nextId = 0;
 
@@ -10,10 +11,11 @@ export class Material {
   readonly className = `c3r-material-${nextId++}`;
 
   #backgroundImageSrc: string | null = null;
+  #backgroundImage: string | null = null;
   #backgroundColor: ReadonlyVec4 | null = null;
-  #opacity = 1;
+  #filter: Filter | readonly Filter[] | null = null;
+  #filterText = "";
   #doubleSided = false;
-  #transparent = false;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -24,10 +26,12 @@ export class Material {
   set backgroundImageSrc(src: string | null) {
     if (src === this.#backgroundImageSrc) return;
     this.#backgroundImageSrc = src;
-    this.#set(
-      "--c3r-background-image",
-      src && `url("${src.replace(/["\\]/g, "\\$&")}")`,
-    );
+    // A newline only has a hex escape
+    const escape = (c: string) => `\\${c.charCodeAt(0).toString(16)} `;
+    this.#backgroundImage =
+      src && `url("${src.replace(/["\\\n\r\f]/g, escape)}")`;
+    this.#set("--c3r-background-image", this.#backgroundImage);
+    this.#paint();
   }
 
   // rgba, 0-1
@@ -39,24 +43,19 @@ export class Material {
     const old = this.#backgroundColor;
     if (color === old || (color && old && vec4.exactEquals(color, old))) return;
     this.#backgroundColor = color && vec4.clone(color);
-
-    let value = null;
-    if (color) {
-      const [r, g, b, a] = color;
-      const rgb = [r, g, b].map((c) => Math.round(c * 255));
-      value = `rgba(${rgb.join()},${a})`;
-    }
-    this.#set("--c3r-background-color", value);
+    this.#paint();
   }
 
-  get opacity(): number {
-    return this.#opacity;
+  get filter(): Filter | readonly Filter[] | null {
+    return this.#filter;
   }
 
-  set opacity(opacity: number) {
-    if (opacity === this.#opacity) return;
-    this.#opacity = opacity;
-    this.#set("--c3r-opacity", opacity === 1 ? null : String(opacity));
+  set filter(filter: Filter | readonly Filter[] | null) {
+    const text = filterText(filter);
+    this.#filter = Array.isArray(filter) ? Object.freeze([...filter]) : filter;
+    if (text === this.#filterText) return;
+    this.#filterText = text;
+    this.#set("--c3r-filter", text || null);
   }
 
   get doubleSided(): boolean {
@@ -69,16 +68,21 @@ export class Material {
     this.#set("backface-visibility", doubleSided ? "visible" : null);
   }
 
-  get transparent(): boolean {
-    return this.#transparent;
-  }
-
-  set transparent(transparent: boolean) {
-    if (transparent === this.#transparent) return;
-    this.#transparent = transparent;
+  // A color layer fills an image's transparent pixels, so only a tint is masked
+  #paint(): void {
+    const image = this.#backgroundImage;
+    const tint = this.#backgroundColor;
+    let color = image ? "transparent" : null;
+    if (tint) {
+      const [r, g, b, a] = tint;
+      const rgb = [r, g, b].map((c) => Math.round(c * 255));
+      color = `rgba(${rgb.join()},${a})`;
+    }
+    this.#set("--c3r-background-color", color);
+    // "none" so a parent material's mask doesn't inherit
     this.#set(
       "--c3r-mask-image",
-      transparent ? "var(--c3r-background-image, none)" : null,
+      tint ? "var(--c3r-background-image, none)" : image && "none",
     );
   }
 
