@@ -5,22 +5,25 @@ import type { ReadonlyVec3 } from "gl-matrix";
 import { deleteRule, insertRule } from "./styles.js";
 
 interface Step {
-  // Registered syntax of a filter argument
-  syntax: string | null;
   name: string;
+  syntax: string;
   identity: string;
-  value: string;
+  values: string[];
+  // Set on transforms only, which also tells them from filters
+  invert?: (value: string) => string;
 }
 
 // Only factory-made steps, a forged one would inject raw CSS
 const steps = new WeakMap<Transform | Filter, Step>();
 
-const vector = (v: ReadonlyVec3, unit = ""): string => {
+const vector = (v: ReadonlyVec3, unit = ""): string[] => {
   const values = Array.from(v);
   if (values.length !== 3 || !values.every(Number.isFinite))
     throw new RangeError(`Invalid vector ${values}`);
-  return values.map((n) => n + unit).join();
+  return values.map((n) => n + unit);
 };
+
+const negate = (value: string) => `calc(-1 * ${value})`;
 
 const radians = (angle: number): string => {
   if (!Number.isFinite(angle)) throw new RangeError(`Invalid angle ${angle}`);
@@ -38,32 +41,44 @@ export class Transform {
 
   private constructor() {}
 
-  static #create(name: string, identity: string, value: string): Transform {
+  static #create(
+    name: string,
+    syntax: string,
+    identity: string,
+    values: string[],
+    invert = negate,
+  ): Transform {
     const transform = new Transform();
-    steps.set(transform, { syntax: null, name, identity, value });
+    steps.set(transform, { name, syntax, identity, values, invert });
     return transform;
   }
 
   // Scene units
   static translate(v: ReadonlyVec3): Transform {
-    return Transform.#create("translate3d", "0px,0px,0px", vector(v, "px"));
+    return Transform.#create("translate3d", "<length>", "0px", vector(v, "px"));
   }
 
   static rotateX(angle: number): Transform {
-    return Transform.#create("rotateX", "0rad", radians(angle));
+    return Transform.#create("rotateX", "<angle>", "0rad", [radians(angle)]);
   }
 
   static rotateY(angle: number): Transform {
-    return Transform.#create("rotateY", "0rad", radians(angle));
+    return Transform.#create("rotateY", "<angle>", "0rad", [radians(angle)]);
   }
 
   static rotateZ(angle: number): Transform {
-    return Transform.#create("rotateZ", "0rad", radians(angle));
+    return Transform.#create("rotateZ", "<angle>", "0rad", [radians(angle)]);
   }
 
   static scale(s: number | ReadonlyVec3): Transform {
     const v = typeof s === "number" ? [s, s, s] : s;
-    return Transform.#create("scale3d", "1,1,1", vector(v));
+    return Transform.#create(
+      "scale3d",
+      "<number>",
+      "1",
+      vector(v),
+      (value) => `calc(1 / ${value})`,
+    );
   }
 }
 
@@ -79,7 +94,7 @@ export class Filter {
     syntax = "<number>",
   ): Filter {
     const filter = new Filter();
-    steps.set(filter, { syntax, name, identity, value });
+    steps.set(filter, { name, syntax, identity, values: [value] });
     return filter;
   }
 
@@ -126,8 +141,8 @@ export function filterText(filter: Filter | readonly Filter[] | null): string {
     .flat()
     .map((f) => {
       const step = steps.get(f);
-      if (!step?.syntax) throw new TypeError("Not a Filter");
-      return `${step.name}(${step.value})`;
+      if (!step || step.invert) throw new TypeError("Not a Filter");
+      return `${step.name}(${step.values[0]})`;
     })
     .join(" ");
 }
@@ -150,27 +165,43 @@ export interface TweenOptions {
 
 interface Style {
   transform?: string;
+  inverse?: string;
   filter?: string;
   animation?: string;
   transition?: string;
+  hover?: boolean;
 }
 
 const styles = new WeakMap<Tween, Style>();
 
-export function tweenStyle(tweens: readonly Tween[]): Record<string, string> {
+// Throws before writing anything
+export function setTweens(
+  style: CSSStyleDeclaration | undefined,
+  tween: Tween | readonly Tween[] | null,
+  inverse = false,
+): readonly Tween[] {
+  const tweens = Object.freeze([...new Set([tween ?? []].flat())]);
   const parts = tweens.map((tween) => {
     const part = styles.get(tween);
     if (!part) throw new TypeError("Not a Tween");
+    if (inverse && part.hover) throw new RangeError("A camera can't hover");
     return part;
   });
-  const list = (key: keyof Style, separator: string) =>
-    parts.flatMap((part) => part[key] ?? []).join(separator);
-  return {
-    "--c3r-tween-transform": list("transform", " "),
+  const list = (key: keyof Style, separator: string, from = parts) =>
+    from.flatMap((part) => part[key] ?? []).join(separator);
+  const properties = {
+    "--c3r-tween-transform": inverse
+      ? list("inverse", " ", parts.toReversed())
+      : list("transform", " "),
     animation: list("animation", ", "),
     transition: list("transition", ", "),
     "--c3r-tween-filter": list("filter", " "),
   };
+  for (const [name, value] of Object.entries(properties)) {
+    if (value) style?.setProperty(name, value);
+    else style?.removeProperty(name);
+  }
+  return tweens;
 }
 
 let nextId = 0;
@@ -252,28 +283,32 @@ export class Tween {
 
     // Its own properties, so tweens on one element don't clash
     const track = `--${this.className}`;
-    const property = (s: Step) => `${track}-${s.name}`;
+    // One per argument, so a camera can invert them
+    const property = (s: Step, i: number) =>
+      `${track}-${s.name}${s.values.length > 1 ? `-${"xyz"[i]}` : ""}`;
     const used = [...pose.values()];
-    const transforms = used.filter((s) => !s.syntax);
-    const filters = used.filter((s) => s.syntax);
-    const frame = (stop: Map<string, Step>) => {
-      const value = (s: Step) => stop.get(s.name)?.value ?? s.identity;
-      const declarations: [string, string][] = [];
-      // The same functions at every stop, so each one interpolates on its own
-      if (transforms.length) {
-        const list = transforms.map((s) => `${s.name}(${value(s)})`);
-        declarations.push([track, list.join(" ")]);
-      }
-      for (const s of filters) declarations.push([property(s), value(s)]);
-      return declarations;
-    };
+    const transforms = used.filter((s) => s.invert);
+    const filters = used.filter((s) => !s.invert);
+    const frame = (stop: Map<string, Step>) =>
+      used.flatMap((s) =>
+        s.values.map((_, i): [string, string] => [
+          property(s, i),
+          stop.get(s.name)?.values[i] ?? s.identity,
+        ]),
+      );
+    const args = (s: Step) =>
+      s.values.map((_, i) => `var(${property(s, i)}, ${s.identity})`);
     const cssText = (stop: Map<string, Step>) =>
       frame(stop)
         .map(([name, value]) => `${name}: ${value}`)
         .join("; ");
     const total = times[times.length - 1];
 
-    this.#rule = insertRule(`.${this.className}`, this);
+    // A camera's view can't take the class, so it shares the variables
+    this.#rule = insertRule(
+      hover ? `.${this.className}` : `.${this.className}, .c3r-view`,
+      this,
+    );
     this.#rules.push(this.#rule);
     const { style } = this.#rule;
 
@@ -287,8 +322,8 @@ export class Tween {
           `{ syntax: "${syntax}"; inherits: false; initial-value: ${rest.get(name)}; }`,
         ),
       );
-    if (transforms.length) register(track, "<transform-list>");
-    for (const s of filters) register(property(s), s.syntax!);
+    for (const s of used)
+      s.values.forEach((_, i) => register(property(s, i), s.syntax));
 
     if (!transition) {
       const blocks = stops.map(
@@ -307,14 +342,19 @@ export class Tween {
 
     const timing = `${timingFunction} ${delay}s`;
     // Fallbacks keep the element's other tweens when this one is disposed
-    const part: Style = {};
-    if (transforms.length) part.transform = `var(${track},)`;
-    // Inherited as resolved text, a filter on the group would flatten it
-    if (filters.length) {
-      part.filter = filters
-        .map((s) => `${s.name}(var(${property(s)}, ${s.identity}))`)
+    const part: Style = { hover };
+    if (transforms.length) {
+      part.transform = transforms
+        .map((s) => `${s.name}(${args(s).join()})`)
+        .join(" ");
+      part.inverse = transforms
+        .toReversed()
+        .map((s) => `${s.name}(${args(s).map(s.invert!).join()})`)
         .join(" ");
     }
+    // Inherited as resolved text, a filter on the group would flatten it
+    if (filters.length)
+      part.filter = filters.map((s) => `${s.name}(${args(s)[0]})`).join(" ");
     if (transition) {
       style.setProperty(
         `${track}-transition`,

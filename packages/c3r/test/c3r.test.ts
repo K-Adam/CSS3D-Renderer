@@ -512,7 +512,9 @@ describe("ElementObject", () => {
 
 // A class rule's declarations, or "" once it is gone
 const ruleOf = (className: string) =>
-  new RegExp(String.raw`\.${className} \{[^}]*`).exec(cssText())?.[0] ?? "";
+  new RegExp(String.raw`\.${className}(, \.c3r-view)? \{[^}]*`).exec(
+    cssText(),
+  )?.[0] ?? "";
 
 describe("Material", () => {
   it("styles objects through a class rule, removed on dispose", () => {
@@ -619,20 +621,18 @@ describe("Tween", () => {
 
       expect(group.domElement.classList).toContain(className);
       expect(cssText()).toContain(
-        `@property ${track} { syntax: "<transform-list>"; inherits: false; initial-value: rotateX(0rad) rotateZ(0rad) translate3d(0px,0px,0px); }`,
+        `@property ${track}-translate3d-y { syntax: "<length>"; inherits: false; initial-value: 0px; }`,
       );
       expect(cssText()).toContain(
-        `${track}: rotateX(0rad) rotateZ(0rad) translate3d(0px,0px,0px)`,
-      );
-      expect(cssText()).toContain(
-        `${track}: rotateX(${turn}rad) rotateZ(${turn}rad) translate3d(0px,20px,0px)`,
+        `100% { ${track}-rotateX: ${turn}rad; ${track}-rotateZ: ${turn}rad; ${track}-translate3d-x: 0px; ${track}-translate3d-y: 20px; ${track}-translate3d-z: 0px; }`,
       );
       expect(ruleOf(spin.className)).toContain(
         `${track}-animation: ${className} 2s linear 0s infinite normal both var(${track}-state)`,
       );
       const { style } = group.domElement;
+      const t = (axis: string) => `var(${track}-translate3d-${axis}, 0px)`;
       expect(style.getPropertyValue("--c3r-tween-transform")).toBe(
-        `var(${track},)`,
+        `rotateX(var(${track}-rotateX, 0rad)) rotateZ(var(${track}-rotateZ, 0rad)) translate3d(${t("x")},${t("y")},${t("z")})`,
       );
       expect(style.animation).toBe(`var(${track}-animation, none)`);
 
@@ -640,7 +640,7 @@ describe("Tween", () => {
       expect(ruleOf(spin.className)).toMatch(`${track}-state: paused`);
 
       using other = new Tween({ keyframes: [Transform.scale(0.5)] });
-      expect(cssText()).toContain("scale3d(0.5,0.5,0.5)");
+      expect(cssText()).toContain(`--${other.className}-scale3d-z: 0.5`);
       group.tween = other;
       expect([...group.domElement.classList]).toEqual([
         "c3r-group",
@@ -668,7 +668,7 @@ describe("Tween", () => {
       ...tweens.map((t) => t.className),
     ]);
     expect(style.getPropertyValue("--c3r-tween-transform")).toBe(
-      `var(--${spin.className},)`,
+      `rotateY(var(--${spin.className}-rotateY, 0rad))`,
     );
     expect(style.animation).toBe(
       `var(--${spin.className}-animation, none), var(--${tint.className}-animation, none)`,
@@ -703,7 +703,7 @@ describe("Tween", () => {
     });
     const track = `--${sequence.className}`;
     const stop = (offset: number, y: number, angle: number, opacity: number) =>
-      `${offset}% { ${track}: translate3d(0px,${y}px,0px) rotateY(${angle}rad); ${track}-opacity: ${opacity}; }`;
+      `${offset}% { ${track}-opacity: ${opacity}; ${track}-translate3d-x: 0px; ${track}-translate3d-y: ${y}px; ${track}-translate3d-z: 0px; ${track}-rotateY: ${angle}rad; }`;
     for (const block of [
       stop(0, 0, 0, 0.5),
       stop(20, 50, 0, 0.5),
@@ -758,6 +758,30 @@ describe("Tween", () => {
       expect(cssText()).toContain(hovered);
     }
     expect(cssText()).not.toContain(className);
+  });
+
+  it("moves a camera by the inverse, last tween first", () => {
+    using camera = new PerspectiveCamera();
+    using move = new Tween({
+      keyframes: [[Transform.translate([1, 2, 3]), Transform.rotateY(1)]],
+    });
+    using grow = new Tween({ keyframes: [Transform.scale(2)] });
+    camera.tween = [move, grow];
+    const p = (tween: Tween) => `--${tween.className}`;
+    const t = (axis: string) =>
+      `calc(-1 * var(${p(move)}-translate3d-${axis}, 0px))`;
+    const s = (axis: string) => `calc(1 / var(${p(grow)}-scale3d-${axis}, 1))`;
+    const rule = () => ruleOf(`${camera.className} > \\.c3r-view`);
+    expect(rule()).toContain(
+      `--c3r-tween-transform: scale3d(${s("x")},${s("y")},${s("z")}) rotateY(calc(-1 * var(${p(move)}-rotateY, 0rad))) translate3d(${t("x")},${t("y")},${t("z")})`,
+    );
+
+    using hover = new Tween({ keyframes: [Transform.scale(2)], hover: true });
+    expect(() => (camera.tween = [move, hover])).toThrow(RangeError);
+    expect(cssText()).not.toContain(`.${hover.className}, .c3r-view`);
+    expect(camera.tween).toEqual([move, grow]);
+    camera.tween = null;
+    expect(rule()).not.toContain("tween");
   });
 
   it("rejects invalid steps and timing", () => {
@@ -890,8 +914,13 @@ describe("cameras", () => {
     const container = new Container();
     {
       using camera = new PerspectiveCamera(60);
-      camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
+      camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, 400]);
       container.camera = camera;
+      expect(camera.viewMatrix[14]).toBe(-400);
+      expect(
+        () => (camera.matrix = mat4.fromScaling(mat4.create(), [0, 0, 0])),
+      ).toThrow(RangeError);
+      expect(camera.matrix[14]).toBe(400);
 
       expect(container.domElement.classList).toContain("c3r-perspective");
       expect(cssText()).toMatch(
@@ -942,7 +971,7 @@ describe("cameras", () => {
     expect(scale * domPixel).toBeGreaterThanOrEqual(1);
     expect(scale * domPixel).toBeLessThan(2);
 
-    container.camera.matrix = mat4.fromScaling(mat4.create(), [2, 2, 2]);
+    container.camera.matrix = mat4.fromScaling(mat4.create(), [0.5, 0.5, 0.5]);
     expect(fit()).toBe(scale / 2);
 
     group.domElement.style.display = "none";

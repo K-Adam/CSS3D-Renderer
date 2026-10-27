@@ -70,7 +70,7 @@
       var(--c3r-unit-scale, 1),
       var(--c3r-unit-scale, 1)
     )
-    var(--c3r-camera-view);
+    var(--c3r-tween-transform,) var(--c3r-camera-view);
 }
 
 .c3r-orthographic > .c3r-view {
@@ -88,7 +88,8 @@
       calc((var(--c3r-camera-right) + var(--c3r-camera-left)) * -0.5px),
       calc((var(--c3r-camera-top) + var(--c3r-camera-bottom)) * 0.5px)
     )
-    scaleY(-1) scaleZ(var(--c3r-unit-scale, 1)) var(--c3r-camera-view);
+    scaleY(-1) scaleZ(var(--c3r-unit-scale, 1)) var(--c3r-tween-transform,)
+    var(--c3r-camera-view);
 }
 
 .c3r-polygon {

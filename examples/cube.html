@@ -50,10 +50,9 @@
       box.material = new Material();
       box.material.backgroundImageSrc = "textures/crate.jpg";
 
-      // The camera matrix is the inverse world transform
       container.camera.matrix = mat4.fromTranslation(
         mat4.create(),
-        [0, 0, -400],
+        [0, 0, 400],
       );
 
       const turn = 2 * Math.PI;

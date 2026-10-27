@@ -98,7 +98,7 @@ export class Container {
         for (const child of node.children) visit(child, m);
       }
     };
-    visit(this.#root, this.#camera.matrix);
+    visit(this.#root, this.#camera.viewMatrix);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
   }

@@ -29,7 +29,7 @@ const square = (parent: Group) =>
 const scene = () => {
   const container = new Container();
   document.body.append(container.domElement);
-  container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, -400]);
+  container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, 400]);
   const group = new Group();
   container.root.addChild(group);
   return {
@@ -80,6 +80,33 @@ it("keeps the matrix and the other tweens when one is disposed", () => {
   spin[Symbol.dispose]();
   expect(transform(s.group.domElement)).toEqual([1, 1, 100]);
   expect(s.group.domElement.getAnimations()).toHaveLength(1);
+});
+
+it("moves the camera after its matrix", () => {
+  using s = scene();
+  using move = new Tween({
+    keyframes: [[Transform.translate([100, 20, 50]), Transform.rotateY(1)]],
+    ...half,
+  });
+  using grow = new Tween({
+    keyframes: [Transform.scale([2, 1, 0.5])],
+    ...half,
+  });
+  s.container.camera.tween = [move, grow];
+
+  using still = scene();
+  const world = mat4.clone(s.container.camera.matrix);
+  mat4.translate(world, world, [50, 10, 25]);
+  mat4.rotateY(world, world, 0.5);
+  mat4.scale(world, world, [1.5, 1, 0.75]);
+  still.container.camera.matrix = world;
+
+  const view = (c: Container) =>
+    Array.from(
+      new DOMMatrix(getComputedStyle(c.viewElement).transform).toFloat64Array(),
+      (v) => +v.toFixed(2) + 0,
+    );
+  expect(view(s.container)).toEqual(view(still.container));
 });
 
 it("rests a hover transition at `from`, also when assigned later", () => {

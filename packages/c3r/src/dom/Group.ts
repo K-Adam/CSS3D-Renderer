@@ -1,6 +1,6 @@
 import type { ReadonlyMat4 } from "gl-matrix";
 
-import { type Tween, tweenStyle } from "../css/Tween.js";
+import { setTweens, type Tween } from "../css/Tween.js";
 import {
   MeshBuilder,
   type MeshFace,
@@ -46,17 +46,12 @@ export class Group extends Object3D {
 
   set tween(tween: Tween | readonly Tween[] | null) {
     const { classList, style } = this.domElement;
-    const tweens = [...new Set([tween ?? []].flat())];
-    const properties = tweenStyle(tweens);
+    const tweens = setTweens(style, tween);
     for (const old of elementTweens.get(this.domElement) ?? [])
       classList.remove(old.className);
     for (const { className } of tweens) classList.add(className);
-    for (const [name, value] of Object.entries(properties)) {
-      if (value) style.setProperty(name, value);
-      else style.removeProperty(name);
-    }
     elementTweens.set(this.domElement, tweens);
-    this.#tween = Array.isArray(tween) ? Object.freeze(tweens) : tween;
+    this.#tween = Array.isArray(tween) ? tweens : tween;
   }
 
   get children(): readonly Object3D[] {

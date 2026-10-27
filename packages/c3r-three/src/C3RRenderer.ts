@@ -142,7 +142,7 @@ export class C3RRenderer {
       }
     }
 
-    container.camera.matrix = camera.matrixWorldInverse.elements;
+    container.camera.matrix = camera.matrixWorld.elements;
   }
 
   #syncObject(
@@ -181,11 +181,7 @@ export class C3RRenderer {
     container: C3R.Container,
   ): number[] {
     // Billboard in world space
-    _matrix.fromArray(container.camera.matrix).transpose();
-
-    const e = _matrix.elements;
-    e[3] = e[7] = e[11] = 0;
-    e[15] = 1;
+    _matrix.extractRotation(_matrix.fromArray(container.camera.matrix));
 
     object.matrixWorld.decompose(_position, _quaternion, _scale);
     _matrix.setPosition(_position).scale(_scale);
@@ -200,7 +196,7 @@ export class C3RRenderer {
       node.center = [x, y];
     }
 
-    return e;
+    return _matrix.elements;
   }
 
   #syncChildren(
