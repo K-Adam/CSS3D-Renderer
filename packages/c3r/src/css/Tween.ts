@@ -137,6 +137,7 @@ export type Keyframe = Steps | { steps: Steps; duration?: number };
 
 export interface TweenOptions {
   keyframes: readonly Keyframe[];
+  from?: Steps;
   // Seconds per keyframe
   duration?: number;
   delay?: number;
@@ -185,6 +186,7 @@ export class Tween {
 
   constructor({
     keyframes,
+    from = [],
     duration = 1,
     delay = 0,
     easing = "linear",
@@ -195,26 +197,32 @@ export class Tween {
   }: TweenOptions) {
     // Each keyframe changes what it lists, the rest holds
     const pose = new Map<string, Step>();
-    const stops = [new Map<string, Step>()];
-    const times = [0];
-    for (const keyframe of keyframes) {
-      const { steps: changes, duration: time = duration } =
-        "steps" in keyframe ? keyframe : { steps: keyframe };
-      if (!(time > 0 && Number.isFinite(time)))
-        throw new RangeError(`Invalid duration ${time}`);
+    const apply = (changes: Steps, where: string) => {
       const names = new Set<string>();
       for (const change of [changes].flat()) {
         const step = steps.get(change);
         if (!step) throw new TypeError("Not a Transform or Filter");
         if (names.has(step.name))
-          throw new RangeError(`${step.name} twice in a keyframe`);
+          throw new RangeError(`${step.name} twice in ${where}`);
         names.add(step.name);
         pose.set(step.name, step);
       }
+      return names.size;
+    };
+    apply(from, "from");
+    const stops = [new Map(pose)];
+    const times = [0];
+    let moves = 0;
+    for (const keyframe of keyframes) {
+      const { steps: changes, duration: time = duration } =
+        "steps" in keyframe ? keyframe : { steps: keyframe };
+      if (!(time > 0 && Number.isFinite(time)))
+        throw new RangeError(`Invalid duration ${time}`);
+      moves += apply(changes, "a keyframe");
       stops.push(new Map(pose));
       times.push(times[times.length - 1] + time);
     }
-    if (!pose.size) throw new RangeError("A tween needs a Transform or Filter");
+    if (!moves) throw new RangeError("A tween needs a Transform or Filter");
     // CSS drops an invalid value and strips comments
     const { style: probe } = document.createElement("div");
     probe.setProperty("transition-timing-function", easing);
@@ -269,17 +277,18 @@ export class Tween {
     this.#rules.push(this.#rule);
     const { style } = this.#rule;
 
-    // Registered to interpolate
-    const register = (name: string, syntax: string, initial: string) =>
+    // Registered to interpolate, initially at rest so assigning doesn't transition
+    const rest = new Map(frame(stops[0]));
+    const register = (name: string, syntax: string) =>
       this.#rules.push(
         insertRule(
           `@property ${name}`,
           this,
-          `{ syntax: "${syntax}"; inherits: false; initial-value: ${initial}; }`,
+          `{ syntax: "${syntax}"; inherits: false; initial-value: ${rest.get(name)}; }`,
         ),
       );
-    if (transforms.length) register(track, "<transform-list>", "translate(0)");
-    for (const s of filters) register(property(s), s.syntax!, s.identity);
+    if (transforms.length) register(track, "<transform-list>");
+    for (const s of filters) register(property(s), s.syntax!);
 
     if (!transition) {
       const blocks = stops.map(
@@ -307,11 +316,11 @@ export class Tween {
         .join(" ");
     }
     if (transition) {
-      const rest = frame(stops[0]);
-      for (const [name, value] of rest) style.setProperty(name, value);
       style.setProperty(
         `${track}-transition`,
-        rest.map(([name]) => `${name} ${total}s ${timing}`).join(", "),
+        [...rest.keys()]
+          .map((name) => `${name} ${total}s ${timing}`)
+          .join(", "),
       );
       part.transition = `var(${track}-transition, ${track} 0s)`;
       this.#hoverCssText = cssText(stops[1]);

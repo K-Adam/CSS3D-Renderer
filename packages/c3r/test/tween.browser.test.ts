@@ -82,6 +82,20 @@ it("keeps the matrix and the other tweens when one is disposed", () => {
   expect(s.group.domElement.getAnimations()).toHaveLength(1);
 });
 
+it("rests a hover transition at `from`, also when assigned later", () => {
+  using s = scene();
+  using fade = new Tween({
+    from: Filter.opacity(0.5),
+    keyframes: [Filter.opacity(1)],
+    duration: 100,
+    hover: true,
+  });
+  const filter = () => getComputedStyle(s.face.domElement).filter;
+  expect(filter()).toBe("none");
+  s.group.tween = fade;
+  expect(filter()).toBe("opacity(0.5)");
+});
+
 it("keeps a hover transition when another one is disposed", () => {
   using s = scene();
   using fade = new Tween({ keyframes: [Filter.opacity(0)], hover: true });

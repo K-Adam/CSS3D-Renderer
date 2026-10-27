@@ -619,7 +619,7 @@ describe("Tween", () => {
 
       expect(group.domElement.classList).toContain(className);
       expect(cssText()).toContain(
-        `@property ${track} { syntax: "<transform-list>"; inherits: false; initial-value: translate(0); }`,
+        `@property ${track} { syntax: "<transform-list>"; inherits: false; initial-value: rotateX(0rad) rotateZ(0rad) translate3d(0px,0px,0px); }`,
       );
       expect(cssText()).toContain(
         `${track}: rotateX(0rad) rotateZ(0rad) translate3d(0px,0px,0px)`,
@@ -693,6 +693,7 @@ describe("Tween", () => {
 
   it("plays keyframes in sequence, holding what they don't list", () => {
     using sequence = new Tween({
+      from: Filter.opacity(0.5),
       keyframes: [
         Transform.translate([0, 50, 0]),
         { steps: Transform.rotateY(turn), duration: 2 },
@@ -704,10 +705,10 @@ describe("Tween", () => {
     const stop = (offset: number, y: number, angle: number, opacity: number) =>
       `${offset}% { ${track}: translate3d(0px,${y}px,0px) rotateY(${angle}rad); ${track}-opacity: ${opacity}; }`;
     for (const block of [
-      stop(0, 0, 0, 1),
-      stop(20, 50, 0, 1),
-      stop(60, 50, turn, 1),
-      stop(80, 50, turn, 1),
+      stop(0, 0, 0, 0.5),
+      stop(20, 50, 0, 0.5),
+      stop(60, 50, turn, 0.5),
+      stop(80, 50, turn, 0.5),
       stop(100, 50, turn, 0),
     ])
       expect(cssText()).toContain(block);
@@ -743,7 +744,6 @@ describe("Tween", () => {
       const opacity = `--${className}-opacity`;
       expect(cssText()).not.toContain(`@keyframes ${className}`);
       const rule = ruleOf(fade.className);
-      expect(rule).toContain(`${opacity}: 1`);
       expect(rule).toContain(
         `--${className}-transition: ${opacity} 2s linear 0s`,
       );
@@ -765,6 +765,11 @@ describe("Tween", () => {
     expect(() => new Tween({ keyframes: [[]] })).toThrow(RangeError);
     expect(() => new Tween({ keyframes: [{} as Transform] })).toThrow(
       TypeError,
+    );
+    const from = Filter.opacity(0);
+    expect(() => new Tween({ from, keyframes: [[]] })).toThrow(RangeError);
+    expect(() => new Tween({ from: [from, from], keyframes: [from] })).toThrow(
+      "opacity twice in from",
     );
     expect(() => Transform.translate([0, NaN, 0])).toThrow(RangeError);
     expect(() => Transform.scale([1, 1] as never)).toThrow(RangeError);
