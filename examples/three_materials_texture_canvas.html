@@ -6,26 +6,25 @@
     <title>c3r - Canvas material</title>
     <style>
       body {
-        margin: 0px;
+        margin: 0;
         background-color: #050505;
-        color: #fff;
         overflow: hidden;
-      }
-
-      a {
-        color: #e00;
       }
 
       #info {
         position: absolute;
-        top: 0px;
+        z-index: 1;
+        top: 0;
         width: 100%;
-        color: #ffffff;
         padding: 5px;
-        font-family: Monospace;
-        font-size: 13px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
         text-align: center;
-        z-index: 1000;
+      }
+
+      a {
+        color: #e00;
       }
 
       #drawing-canvas {
@@ -42,16 +41,16 @@
   <body>
     <div id="info">
       <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
-      - webgl - canvas as a texture
-      <div>click and draw in the white box</div>
+      - canvas as a texture. Draw in the white box.
     </div>
     <canvas id="drawing-canvas" height="128" width="128"></canvas>
 
     <script type="module">
       import * as THREE from "three";
       import { C3RRenderer } from "c3r-three";
+      import Stats from "three/addons/libs/stats.module.js";
 
-      let camera, scene, renderer, mesh, material;
+      let camera, scene, renderer, stats, mesh, material;
       let drawX, drawY;
 
       init();
@@ -77,6 +76,9 @@
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
+
+        stats = new Stats();
+        document.body.appendChild(stats.dom);
 
         window.addEventListener("resize", onWindowResize);
       }
@@ -129,6 +131,7 @@
         mesh.rotation.y += 0.01;
 
         renderer.render(scene, camera);
+        stats.update();
       }
     </script>
   </body>

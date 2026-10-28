@@ -6,21 +6,40 @@
     <title>c3r - Sprites 2</title>
     <style>
       body {
-        padding: 0;
         margin: 0;
-        font-weight: bold;
+        background-color: #000;
         overflow: hidden;
-        background: #000;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
+
+      a {
+        color: #08f;
       }
     </style>
   </head>
-
   <body>
+    <div id="info">
+      <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+      - sprites.
+    </div>
+
     <script type="module">
       import * as THREE from "three";
       import { C3RRenderer } from "c3r-three";
+      import Stats from "three/addons/libs/stats.module.js";
 
-      let camera, scene, renderer;
+      let camera, scene, renderer, stats;
       let cameraOrtho, sceneOrtho;
 
       let spriteTL, spriteTR, spriteBL, spriteBR, spriteC;
@@ -112,8 +131,10 @@
 
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
-
         document.body.appendChild(renderer.domElement);
+
+        stats = new Stats();
+        document.body.appendChild(stats.dom);
 
         window.addEventListener("resize", onWindowResize);
       }
@@ -183,10 +204,7 @@
 
       function animate() {
         requestAnimationFrame(animate);
-        render();
-      }
 
-      function render() {
         const time = Date.now() / 1000;
 
         for (let i = 0, l = group.children.length; i < l; i++) {
@@ -217,6 +235,7 @@
 
         renderer.render(scene, camera);
         renderer.render(sceneOrtho, cameraOrtho);
+        stats.update();
       }
     </script>
   </body>

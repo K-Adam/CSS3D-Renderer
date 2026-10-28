@@ -6,21 +6,21 @@
     <title>c3r - Physics rope</title>
     <style>
       body {
-        color: #61443e;
-        font-family: Monospace;
-        font-size: 13px;
-        text-align: center;
-
+        margin: 0;
         background-color: #bfd1e5;
-        margin: 0px;
         overflow: hidden;
       }
 
       #info {
         position: absolute;
-        top: 0px;
+        z-index: 1;
+        top: 0;
         width: 100%;
         padding: 5px;
+        box-sizing: border-box;
+        color: #61443e;
+        font: 13px monospace;
+        text-align: center;
       }
 
       a {
@@ -31,6 +31,7 @@
         position: absolute;
         bottom: 20px;
         width: 100%;
+        text-align: center;
         z-index: 1;
         pointer-events: none;
       }
@@ -49,13 +50,13 @@
   </head>
   <body>
     <div id="info">
-      Ammo.js physics soft body rope demo<br />Press Q or A, or hold the arrow
-      buttons, to move the arm.
+      <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+      - Ammo.js soft body rope. Press Q or A, or hold the arrow buttons, to move
+      the arm.
     </div>
     <div id="arm">
       <button data-move="-1">◀</button><button data-move="1">▶</button>
     </div>
-    <div id="container"><br /><br /><br /><br /><br />Loading...</div>
 
     <script src="js/libs/ammo.js"></script>
 
@@ -68,7 +69,7 @@
       // - Global variables -
 
       // Graphics variables
-      let container, stats;
+      let stats;
       let camera, controls, scene, renderer;
       let textureLoader;
       const timer = new THREE.Timer();
@@ -89,7 +90,6 @@
       const transformAux1 = new Ammo.btTransform();
       const ropeAux1 = new THREE.Vector3();
 
-      let time = 0;
       let armMovement = 0;
 
       // - Main code -
@@ -110,8 +110,6 @@
       }
 
       function initGraphics() {
-        container = document.getElementById("container");
-
         camera = new THREE.PerspectiveCamera(
           60,
           window.innerWidth / window.innerHeight,
@@ -153,14 +151,10 @@
 
         scene.add(light);
 
-        container.innerHTML = "";
-
-        container.appendChild(renderer.domElement);
+        document.body.appendChild(renderer.domElement);
 
         stats = new Stats();
-        stats.dom.style.position = "absolute";
-        stats.dom.style.top = "0px";
-        container.appendChild(stats.dom);
+        document.body.appendChild(stats.dom);
 
         window.addEventListener("resize", onWindowResize);
       }
@@ -475,14 +469,12 @@
 
       function initInput() {
         window.addEventListener("keydown", function (event) {
-          switch (event.keyCode) {
-            // Q
-            case 81:
+          switch (event.code) {
+            case "KeyQ":
               armMovement = 1;
               break;
 
-            // A
-            case 65:
+            case "KeyA":
               armMovement = -1;
               break;
           }
@@ -514,18 +506,10 @@
       function animate() {
         requestAnimationFrame(animate);
 
-        render();
-        stats.update();
-      }
-
-      function render() {
-        const deltaTime = timer.update().getDelta();
-
-        updatePhysics(deltaTime);
+        updatePhysics(timer.update().getDelta());
 
         renderer.render(scene, camera);
-
-        time += deltaTime;
+        stats.update();
       }
 
       function updatePhysics(deltaTime) {

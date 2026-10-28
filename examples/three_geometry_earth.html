@@ -6,22 +6,22 @@
     <title>c3r - Earth</title>
     <style>
       body {
-        color: #808080;
-        font-family: Monospace;
-        font-size: 13px;
-        text-align: center;
-
+        margin: 0;
         background-color: #ffffff;
-        margin: 0px;
         overflow: hidden;
         touch-action: none;
       }
 
       #info {
         position: absolute;
-        top: 0px;
+        z-index: 1;
+        top: 0;
         width: 100%;
         padding: 5px;
+        box-sizing: border-box;
+        color: #808080;
+        font: 13px monospace;
+        text-align: center;
       }
 
       a {
@@ -30,10 +30,9 @@
     </style>
   </head>
   <body>
-    <div id="container"></div>
     <div id="info">
       <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
-      - earth demo
+      - earth. Move the pointer to orbit.
     </div>
 
     <script type="module">
@@ -41,8 +40,7 @@
       import { C3RRenderer } from "c3r-three";
       import Stats from "three/addons/libs/stats.module.js";
 
-      let container, stats;
-      let camera, scene, renderer;
+      let camera, scene, renderer, stats;
       let group;
       let mouseX = 0,
         mouseY = 0;
@@ -54,8 +52,6 @@
       animate();
 
       function init() {
-        container = document.getElementById("container");
-
         camera = new THREE.PerspectiveCamera(
           60,
           window.innerWidth / window.innerHeight,
@@ -117,12 +113,12 @@
 
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
-        container.appendChild(renderer.domElement);
+        document.body.appendChild(renderer.domElement);
 
         stats = new Stats();
-        container.appendChild(stats.dom);
+        document.body.appendChild(stats.dom);
 
-        document.addEventListener("pointermove", onDocumentMouseMove);
+        document.addEventListener("pointermove", onPointerMove);
 
         window.addEventListener("resize", onWindowResize);
       }
@@ -137,21 +133,14 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
-      function onDocumentMouseMove(event) {
+      function onPointerMove(event) {
         mouseX = event.clientX - windowHalfX;
         mouseY = event.clientY - windowHalfY;
       }
 
       function animate() {
-        if (!window.no_animate) {
-          requestAnimationFrame(animate);
-        }
+        requestAnimationFrame(animate);
 
-        render();
-        stats.update();
-      }
-
-      function render() {
         camera.position.x += (mouseX - camera.position.x) * 0.05;
         camera.position.y += (-mouseY - camera.position.y) * 0.05;
         camera.lookAt(scene.position);
@@ -159,6 +148,7 @@
         group.rotation.y -= 0.005;
 
         renderer.render(scene, camera);
+        stats.update();
       }
     </script>
   </body>
