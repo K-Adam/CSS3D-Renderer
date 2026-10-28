@@ -175,7 +175,7 @@ it("applies the camera zoom", () => {
   expect(cssText()).toMatch(/--c3r-camera-fov: ?53\.13/);
 });
 
-it("leaves white untinted, so a map needs no mask", () => {
+it("tints a map by its color", () => {
   const { renderer, scene, camera, root } = setup();
   const rule = () =>
     materialRule(root().querySelector("[class*=c3r-material-]")!);
@@ -186,12 +186,39 @@ it("leaves white untinted, so a map needs no mask", () => {
   scene.add(new Mesh(new BoxGeometry(), material));
   renderer.render(scene, camera);
   expect(rule()).toMatch(/--c3r-background-color: ?transparent/);
-  expect(rule()).toContain("--c3r-mask-image: none");
+  expect(rule()).not.toContain("--c3r-layers");
 
   material.color.set(0xff0000);
   renderer.render(scene, camera);
-  expect(rule()).toMatch(/--c3r-background-color: ?rgba\(255, ?0, ?0/);
-  expect(rule()).toMatch(/--c3r-mask-image: ?var\(--c3r-background-image/);
+  expect(rule()).toMatch(/--c3r-layers: ?linear-gradient\(rgb\(100% 0% 0%\)/);
+
+  // Beyond white in HDR, clamped like getHex rather than rejected
+  material.color.setRGB(2, 0, 0);
+  renderer.render(scene, camera);
+  expect(rule()).toMatch(/--c3r-layers: ?linear-gradient\(rgb\(100% 0% 0%\)/);
+
+  material.transparent = true;
+  material.opacity = 0.4;
+  renderer.render(scene, camera);
+  expect(rule()).toMatch(/--c3r-filter: ?opacity\(0\.4\)/);
+  expect(rule()).toMatch(/--c3r-layers: ?linear-gradient/);
+  material.dispose();
+});
+
+it("keeps a canvas map's url across a swap", () => {
+  const { renderer, scene, camera, root } = setup();
+  const rule = () =>
+    materialRule(root().querySelector("[class*=c3r-material-]")!);
+  const canvas = document.createElement("canvas");
+  canvas.toDataURL = () => "data:image/png;base64,AA";
+  const map = new Texture(canvas);
+  const material = new MeshBasicMaterial({ map, color: 0xff0000 });
+  scene.add(new Mesh(new BoxGeometry(), material));
+  for (const next of [map, null, map]) {
+    material.map = next;
+    renderer.render(scene, camera);
+  }
+  expect(rule()).toContain("data:image/png;base64,AA");
   material.dispose();
 });
 

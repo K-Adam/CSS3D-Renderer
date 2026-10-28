@@ -22,7 +22,7 @@ renderer.render(scene, camera);
 
 `CSS3DObject` and `CSS3DSprite` are re-exported from `three/addons`, so their elements receive pointer events as with three's renderer.
 
-Perspective and orthographic cameras are supported, including `zoom`. Material `color`, `map` (image or canvas, with `repeat` and `offset`, its alpha always), `opacity` (when `transparent`) and `side` (`BackSide` shows both sides) are applied, and a material's style is removed on its `dispose()`. `renderer.dispose()` removes every rendered scene.
+Perspective and orthographic cameras are supported, including `zoom`. Material `color`, `map` (image or canvas, with `repeat` and `offset`, its alpha always; a `color` tints it with `Filter.tint`), `opacity` (when `transparent`) and `side` (`BackSide` shows both sides) are applied, and a material's style is removed on its `dispose()`. `renderer.dispose()` removes every rendered scene.
 
 Not supported yet: `ImageBitmap` maps such as GLTFLoader's, `flipY: false`, and map `rotation` and `center`.
 

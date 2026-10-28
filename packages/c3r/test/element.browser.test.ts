@@ -16,7 +16,7 @@ it("keeps the element's own styles over the material defaults", () => {
 
   const plain = new ElementObject(document.createElement("div"));
   plain.material = new Material();
-  plain.material.backgroundColor = [0, 0, 1, 1];
+  plain.material.background = [0, 0, 1, 1];
   container.root.addChild(plain);
 
   const computed = getComputedStyle(card);

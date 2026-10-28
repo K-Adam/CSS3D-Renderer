@@ -128,6 +128,15 @@ export interface PolygonOptions {
   edges?: readonly EdgeNeighbour[];
 }
 
+const sameSize = (a: ReadonlyVec2 | null, b: ReadonlyVec2 | null) =>
+  a === b || (!!a && !!b && vec2.exactEquals(a, b));
+
+// Friend access for Container.bake(), a public setter would be API
+export let measurePolygon: (
+  polygon: Polygon,
+  size: ReadonlyVec2 | null,
+) => void;
+
 export class Polygon extends Object3D {
   readonly vertices: readonly Vertex[]; // vertices in CCW
   readonly contentElement: HTMLElement;
@@ -137,6 +146,7 @@ export class Polygon extends Object3D {
   #uvScale: ReadonlyVec2 = [1, 1];
   #uvOffset: ReadonlyVec2 = [0, 0];
   #textureSize: ReadonlyVec2 | null = null;
+  #measuredSize: ReadonlyVec2 | null = null;
   #pixelRatio = globalThis.devicePixelRatio || 1;
 
   #getDomSize: (size: number) => number;
@@ -211,7 +221,7 @@ export class Polygon extends Object3D {
   set uvScale(scale: ReadonlyVec2) {
     if (vec2.exactEquals(scale, this.#uvScale)) return;
     this.#uvScale = vec2.clone(scale);
-    if (this.#textureSize) this.#fit();
+    if (this.#size) this.#fit();
     this.#updateContent();
   }
 
@@ -221,9 +231,24 @@ export class Polygon extends Object3D {
   }
 
   set textureSize(size: ReadonlyVec2 | null) {
-    const old = this.#textureSize;
-    if (size === old || (size && old && vec2.exactEquals(size, old))) return;
+    if (sameSize(size, this.#textureSize)) return;
     this.#textureSize = size && vec2.clone(size);
+    this.#fit();
+    this.#updateContent();
+  }
+
+  get #size(): ReadonlyVec2 | null {
+    return this.#textureSize ?? this.#measuredSize;
+  }
+
+  static {
+    measurePolygon = (polygon, size) => polygon.#measure(size);
+  }
+
+  #measure(size: ReadonlyVec2 | null): void {
+    if (sameSize(size, this.#measuredSize)) return;
+    this.#measuredSize = size && vec2.clone(size);
+    if (this.#textureSize) return;
     this.#fit();
     this.#updateContent();
   }
@@ -236,7 +261,7 @@ export class Polygon extends Object3D {
   set pixelRatio(ratio: number) {
     if (ratio === this.#pixelRatio) return;
     this.#pixelRatio = ratio;
-    if (!this.#textureSize) return;
+    if (!this.#size) return;
     this.#fit();
     this.#updateContent();
   }
@@ -339,10 +364,11 @@ export class Polygon extends Object3D {
 
   // Texels per world unit in the most stretched direction
   #texelDensity(tri: Triangle): number {
-    if (!this.#textureSize) return 0;
+    const size = this.#size;
+    if (!size) return 0;
     const M = uvTransform(this.vertices, tri.norm);
     if (!M) return 0;
-    const [sx, sy] = vec2.mul(vec2.create(), this.#uvScale, this.#textureSize);
+    const [sx, sy] = vec2.mul(vec2.create(), this.#uvScale, size);
     const L = mat2.fromValues(M[0] * sx, M[1] * sy, M[3] * sx, M[4] * sy);
     // Largest singular value, from σ1² + σ2² = frob² and σ1·σ2 = |det|
     const frob2 = mat2.frob(L) ** 2;

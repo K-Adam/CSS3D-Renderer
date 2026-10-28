@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Filter effects</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #f0f0f0;
+        overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        font: 13px monospace;
+        text-align: center;
+      }
+
+      .label,
+      .heading {
+        font: 12px monospace;
+        color: #444;
+        text-align: center;
+        white-space: pre-line;
+      }
+
+      .heading {
+        font-weight: bold;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      Filter effects, in plain CSS. Hover a shape in the top row to play its
+      tween, the bottom row has static filters.
+    </div>
+
+    <script type="module">
+      import {
+        Container,
+        ElementObject,
+        Filter,
+        Group,
+        Material,
+        Transform,
+        Tween,
+      } from "c3r";
+      import { mat4 } from "gl-matrix";
+      import {
+        cone,
+        cube,
+        cylinder,
+        disc,
+        mappings,
+        sphere,
+        torus,
+      } from "primitive-geometry";
+
+      const container = new Container();
+      document.body.appendChild(container.domElement);
+      container.camera.matrix = mat4.fromTranslation(
+        mat4.create(),
+        [0, 0, 320],
+      );
+
+      // A disc facing up or down at height y
+      const cap = (radius, segments, y, texture) => ({
+        mesh: disc({
+          radius,
+          segments,
+          innerSegments: 1,
+          mapping: mappings.rectangular,
+        }),
+        matrix: mat4.rotateX(
+          mat4.create(),
+          mat4.fromTranslation(mat4.create(), [0, y, 0]),
+          -Math.sign(y) * (Math.PI / 2),
+        ),
+        texture,
+      });
+
+      const shapes = [
+        { mesh: cube({ sx: 60 }), texture: "textures/crate.jpg" },
+        {
+          mesh: sphere({ radius: 35, nx: 12, ny: 6 }),
+          texture: "textures/ornament.jpg",
+        },
+        {
+          mesh: cylinder({
+            height: 60,
+            radiusBase: 28,
+            radiusApex: 28,
+            nx: 8,
+            capBase: false,
+            capApex: false,
+          }),
+          texture: "textures/can-label.jpg",
+          caps: [
+            cap(28, 8, 30, "textures/can-lid.jpg"),
+            cap(28, 8, -30, "textures/can-lid.jpg"),
+          ],
+        },
+        {
+          mesh: torus({
+            radius: 26,
+            minorRadius: 12,
+            segments: 12,
+            minorSegments: 6,
+          }),
+          texture: "textures/lifebuoy.jpg",
+        },
+        {
+          // Rings keep the texture continuous below the apex triangles
+          mesh: cone({ height: 60, radius: 32, nx: 12, ny: 4, capBase: false }),
+          texture: "textures/mountain.jpg",
+          caps: [cap(32, 12, -30, "textures/dirt.jpg")],
+        },
+      ];
+
+      const textured = (texture, filter = null) => {
+        const material = new Material();
+        material.background = texture;
+        material.filter = filter;
+        return material;
+      };
+
+      const turn = 2 * Math.PI;
+      const looping = { duration: 3, loop: true, alternate: true, hover: true };
+      const animated = [
+        {
+          label: "brightness",
+          tween: new Tween({
+            keyframes: [Filter.brightness(1.8)],
+            duration: 0.3,
+            hover: true,
+          }),
+        },
+        {
+          label: "hueRotate",
+          tween: new Tween({
+            keyframes: [Filter.hueRotate(turn)],
+            duration: 4,
+            loop: true,
+            hover: true,
+          }),
+        },
+        {
+          label: "tint",
+          tween: new Tween({
+            keyframes: [Filter.tint([0.8, 0.4, 1])],
+            ...looping,
+          }),
+        },
+        {
+          label: "opacity",
+          tween: new Tween({ keyframes: [Filter.opacity(0.2)], ...looping }),
+        },
+        {
+          label: "grayscale",
+          tween: new Tween({ keyframes: [Filter.grayscale(1)], ...looping }),
+        },
+      ];
+      const fixed = [
+        { label: "tint", filter: Filter.tint([1, 0.45, 0.35]) },
+        { label: "sepia", filter: Filter.sepia(1) },
+        { label: "invert", filter: Filter.invert(1) },
+        { label: "saturate", filter: Filter.saturate(3) },
+        {
+          label: "contrast,\nbrightness",
+          filter: [Filter.contrast(1.6), Filter.brightness(0.8)],
+        },
+      ];
+
+      const columns = 5;
+      // Grid centers, column -1 is the row heading
+      const at = (column, row) => [
+        (column - (columns - 1) / 2) * 100,
+        (0.5 - row) * 130 + 10,
+        0,
+      ];
+
+      [...animated, ...fixed].forEach(({ label, tween, filter }, i) => {
+        const [x, y] = at(i % columns, Math.floor(i / columns));
+
+        const model = new Group();
+        container.root.addChild(model);
+        const { mesh, texture, caps = [] } = shapes[i % shapes.length];
+        model.addMesh(mesh);
+        model.matrix = mat4.fromTranslation(mat4.create(), [x, y, 0]);
+        model.material = textured(texture, filter);
+        // Caps inherit the model's filters and tweens
+        for (const { mesh, matrix, texture } of caps) {
+          const lid = new Group();
+          model.addChild(lid);
+          lid.addMesh(mesh);
+          lid.matrix = matrix;
+          lid.material = textured(texture);
+        }
+        const spin = new Tween({
+          keyframes: [[Transform.rotateX(turn), Transform.rotateY(turn)]],
+          duration: 6 + i,
+          loop: true,
+        });
+        // A group's tweens combine, here a spin and an effect
+        model.tween = tween ? [spin, tween] : spin;
+
+        const caption = document.createElement("div");
+        caption.className = "label";
+        caption.textContent = label;
+        const text = new ElementObject(caption);
+        text.setSize(160, 16);
+        container.root.addChild(text);
+        text.matrix = mat4.fromTranslation(mat4.create(), [x, y - 62, 0]);
+      });
+
+      ["Hover to\nplay", "Static"].forEach((title, row) => {
+        const heading = document.createElement("div");
+        heading.className = "heading";
+        heading.textContent = title;
+        const text = new ElementObject(heading);
+        text.setSize(60, 32);
+        container.root.addChild(text);
+        text.matrix = mat4.fromTranslation(mat4.create(), at(-1, row));
+      });
+
+      container.bake();
+    </script>
+  </body>
+</html>

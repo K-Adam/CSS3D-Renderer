@@ -535,7 +535,7 @@ describe("Material", () => {
     const group = new Group();
     {
       using material = new Material();
-      material.backgroundColor = [1, 0, 0, 1];
+      material.background = [1, 0, 0, 1];
       group.material = material;
 
       expect(group.domElement.classList).toContain(material.className);
@@ -567,10 +567,10 @@ describe("Material", () => {
     expect(rule()).not.toContain("backface-visibility");
   });
 
-  it("masks a tint to the image in effect", () => {
+  it("paints a color or an image, hiding the other from a parent", () => {
     using material = new Material();
     const vars = () =>
-      ["--c3r-background-color", "--c3r-mask-image"].map(
+      ["--c3r-background-color", "--c3r-background-image"].map(
         (name) =>
           new RegExp(`${name}: ?([^;]+)`).exec(
             ruleOf(material.className),
@@ -578,15 +578,39 @@ describe("Material", () => {
       );
 
     expect(vars()).toEqual([null, null]);
-    material.backgroundImageSrc = "leaf.png";
-    expect(vars()).toEqual(["transparent", "none"]);
-    material.backgroundColor = [1, 0, 0, 1];
+    material.background = "leaf.png";
+    expect(vars()).toEqual(["transparent", 'url("leaf.png")']);
+    material.background = [1, 0, 0, 1];
     expect(vars()[0]).toMatch(/rgba\(255, ?0, ?0, ?1\)/);
-    expect(vars()[1]).toBe("var(--c3r-background-image, none)");
-    material.backgroundImageSrc = null;
-    expect(vars()[1]).toBe("var(--c3r-background-image, none)");
-    material.backgroundColor = null;
+    expect(vars()[1]).toBe("none");
+    material.background = "";
     expect(vars()).toEqual([null, null]);
+    expect(material.background).toBe(null);
+  });
+
+  it("paints a color opaque and fades it, so a tint stays exact", () => {
+    using material = new Material();
+    const rule = () => ruleOf(material.className);
+    material.background = [1, 0, 0, 0.5];
+    expect(rule()).toMatch(/--c3r-background-opaque: ?rgb\(255, ?0, ?0\)/);
+    expect(rule()).toMatch(/--c3r-background-alpha: ?0\.5/);
+    expect(rule()).toMatch(/--c3r-alpha-mask: ?none/);
+  });
+
+  it("keeps an image's mask when it can't read the pixels", async () => {
+    using material = new Material();
+    material.background = "leaf.png";
+    const container = new Container();
+    container.root.material = material;
+    container.root.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    await container.bake();
+    expect(ruleOf(material.className)).toContain(
+      '--c3r-alpha-mask: url("leaf.png")',
+    );
   });
 
   it("filters with Filter steps only", () => {
@@ -603,6 +627,30 @@ describe("Material", () => {
     expect(() => (material.filter = Transform.scale(2) as never)).toThrow(
       TypeError,
     );
+  });
+
+  it("tints by a multiplied color layer, replacing a parent's filters", () => {
+    using material = new Material();
+    const rule = () => ruleOf(material.className);
+    material.filter = [Filter.tint([1, 0.8, 0.6]), Filter.opacity(0.5)];
+    expect(rule()).toContain(
+      "--c3r-layers: linear-gradient(rgb(100% 80% 60%), rgb(100% 80% 60%)),",
+    );
+    expect(rule()).toContain("--c3r-layered: alpha");
+    expect(rule()).toContain("--c3r-filter: opacity(0.5)");
+    // Only the tint changes, which must not be skipped
+    material.filter = [Filter.tint([0, 0, 1]), Filter.opacity(0.5)];
+    expect(rule()).toContain("rgb(0% 0% 100%)");
+    // A tint alone still hides the parent's filters
+    material.filter = Filter.tint([0, 0, 1]);
+    expect(rule()).toContain("--c3r-filter: initial");
+    material.filter = Filter.sepia(1);
+    expect(rule()).toMatch(/--c3r-layers: initial;.*--c3r-layered: initial/);
+    material.filter = null;
+    expect(rule()).not.toMatch(/--c3r-(filter|layer)/);
+
+    expect(() => Filter.tint([1, 0, 1.5])).toThrow(RangeError);
+    expect(() => Filter.tint([NaN, 0, 0])).toThrow(RangeError);
   });
 });
 
@@ -813,7 +861,7 @@ describe("Tween", () => {
     expect(() => Transform.scale([1, 1] as never)).toThrow(RangeError);
     expect(() => Transform.rotateY(Infinity)).toThrow(RangeError);
     expect(() => Filter.brightness(-1)).toThrow(RangeError);
-    expect(() => Filter.blur(NaN)).toThrow(RangeError);
+    expect(() => Filter.sepia(NaN)).toThrow(RangeError);
     expect(
       () => new Tween({ keyframes: [[Filter.sepia(1), Filter.sepia(0.5)]] }),
     ).toThrow(RangeError);
@@ -846,15 +894,15 @@ describe("Tween", () => {
   it("chains filters in order, each through its own property", () => {
     using look = new Tween({
       keyframes: [
-        [Filter.brightness(2), Filter.hueRotate(turn), Filter.blur(3)],
+        [Filter.brightness(2), Filter.hueRotate(turn), Filter.sepia(0.5)],
       ],
     });
     const p = `--${look.className}`;
     expect(cssText()).toContain(
-      `0% { ${p}-brightness: 1; ${p}-hue-rotate: 0rad; ${p}-blur: 0px; }`,
+      `0% { ${p}-brightness: 1; ${p}-hue-rotate: 0rad; ${p}-sepia: 0; }`,
     );
     expect(cssText()).toContain(
-      `100% { ${p}-brightness: 2; ${p}-hue-rotate: ${turn}rad; ${p}-blur: 3px; }`,
+      `100% { ${p}-brightness: 2; ${p}-hue-rotate: ${turn}rad; ${p}-sepia: 0.5; }`,
     );
     expect(cssText()).toContain(
       `@property ${p}-hue-rotate { syntax: "<angle>"; inherits: false; initial-value: 0rad; }`,
@@ -862,8 +910,34 @@ describe("Tween", () => {
     const group = new Group();
     group.tween = look;
     expect(group.domElement.style.getPropertyValue("--c3r-tween-filter")).toBe(
-      `brightness(var(${p}-brightness, 1)) hue-rotate(var(${p}-hue-rotate, 0rad)) blur(var(${p}-blur, 0px))`,
+      `brightness(var(${p}-brightness, 1)) hue-rotate(var(${p}-hue-rotate, 0rad)) sepia(var(${p}-sepia, 0))`,
     );
+  });
+
+  it("tweens a tint as one color, with any easing or hover", () => {
+    using change = new Tween({
+      keyframes: [Filter.tint([1, 0.8, 0.6])],
+      easing: "ease",
+    });
+    const p = `--${change.className}-tint`;
+    expect(cssText()).toMatch(
+      new RegExp(`@property ${p} ?\{ ?syntax: ?"<color>"`),
+    );
+    expect(cssText()).toContain(`${p}: rgb(100% 80% 60%)`);
+    const group = new Group();
+    group.tween = change;
+    const { style } = group.domElement;
+    expect(style.getPropertyValue("--c3r-tween-layers")).toBe(
+      `linear-gradient(var(${p}, white), var(${p}, white)),`,
+    );
+    expect(style.getPropertyValue("--c3r-tween-filter")).toBe("initial");
+    group.tween = null;
+    expect(style.getPropertyValue("--c3r-tween-layers")).toBe("");
+    expect(() =>
+      new Tween({ keyframes: [Filter.tint([0, 0, 1])], hover: true })[
+        Symbol.dispose
+      ](),
+    ).not.toThrow();
   });
 });
 
@@ -873,14 +947,14 @@ describe("server-side rendering", () => {
     expect(cssText()).toContain("@property --c3r-matrix");
   });
 
-  it("exports the scene as static html", () => {
+  it("exports the scene as static html", async () => {
     const container = new Container();
     const group = new Group();
     group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
     group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
     container.root.addChild(group);
 
-    const html = container.toHTML();
+    const html = await container.toHTML();
     const { outerHTML } = container.domElement;
 
     const css = cssText().replaceAll("<", "\\3c ");
@@ -888,17 +962,17 @@ describe("server-side rendering", () => {
     expect(outerHTML).toContain("--c3r-unit-scale");
   });
 
-  it("keeps every value inside the exported style element", () => {
+  it("keeps every value inside the exported style element", async () => {
     const container = new Container();
     const group = new Group();
     group.material = new Material();
-    group.material.backgroundImageSrc = "a</style><script>x</script>";
+    group.material.background = "a</style><script>x</script>";
     container.root.addChild(group);
 
-    expect(container.toHTML()).not.toContain("</style><script>");
+    expect(await container.toHTML()).not.toContain("</style><script>");
 
-    group.material.backgroundImageSrc = 'x\n") } .c3r-polygon { display: none';
-    expect(container.toHTML()).not.toMatch(/[\n"]\) \} \.c3r-polygon/);
+    group.material.background = 'x\n") } .c3r-polygon { display: none';
+    expect(await container.toHTML()).not.toMatch(/[\n"]\) \} \.c3r-polygon/);
     group.material[Symbol.dispose]();
   });
 

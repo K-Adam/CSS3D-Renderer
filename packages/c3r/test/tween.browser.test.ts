@@ -74,7 +74,7 @@ it("keeps the matrix and the other tweens when one is disposed", () => {
   s.group.tween = [spin, tint, fade];
 
   tint[Symbol.dispose]();
-  expect(getComputedStyle(s.face.domElement).filter).toBe(
+  expect(getComputedStyle(s.face.contentElement).filter).toBe(
     "sepia(0) opacity(0.5)",
   );
   spin[Symbol.dispose]();
@@ -117,7 +117,7 @@ it("rests a hover transition at `from`, also when assigned later", () => {
     duration: 100,
     hover: true,
   });
-  const filter = () => getComputedStyle(s.face.domElement).filter;
+  const filter = () => getComputedStyle(s.face.contentElement).filter;
   expect(filter()).toBe("none");
   s.group.tween = fade;
   expect(filter()).toBe("opacity(0.5)");
@@ -168,10 +168,10 @@ it("filters the polygons, keeping the group 3D", () => {
   s.group.tween = tween;
 
   const { opacity, filter } = getComputedStyle(s.face.domElement);
-  expect([opacity, filter]).toEqual([
-    "1",
+  expect([opacity, filter]).toEqual(["1", "none"]);
+  expect(getComputedStyle(s.face.contentElement).filter).toBe(
     "opacity(0.5) opacity(0.5) brightness(1.5)",
-  ]);
+  );
   expect(getComputedStyle(s.group.domElement).filter).toBe("none");
   const plain = square(s.container.root);
   expect(getComputedStyle(plain.domElement).filter).toBe("none");
@@ -181,7 +181,7 @@ it("filters the polygons, keeping the group 3D", () => {
 it("eases to its end while hovered and back on leave, unless paused", async () => {
   using s = scene();
   const opacity = () =>
-    +/opacity\((.*)\)/.exec(getComputedStyle(s.face.domElement).filter)![1];
+    +/opacity\((.*)\)/.exec(getComputedStyle(s.face.contentElement).filter)![1];
   using tween = new Tween({
     keyframes: [Filter.opacity(0.5)],
     duration: 100,
@@ -216,40 +216,81 @@ it("runs several tweens on one group, chaining their filters", async () => {
   s.group.tween = [spin, tint, fade];
 
   expect(transform(s.group.domElement)).toEqual([-1, -1, 0]);
-  const filter = () => getComputedStyle(s.face.domElement).filter;
+  const filter = () => getComputedStyle(s.face.contentElement).filter;
   expect(filter()).toBe("sepia(0.5) opacity(1)");
   await userEvent.hover(s.face.domElement);
   await new Promise((resolve) => setTimeout(resolve, 100));
   expect(filter()).toBe("sepia(0.5) opacity(0.5)");
 });
 
-it("masks only a tinted image to its alpha, also an inherited one", () => {
+it("tweens a tint linearly in sRGB", () => {
+  using s = scene();
+  using tween = new Tween({ keyframes: [Filter.tint([0, 0.5, 1])], ...half });
+  s.group.tween = tween;
+  expect(
+    getComputedStyle(s.group.domElement).getPropertyValue(
+      `--${tween.className}-tint`,
+    ),
+  ).toBe("rgb(128, 191, 255)");
+});
+
+// A blob url, data urls skip the check
+const png = async (alpha: number) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 8;
+  const context = canvas.getContext("2d")!;
+  context.fillStyle = `rgba(0, 128, 0, ${alpha})`;
+  context.fillRect(0, 0, 8, 8);
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve),
+  );
+  return URL.createObjectURL(blob!);
+};
+
+it("masks a tinted image only while it may have transparency", async () => {
+  using s = scene();
+  const mask = () => getComputedStyle(s.face.contentElement).maskImage;
+  s.group.material = new Material();
+  s.group.material.background = await png(0.5);
+  await s.container.bake();
+  expect(mask()).toBe("none");
+  s.group.material.filter = Filter.tint([1, 0, 0]);
+  expect(mask()).toMatch(/^url\("blob:/);
+  s.group.material.background = await png(1);
+  expect(mask()).toMatch(/^url\("blob:/);
+  await s.container.bake();
+  expect(mask()).toBe("none");
+});
+
+it("paints a color or an image, hiding the other from a parent", () => {
   using s = scene();
   const paint = (face: { contentElement: Element }) => {
-    const { backgroundColor, maskImage } = getComputedStyle(
+    const { backgroundColor, backgroundImage } = getComputedStyle(
       face.contentElement,
     );
-    return [backgroundColor, maskImage.replace(/url\(".*\//, 'url("')];
+    return [backgroundColor, backgroundImage.replace(/url\(".*\//, 'url("')];
+  };
+  const inside = (background: Material["background"]) => {
+    const group = new Group();
+    s.container.root.addChild(group);
+    group.material = new Material();
+    group.material.background = background;
+    const face = square(group);
+    face.material = new Material();
+    return face;
   };
   const image = square(s.container.root);
   image.material = new Material();
-  image.material.backgroundImageSrc = "leaf.png";
-  const tinted = square(s.container.root);
-  tinted.material = new Material();
-  tinted.material.backgroundColor = [1, 0, 0, 1];
-  tinted.material.backgroundImageSrc = "leaf.png";
-  const leaf = new Group();
-  s.container.root.addChild(leaf);
-  leaf.material = new Material();
-  leaf.material.backgroundImageSrc = "leaf.png";
-  const inherited = square(leaf);
-  inherited.material = new Material();
-  inherited.material.backgroundColor = [1, 0, 0, 1];
+  image.material.background = "leaf.png";
+  const color = inside("leaf.png");
+  color.material!.background = [1, 0, 0, 1];
+  const leaf = inside([1, 0, 0, 1]);
+  leaf.material!.background = "leaf.png";
 
   expect(paint(s.face)).toEqual(["rgb(255, 255, 255)", "none"]);
-  expect(paint(image)).toEqual(["rgba(0, 0, 0, 0)", "none"]);
-  expect(paint(tinted)).toEqual(["rgb(255, 0, 0)", 'url("leaf.png")']);
-  expect(paint(inherited)).toEqual(["rgb(255, 0, 0)", 'url("leaf.png")']);
+  expect(paint(image)).toEqual(["rgba(0, 0, 0, 0)", 'url("leaf.png")']);
+  expect(paint(color)).toEqual(["rgb(255, 0, 0)", "none"]);
+  expect(paint(leaf)).toEqual(["rgba(0, 0, 0, 0)", 'url("leaf.png")']);
 });
 
 it("rejects an easing that CSS would drop, leaving no rules", () => {

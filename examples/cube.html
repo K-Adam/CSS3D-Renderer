@@ -26,7 +26,7 @@
   </head>
   <body>
     <div id="info">
-      A spinning box built from CSS 3D transforms, hover to fade
+      A spinning box built from CSS 3D transforms, hover to brighten
     </div>
     <script type="module">
       import {
@@ -48,7 +48,7 @@
       box.addMesh(cube({ sx: 200 }));
 
       box.material = new Material();
-      box.material.backgroundImageSrc = "textures/crate.jpg";
+      box.material.background = "textures/crate.jpg";
 
       container.camera.matrix = mat4.fromTranslation(
         mat4.create(),
@@ -67,12 +67,12 @@
         duration: turn, // one radian per second
         loop: true,
       });
-      const fade = new Tween({
-        keyframes: [Filter.opacity(0.5)],
+      const brighten = new Tween({
+        keyframes: [Filter.brightness(1.5)],
         duration: 0.5,
         hover: true,
       });
-      box.tween = [spin, fade];
+      box.tween = [spin, brighten];
 
       container.bake();
     </script>

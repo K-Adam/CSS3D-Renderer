@@ -1,151 +1,9 @@
 import "../polyfill.js";
 
-import type { ReadonlyVec3 } from "gl-matrix";
-
+import { type Filter, filterTexts, filterVariables } from "./Filter.js";
+import { type Step, stepOf, stepText } from "./steps.js";
 import { deleteRule, insertRule } from "./styles.js";
-
-interface Step {
-  name: string;
-  syntax: string;
-  identity: string;
-  values: string[];
-  // Set on transforms only, which also tells them from filters
-  invert?: (value: string) => string;
-}
-
-// Only factory-made steps, a forged one would inject raw CSS
-const steps = new WeakMap<Transform | Filter, Step>();
-
-const vector = (v: ReadonlyVec3, unit = ""): string[] => {
-  const values = Array.from(v);
-  if (values.length !== 3 || !values.every(Number.isFinite))
-    throw new RangeError(`Invalid vector ${values}`);
-  return values.map((n) => n + unit);
-};
-
-const negate = (value: string) => `calc(-1 * ${value})`;
-
-const radians = (angle: number): string => {
-  if (!Number.isFinite(angle)) throw new RangeError(`Invalid angle ${angle}`);
-  return `${angle}rad`;
-};
-
-const amount = (n: number): string => {
-  if (!(n >= 0 && Number.isFinite(n)))
-    throw new RangeError(`Invalid amount ${n}`);
-  return String(n);
-};
-
-export class Transform {
-  declare private readonly brand: "transform";
-
-  private constructor() {}
-
-  static #create(
-    name: string,
-    syntax: string,
-    identity: string,
-    values: string[],
-    invert = negate,
-  ): Transform {
-    const transform = new Transform();
-    steps.set(transform, { name, syntax, identity, values, invert });
-    return transform;
-  }
-
-  // Scene units
-  static translate(v: ReadonlyVec3): Transform {
-    return Transform.#create("translate3d", "<length>", "0px", vector(v, "px"));
-  }
-
-  static rotateX(angle: number): Transform {
-    return Transform.#create("rotateX", "<angle>", "0rad", [radians(angle)]);
-  }
-
-  static rotateY(angle: number): Transform {
-    return Transform.#create("rotateY", "<angle>", "0rad", [radians(angle)]);
-  }
-
-  static rotateZ(angle: number): Transform {
-    return Transform.#create("rotateZ", "<angle>", "0rad", [radians(angle)]);
-  }
-
-  static scale(s: number | ReadonlyVec3): Transform {
-    const v = typeof s === "number" ? [s, s, s] : s;
-    return Transform.#create(
-      "scale3d",
-      "<number>",
-      "1",
-      vector(v),
-      (value) => `calc(1 / ${value})`,
-    );
-  }
-}
-
-export class Filter {
-  declare private readonly brand: "filter";
-
-  private constructor() {}
-
-  static #create(
-    name: string,
-    identity: string,
-    value: string,
-    syntax = "<number>",
-  ): Filter {
-    const filter = new Filter();
-    steps.set(filter, { name, syntax, identity, values: [value] });
-    return filter;
-  }
-
-  static opacity(n: number): Filter {
-    return Filter.#create("opacity", "1", amount(n));
-  }
-
-  static brightness(n: number): Filter {
-    return Filter.#create("brightness", "1", amount(n));
-  }
-
-  static contrast(n: number): Filter {
-    return Filter.#create("contrast", "1", amount(n));
-  }
-
-  static saturate(n: number): Filter {
-    return Filter.#create("saturate", "1", amount(n));
-  }
-
-  static grayscale(n: number): Filter {
-    return Filter.#create("grayscale", "0", amount(n));
-  }
-
-  static sepia(n: number): Filter {
-    return Filter.#create("sepia", "0", amount(n));
-  }
-
-  static invert(n: number): Filter {
-    return Filter.#create("invert", "0", amount(n));
-  }
-
-  static hueRotate(angle: number): Filter {
-    return Filter.#create("hue-rotate", "0rad", radians(angle), "<angle>");
-  }
-
-  // px of each polygon's element
-  static blur(radius: number): Filter {
-    return Filter.#create("blur", "0px", `${amount(radius)}px`, "<length>");
-  }
-}
-
-export function filterText(filter: Filter | readonly Filter[] | null): string {
-  return [filter ?? []]
-    .flat()
-    .map((f) => {
-      const step = steps.get(f);
-      if (!step || step.invert) throw new TypeError("Not a Filter");
-      return `${step.name}(${step.values[0]})`;
-    })
-    .join(" ");
-}
+import type { Transform } from "./Transform.js";
 
 type Steps = Transform | Filter | readonly (Transform | Filter)[];
 export type Keyframe = Steps | { steps: Steps; duration?: number };
@@ -167,6 +25,7 @@ interface Style {
   transform?: string;
   inverse?: string;
   filter?: string;
+  layers?: string;
   animation?: string;
   transition?: string;
   hover?: boolean;
@@ -195,7 +54,11 @@ export function setTweens(
       : list("transform", " "),
     animation: list("animation", ", "),
     transition: list("transition", ", "),
-    "--c3r-tween-filter": list("filter", " "),
+    ...filterVariables(
+      "--c3r-tween-",
+      list("filter", " "),
+      list("layers", " "),
+    ),
   };
   for (const [name, value] of Object.entries(properties)) {
     if (value) style?.setProperty(name, value);
@@ -231,7 +94,7 @@ export class Tween {
     const apply = (changes: Steps, where: string) => {
       const names = new Set<string>();
       for (const change of [changes].flat()) {
-        const step = steps.get(change);
+        const step = stepOf(change);
         if (!step) throw new TypeError("Not a Transform or Filter");
         if (names.has(step.name))
           throw new RangeError(`${step.name} twice in ${where}`);
@@ -287,8 +150,7 @@ export class Tween {
     const property = (s: Step, i: number) =>
       `${track}-${s.name}${s.values.length > 1 ? `-${"xyz"[i]}` : ""}`;
     const used = [...pose.values()];
-    const transforms = used.filter((s) => s.invert);
-    const filters = used.filter((s) => !s.invert);
+    const transforms = used.filter((s) => s.kind === "transform");
     const frame = (stop: Map<string, Step>) =>
       used.flatMap((s) =>
         s.values.map((_, i): [string, string] => [
@@ -344,17 +206,16 @@ export class Tween {
     // Fallbacks keep the element's other tweens when this one is disposed
     const part: Style = { hover };
     if (transforms.length) {
-      part.transform = transforms
-        .map((s) => `${s.name}(${args(s).join()})`)
-        .join(" ");
+      part.transform = transforms.map((s) => stepText(s, args(s))).join(" ");
       part.inverse = transforms
         .toReversed()
-        .map((s) => `${s.name}(${args(s).map(s.invert!).join()})`)
+        .map((s) => stepText(s, args(s).map(s.invert!)))
         .join(" ");
     }
     // Inherited as resolved text, a filter on the group would flatten it
-    if (filters.length)
-      part.filter = filters.map((s) => `${s.name}(${args(s)[0]})`).join(" ");
+    const { filter, layers } = filterTexts(used, args);
+    if (filter) part.filter = filter;
+    if (layers) part.layers = layers;
     if (transition) {
       style.setProperty(
         `${track}-transition`,
