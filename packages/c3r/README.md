@@ -17,7 +17,7 @@ import { Container, Polygon } from "c3r";
 Or with a script tag, using [GitHub Releases](https://github.com/K-Adam/CSS3D-Renderer/releases) or a CDN:
 
 ```html
-<script src="https://unpkg.com/c3r@0.2/dist/c3r.min.js"></script>
+<script src="https://unpkg.com/c3r@0.3/dist/c3r.min.js"></script>
 ```
 
 It bundles gl-matrix and exposes a `C3R` global.
