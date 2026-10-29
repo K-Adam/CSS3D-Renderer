@@ -6,8 +6,8 @@ export interface Step {
   syntax: string;
   identity: string;
   values: string[];
-  // Transforms only, for the camera
-  invert?: (value: string) => string;
+  // Transforms only, for the camera, null without an inverse
+  invert?: ((value: string) => string) | null;
 }
 
 // Only factory-made steps, a forged one would inject raw CSS

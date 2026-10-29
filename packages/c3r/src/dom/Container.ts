@@ -3,7 +3,7 @@ import { mat4, type ReadonlyMat4 } from "gl-matrix";
 import type { Camera } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
-import { cssText } from "../css/styles.js";
+import { styleHTML } from "../css/styles.js";
 
 import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
@@ -135,9 +135,7 @@ export class Container {
 
   async toHTML(): Promise<string> {
     await this.bake();
-    // So no value can close the style element
-    const css = cssText().replaceAll("<", "\\3c ");
-    return `<style>${css}</style>${this.domElement.outerHTML}`;
+    return styleHTML() + this.domElement.outerHTML;
   }
 
   setSize(width: number, height: number): void {

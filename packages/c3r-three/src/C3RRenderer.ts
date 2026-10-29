@@ -116,6 +116,11 @@ export class C3RRenderer {
     void container.bake();
   }
 
+  async toHTML(): Promise<string> {
+    await Promise.all([...this.#containers.values()].map((c) => c.bake()));
+    return C3R.styleHTML() + this.domElement.outerHTML;
+  }
+
   #syncCamera(container: C3R.Container, camera: Camera): void {
     const c = container.camera;
 
@@ -342,7 +347,8 @@ export class C3RRenderer {
     const image: unknown = map?.image;
     let src: string | null = null;
     if (image instanceof HTMLImageElement) {
-      src = image.src;
+      // As written, a server-side DOM resolves it against its own origin
+      src = image.getAttribute("src") ?? image.src;
     } else if (image instanceof HTMLCanvasElement && map) {
       if (state.map !== map || state.version !== map.version) {
         state.canvasSrc = image.toDataURL();

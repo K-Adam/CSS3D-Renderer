@@ -14,7 +14,7 @@ import {
   Texture,
   Vector3,
 } from "three";
-import { cssText } from "c3r";
+import { cssText, styleHTML } from "c3r";
 import { C3RRenderer, CSS3DObject } from "../src/C3RRenderer.js";
 
 const materialRule = (element: Element) => {
@@ -202,6 +202,7 @@ it("tints a map by its color", () => {
   renderer.render(scene, camera);
   expect(rule()).toMatch(/--c3r-filter: ?opacity\(0\.4\)/);
   expect(rule()).toMatch(/--c3r-layers: ?linear-gradient/);
+  expect(rule()).toContain('url("crate.png")');
   material.dispose();
 });
 
@@ -324,6 +325,28 @@ it("removes the scenes and camera rules on dispose", () => {
 
   renderer.render(scene, camera);
   expect(renderer.domElement.children).toHaveLength(1);
+});
+
+it("fills the window until setSize()", () => {
+  const { scene, camera } = setup();
+  const renderer = new C3RRenderer();
+  renderer.render(scene, camera);
+  const container = renderer.domElement.firstElementChild as HTMLElement;
+  const viewport = () =>
+    container.style.getPropertyValue("--c3r-viewport-height");
+  expect(renderer.domElement.style.height).toBe("");
+  expect(viewport()).toBe("");
+
+  renderer.setSize(400, 300);
+  expect(viewport()).toBe("300px");
+});
+
+it("exports the scenes as static html", async () => {
+  const { renderer, scene, camera } = setup();
+  renderer.render(scene, camera);
+  const html = await renderer.toHTML();
+  expect(html).toBe(styleHTML() + renderer.domElement.outerHTML);
+  expect(html).toContain("c3r-container");
 });
 
 it("scales the view by its densest polygon, flat faces stay small", () => {

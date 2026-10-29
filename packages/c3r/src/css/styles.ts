@@ -57,3 +57,7 @@ export const cssText = (): string =>
       .map((r) => r.cssText),
     ...Array.from(rejected, (r) => r.cssText),
   ].join("\n");
+
+// So no value can close the style element
+export const styleHTML = (): string =>
+  `<style>${cssText().replaceAll("<", "\\3c ")}</style>`;

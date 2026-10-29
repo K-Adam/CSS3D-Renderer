@@ -12,6 +12,7 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   Polygon,
+  styleHTML,
   Transform,
   Tween,
   type Vertex,
@@ -842,6 +843,15 @@ describe("Tween", () => {
     expect(() => (camera.tween = [move, hover])).toThrow(RangeError);
     expect(cssText()).not.toContain(`.${hover.className}, .c3r-view`);
     expect(camera.tween).toEqual([move, grow]);
+    for (const keyframes of [
+      [Transform.scale(0)],
+      [Transform.scale([1, -1, 1])],
+      [Transform.scale(-1), Transform.scale(1)],
+    ]) {
+      using flat = new Tween({ keyframes });
+      expect(() => (camera.tween = flat)).toThrow(RangeError);
+    }
+    expect(camera.tween).toEqual([move, grow]);
     camera.tween = null;
     expect(rule()).not.toContain("tween");
   });
@@ -957,8 +967,7 @@ describe("server-side rendering", () => {
     const html = await container.toHTML();
     const { outerHTML } = container.domElement;
 
-    const css = cssText().replaceAll("<", "\\3c ");
-    expect(html).toBe(`<style>${css}</style>${outerHTML}`);
+    expect(html).toBe(styleHTML() + outerHTML);
     expect(outerHTML).toContain("--c3r-unit-scale");
   });
 
@@ -974,6 +983,38 @@ describe("server-side rendering", () => {
     group.material.background = 'x\n") } .c3r-polygon { display: none';
     expect(await container.toHTML()).not.toMatch(/[\n"]\) \} \.c3r-polygon/);
     group.material[Symbol.dispose]();
+  });
+
+  it("measures the images a server-side DOM loads", async () => {
+    const { settings } = window.happyDOM;
+    const { enableImageFileLoading } = settings;
+    const { virtualServers } = settings.fetch;
+    settings.enableImageFileLoading = true;
+    settings.fetch.virtualServers = [
+      { url: "/assets/", directory: "examples/public" },
+    ];
+    try {
+      const container = new Container();
+      const [loaded, sized] = [0, 1].map(() => {
+        const group = new Group();
+        container.root.addChild(group);
+        group.material = new Material();
+        group.material.background = "/assets/textures/mountain.jpg";
+        return group.addPolygon([
+          vertex(0, 0, 0, 0, 0),
+          vertex(1, 0, 0, 1, 0),
+          vertex(0, 1, 0, 0, 1),
+        ]);
+      });
+      sized.textureSize = [768, 256];
+      await container.bake();
+      const width = (poly: Polygon) =>
+        poly.domElement.style.getPropertyValue("--c3r-width");
+      expect(width(loaded)).toBe(width(sized));
+    } finally {
+      settings.enableImageFileLoading = enableImageFileLoading;
+      settings.fetch.virtualServers = virtualServers;
+    }
   });
 
   it("sizes an orthographic view from setSize, without layout", () => {

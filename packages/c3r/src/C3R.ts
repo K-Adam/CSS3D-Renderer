@@ -2,7 +2,7 @@ export { Material } from "./css/Material.js";
 export { Filter } from "./css/Filter.js";
 export { Transform } from "./css/Transform.js";
 export { type Keyframe, Tween, type TweenOptions } from "./css/Tween.js";
-export { cssText } from "./css/styles.js";
+export { cssText, styleHTML } from "./css/styles.js";
 
 export { Object3D } from "./dom/Object3D.js";
 export { Group, type IndexedMesh } from "./dom/Group.js";

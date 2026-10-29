@@ -44,6 +44,8 @@ export function setTweens(
     const part = styles.get(tween);
     if (!part) throw new TypeError("Not a Tween");
     if (inverse && part.hover) throw new RangeError("A camera can't hover");
+    if (inverse && part.transform && !part.inverse)
+      throw new RangeError("A camera scales by positive factors only");
     return part;
   });
   const list = (key: keyof Style, separator: string, from = parts) =>
@@ -91,6 +93,7 @@ export class Tween {
   }: TweenOptions) {
     // Each keyframe changes what it lists, the rest holds
     const pose = new Map<string, Step>();
+    let invertible = true;
     const apply = (changes: Steps, where: string) => {
       const names = new Set<string>();
       for (const change of [changes].flat()) {
@@ -100,6 +103,7 @@ export class Tween {
           throw new RangeError(`${step.name} twice in ${where}`);
         names.add(step.name);
         pose.set(step.name, step);
+        invertible &&= step.invert !== null;
       }
       return names.size;
     };
@@ -207,10 +211,11 @@ export class Tween {
     const part: Style = { hover };
     if (transforms.length) {
       part.transform = transforms.map((s) => stepText(s, args(s))).join(" ");
-      part.inverse = transforms
-        .toReversed()
-        .map((s) => stepText(s, args(s).map(s.invert!)))
-        .join(" ");
+      if (invertible)
+        part.inverse = transforms
+          .toReversed()
+          .map((s) => stepText(s, args(s).map(s.invert!)))
+          .join(" ");
     }
     // Inherited as resolved text, a filter on the group would flatten it
     const { filter, layers } = filterTexts(used, args);

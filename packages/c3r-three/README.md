@@ -20,14 +20,16 @@ document.body.appendChild(renderer.domElement);
 renderer.render(scene, camera);
 ```
 
+Until `setSize()` the scenes fill the window and follow it, like a C3R `Container`. An orthographic camera needs `setSize()`.
+
 `CSS3DObject` and `CSS3DSprite` are re-exported from `three/addons`, so their elements receive pointer events as with three's renderer.
 
-Perspective and orthographic cameras are supported, including `zoom`. Material `color`, `map` (image or canvas, with `repeat` and `offset`, its alpha always; a `color` tints it with `Filter.tint`), `opacity` (when `transparent`) and `side` (`BackSide` shows both sides) are applied, and a material's style is removed on its `dispose()`. `renderer.dispose()` removes every rendered scene.
+Perspective and orthographic cameras are supported, including `zoom`. Material `color`, `map` (image or canvas, with `repeat` and `offset`, its alpha always; a `color` tints it with `Filter.tint`), `opacity` (when `transparent`) and `side` (`BackSide` shows both sides) are applied, and a material's style is removed on its `dispose()`. `renderer.dispose()` removes every rendered scene, and `renderer.toHTML()` (async) exports them.
 
 Not supported yet: `ImageBitmap` maps such as GLTFLoader's, `flipY: false`, and map `rotation` and `center`.
 
 ## Node
 
-Set up a DOM and inline `cssText()` as described in [c3r](../c3r/README.md#node), then render and serialize `renderer.domElement.outerHTML`. `TextureLoader` needs a browser, so set the image directly: `new Texture(Object.assign(document.createElement("img"), { src }))`. See [node-render.mjs](../../examples/node-render.mjs).
+Set up a DOM with image loading as described in [c3r](../c3r/README.md#node), render, then export with `await renderer.toHTML()`. See [node-render.mjs](../../examples/node-render.mjs).
 
 See the [examples](https://k-adam.github.io/CSS3D-Renderer/).

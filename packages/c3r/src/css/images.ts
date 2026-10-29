@@ -16,6 +16,12 @@ async function decode(url: string, cors: boolean): Promise<HTMLImageElement> {
   if (cors) image.crossOrigin = "anonymous";
   image.src = url;
   await image.decode();
+  // A server-side DOM resolves decode() before the image loads
+  if (!image.complete)
+    await new Promise((resolve, reject) => {
+      image.addEventListener("load", resolve);
+      image.addEventListener("error", reject);
+    });
   return image;
 }
 

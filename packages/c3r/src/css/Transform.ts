@@ -1,6 +1,6 @@
 import type { ReadonlyVec3 } from "gl-matrix";
 
-import { radians, register } from "./steps.js";
+import { radians, register, type Step } from "./steps.js";
 
 const vector = (v: ReadonlyVec3, unit = ""): string[] => {
   const values = Array.from(v);
@@ -21,7 +21,7 @@ export class Transform {
     syntax: string,
     identity: string,
     values: string[],
-    invert = negate,
+    invert: Step["invert"] = negate,
   ): Transform {
     return register(new Transform(), {
       name,
@@ -57,7 +57,10 @@ export class Transform {
       "<number>",
       "1",
       vector(v),
-      (value) => `calc(1 / ${value})`,
+      // A tween reaches a negative scale through zero
+      Array.from(v).every((n) => n > 0)
+        ? (value) => `calc(1 / ${value})`
+        : null,
     );
   }
 }
