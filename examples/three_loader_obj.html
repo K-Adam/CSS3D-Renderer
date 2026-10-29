@@ -6,45 +6,42 @@
     <title>c3r - OBJ loader</title>
     <style>
       body {
-        font-family: Monospace;
+        margin: 0;
         background-color: #000;
-        color: #fff;
-        margin: 0px;
         overflow: hidden;
+        touch-action: none;
       }
+
       #info {
-        color: #fff;
         position: absolute;
-        top: 10px;
+        z-index: 1;
+        top: 0;
         width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
         text-align: center;
-        z-index: 100;
-        display: block;
       }
-      #info a,
-      .button {
+
+      a {
         color: #f00;
-        font-weight: bold;
-        text-decoration: underline;
-        cursor: pointer;
       }
     </style>
   </head>
-
   <body>
     <div id="info">
       <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
-      - OBJLoader test
+      - OBJ loader. Move the pointer to orbit.
     </div>
 
     <script type="module">
       import * as THREE from "three";
       import { C3RRenderer } from "c3r-three";
       import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+      import Stats from "three/addons/libs/stats.module.js";
 
-      let container;
-
-      let camera, scene, renderer;
+      let camera, scene, renderer, stats;
 
       let mouseX = 0,
         mouseY = 0;
@@ -56,9 +53,6 @@
       animate();
 
       function init() {
-        container = document.createElement("div");
-        document.body.appendChild(container);
-
         camera = new THREE.PerspectiveCamera(
           45,
           window.innerWidth / window.innerHeight,
@@ -78,29 +72,13 @@
         camera.add(pointLight);
         scene.add(camera);
 
-        // texture
-
-        const manager = new THREE.LoadingManager();
-        manager.onProgress = function (item, loaded, total) {
-          console.log(item, loaded, total);
-        };
-
-        const textureLoader = new THREE.TextureLoader(manager);
-        const texture = textureLoader.load("textures/UV_Grid_Sm.jpg");
-
         // model
 
-        const onProgress = function (xhr) {
-          if (xhr.lengthComputable) {
-            const percentComplete = (xhr.loaded / xhr.total) * 100;
-            console.log(Math.round(percentComplete, 2) + "% downloaded");
-          }
-        };
+        const texture = new THREE.TextureLoader().load(
+          "textures/UV_Grid_Sm.jpg",
+        );
 
-        const onError = function () {};
-
-        const loader = new OBJLoader(manager);
-        loader.load(
+        new OBJLoader().load(
           "models/obj/suzanne/suzanne.obj",
           function (object) {
             object.traverse(function (child) {
@@ -109,21 +87,20 @@
               }
             });
 
-            object.position.y = 0;
-
-            object.scale.x = object.scale.y = object.scale.z = 50;
+            object.scale.setScalar(50);
 
             scene.add(object);
           },
-          onProgress,
-          onError,
         );
 
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
-        container.appendChild(renderer.domElement);
+        document.body.appendChild(renderer.domElement);
 
-        document.addEventListener("mousemove", onDocumentMouseMove);
+        stats = new Stats();
+        document.body.appendChild(stats.dom);
+
+        document.addEventListener("pointermove", onPointerMove);
 
         window.addEventListener("resize", onWindowResize);
       }
@@ -138,23 +115,20 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
-      function onDocumentMouseMove(event) {
+      function onPointerMove(event) {
         mouseX = (event.clientX - windowHalfX) / 2;
         mouseY = (event.clientY - windowHalfY) / 2;
       }
 
       function animate() {
         requestAnimationFrame(animate);
-        render();
-      }
 
-      function render() {
         camera.position.x += (mouseX - camera.position.x) * 0.05;
         camera.position.y += (-mouseY - camera.position.y) * 0.05;
-
         camera.lookAt(scene.position);
 
         renderer.render(scene, camera);
+        stats.update();
       }
     </script>
   </body>

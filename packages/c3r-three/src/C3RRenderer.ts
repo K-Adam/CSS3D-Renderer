@@ -48,6 +48,8 @@ interface MaterialState {
   material: C3R.Material;
   map: Texture | null | undefined;
   version: number;
+  // The canvas map's data url, encoding it is slow
+  canvasSrc: string;
 }
 
 const DEFAULT_CENTER = { x: 0.5, y: 0.5 };
@@ -111,7 +113,12 @@ export class C3RRenderer {
 
     this.#syncCamera(container, camera);
     this.#syncObject(scene, container.root, container);
-    container.fitUnitScale();
+    void container.bake();
+  }
+
+  async toHTML(): Promise<string> {
+    await Promise.all([...this.#containers.values()].map((c) => c.bake()));
+    return C3R.styleHTML() + this.domElement.outerHTML;
   }
 
   #syncCamera(container: C3R.Container, camera: Camera): void {
@@ -142,7 +149,7 @@ export class C3RRenderer {
       }
     }
 
-    container.camera.matrix = camera.matrixWorldInverse.elements;
+    container.camera.matrix = camera.matrixWorld.elements;
   }
 
   #syncObject(
@@ -181,11 +188,7 @@ export class C3RRenderer {
     container: C3R.Container,
   ): number[] {
     // Billboard in world space
-    _matrix.fromArray(container.camera.matrix).transpose();
-
-    const e = _matrix.elements;
-    e[3] = e[7] = e[11] = 0;
-    e[15] = 1;
+    _matrix.extractRotation(_matrix.fromArray(container.camera.matrix));
 
     object.matrixWorld.decompose(_position, _quaternion, _scale);
     _matrix.setPosition(_position).scale(_scale);
@@ -200,7 +203,7 @@ export class C3RRenderer {
       node.center = [x, y];
     }
 
-    return e;
+    return _matrix.elements;
   }
 
   #syncChildren(
@@ -324,6 +327,7 @@ export class C3RRenderer {
         material: new C3R.Material(),
         map: undefined,
         version: -1,
+        canvasSrc: "",
       };
       // Not this.#materials, the listener would keep the renderer alive
       const materials = this.#materials;
@@ -343,24 +347,40 @@ export class C3RRenderer {
     const image: unknown = map?.image;
     let src: string | null = null;
     if (image instanceof HTMLImageElement) {
-      src = image.src;
+      // As written, a server-side DOM resolves it against its own origin
+      src = image.getAttribute("src") ?? image.src;
     } else if (image instanceof HTMLCanvasElement && map) {
-      const cached = state.map === map && state.version === map.version;
-      src = cached ? target.backgroundImageSrc : image.toDataURL();
-      state.map = map;
-      state.version = map.version;
+      if (state.map !== map || state.version !== map.version) {
+        state.canvasSrc = image.toDataURL();
+        state.map = map;
+        state.version = map.version;
+      }
+      src = state.canvasSrc;
     }
-    target.backgroundImageSrc = src;
 
-    if (material.color) {
+    // A map without a url, like a bitmap or one still loading, shows the color
+    let tint = 0xffffff;
+    if (src) {
+      target.background = src;
+      // getHex clamps, a tint takes no color beyond white
+      tint = material.color?.getHex() ?? tint;
+    } else if (material.color) {
       material.color.getRGB(_rgb, SRGBColorSpace);
-      target.backgroundColor = [_rgb.r, _rgb.g, _rgb.b, 1];
+      target.background = [_rgb.r, _rgb.g, _rgb.b, 1];
     } else {
-      target.backgroundColor = null;
+      target.background = null;
     }
 
-    target.opacity = material.transparent ? material.opacity : 1;
-    target.transparent = material.transparent;
+    // Unclamped in three.js
+    const opacity =
+      material.transparent && material.opacity < 1
+        ? Math.max(0, material.opacity)
+        : 1;
+    const [r, g, b] = [tint >> 16, (tint >> 8) & 255, tint & 255];
+    target.filter = [
+      tint === 0xffffff ? null : C3R.Filter.tint([r / 255, g / 255, b / 255]),
+      opacity < 1 ? C3R.Filter.opacity(opacity) : null,
+    ].filter((f) => f !== null);
     target.doubleSided = material.side !== FrontSide;
 
     return map;
@@ -414,11 +434,13 @@ function createNode(object: Object3D): C3R.Group {
   }
 
   if (object instanceof Sprite) {
+    // Painted like a polygon, so its map takes the color's tint
     const element = document.createElement("div");
+    element.style.backgroundImage =
+      "var(--c3r-tween-layers,) var(--c3r-layers,) var(--c3r-background-image, none)";
     element.style.backgroundBlendMode = "multiply";
-    element.style.maskImage = "var(--c3r-background-image, none)";
-    element.style.maskSize = "100% 100%";
-
+    element.style.mask =
+      "var(--c3r-tween-layered, var(--c3r-layered)) var(--c3r-alpha-mask, none) 0 0 / 100% 100%";
     const node = new C3R.ElementObject(element);
     node.setSize(128, 128);
     node.scale = [1 / 128, 1 / 128];

@@ -10,62 +10,71 @@
         background-color: #000;
         overflow: hidden;
       }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <div id="info">
+      A spinning box built from CSS 3D transforms, hover to brighten
+    </div>
     <script type="module">
-      import { Container, Group, Material } from "c3r";
-      import { mat4, vec3 } from "gl-matrix";
+      import {
+        Container,
+        Filter,
+        Group,
+        Material,
+        Transform,
+        Tween,
+      } from "c3r";
+      import { mat4 } from "gl-matrix";
+      import { cube } from "primitive-geometry";
 
       const container = new Container();
       document.body.appendChild(container.domElement);
 
-      // The +z face of the cube, counter-clockwise
-      const face = [
-        { position: [-100, 100, 100], uv: [0, 1] },
-        { position: [-100, -100, 100], uv: [0, 0] },
-        { position: [100, -100, 100], uv: [1, 0] },
-        { position: [100, 100, 100], uv: [1, 1] },
-      ];
+      const box = new Group();
+      container.root.addChild(box);
+      box.addMesh(cube({ sx: 200 }));
 
-      const turn = Math.PI / 2;
-      const rotations = [
-        ...[0, 1, 2, 3].map((i) => mat4.fromYRotation(mat4.create(), i * turn)),
-        mat4.fromXRotation(mat4.create(), turn),
-        mat4.fromXRotation(mat4.create(), -turn),
-      ];
+      box.material = new Material();
+      box.material.background = "textures/crate.jpg";
 
-      const cube = new Group();
-      container.root.addChild(cube);
-
-      for (const rotation of rotations) {
-        cube.addPolygon(
-          face.map(({ position, uv }) => ({
-            position: vec3.transformMat4(vec3.create(), position, rotation),
-            uv,
-          })),
-        );
-      }
-
-      cube.material = new Material();
-      cube.material.backgroundImageSrc = "textures/crate.jpg";
-
-      // The camera matrix is the inverse world transform
       container.camera.matrix = mat4.fromTranslation(
         mat4.create(),
-        [0, 0, -400],
+        [0, 0, 400],
       );
 
-      function animate() {
-        cube.matrix = mat4.fromRotation(
-          mat4.create(),
-          Date.now() / 1000,
-          [1, 1, 1],
-        );
-        requestAnimationFrame(animate);
-      }
+      const turn = 2 * Math.PI;
+      const spin = new Tween({
+        keyframes: [
+          [
+            Transform.rotateX(turn),
+            Transform.rotateY(turn),
+            Transform.rotateZ(turn),
+          ],
+        ],
+        duration: turn, // one radian per second
+        loop: true,
+      });
+      const brighten = new Tween({
+        keyframes: [Filter.brightness(1.5)],
+        duration: 0.5,
+        hover: true,
+      });
+      box.tween = [spin, brighten];
 
-      animate();
+      container.bake();
     </script>
   </body>
 </html>

@@ -1,12 +1,14 @@
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
 import type { Camera } from "../css/Camera.js";
+import { imageInfo, loadImage } from "../css/images.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
-import { cssText } from "../css/styles.js";
+import { styleHTML } from "../css/styles.js";
 
+import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
 import type { Object3D } from "./Object3D.js";
-import { Polygon } from "./Polygon.js";
+import { measurePolygon, Polygon } from "./Polygon.js";
 
 // Keeps a Camera, and its rules, alive while its element is
 const elementCameras = new WeakMap<Element, Camera>();
@@ -21,6 +23,7 @@ export class Container {
   #width = 0;
   #height = 0;
   #unitScale = 1;
+  #refit: Promise<void> | null = null;
 
   constructor() {
     this.domElement.classList.add(
@@ -81,12 +84,38 @@ export class Container {
     this.domElement.style.setProperty("--c3r-unit-scale", String(scale));
   }
 
-  // The densest polygon at one view pixel per DOM pixel, a power of two scales
-  // exactly and holds still while objects move
-  fitUnitScale(): void {
+  bake(): Promise<void> {
+    const loading = this.#fit();
+    if (!loading.length) return Promise.resolve();
+    // One refit at a time, c3r-three bakes every frame
+    this.#refit ??= Promise.all(loading)
+      .finally(() => (this.#refit = null))
+      .then(() => this.bake());
+    return this.#refit;
+  }
+
+  // Fits the unit scale: the densest polygon at one view pixel per DOM pixel, a
+  // power of two scales exactly and holds still while objects move
+  #fit(): Promise<unknown>[] {
     let density = 0;
-    const visit = (node: Object3D, parent: ReadonlyMat4) => {
+    const loading: Promise<unknown>[] = [];
+    const visit = (
+      node: Object3D,
+      parent: ReadonlyMat4,
+      image: string | null,
+    ) => {
       if (node.domElement.style.display === "none") return;
+      // Like the CSS variables: an image or a color replaces, null inherits
+      const background = node.material?.background;
+      if (background != null && !(node instanceof ElementObject))
+        image = typeof background === "string" ? background : null;
+      if (node instanceof Polygon) {
+        const info = image === null ? null : imageInfo(image);
+        // Keeps the old size while a new image loads
+        if (info === undefined) loading.push(loadImage(image!));
+        else measurePolygon(node, info?.size ?? null);
+      }
+      // Measuring refits the matrix
       const m = mat4.mul(mat4.create(), parent, node.matrix);
       if (node instanceof Polygon) {
         const scale = Math.min(
@@ -95,17 +124,18 @@ export class Container {
         );
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
-        for (const child of node.children) visit(child, m);
+        for (const child of node.children) visit(child, m, image);
       }
     };
-    visit(this.#root, this.#camera.matrix);
+    visit(this.#root, this.#camera.viewMatrix, null);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
+    return loading;
   }
 
-  toHTML(): string {
-    this.fitUnitScale();
-    return `<style>${cssText()}</style>${this.domElement.outerHTML}`;
+  async toHTML(): Promise<string> {
+    await this.bake();
+    return styleHTML() + this.domElement.outerHTML;
   }
 
   setSize(width: number, height: number): void {

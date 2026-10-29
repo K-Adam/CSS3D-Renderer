@@ -6,21 +6,21 @@
     <title>c3r - FPS</title>
     <style>
       body {
+        margin: 0;
         background-color: rgb(200, 200, 200);
-        margin: 0px;
         overflow: hidden;
         touch-action: none;
       }
 
       #info {
         position: absolute;
-        top: 0px;
+        z-index: 1;
+        top: 0;
         width: 100%;
-        color: #ffffff;
         padding: 5px;
-        font-family: Monospace;
-        font-size: 13px;
-        font-weight: bold;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
         text-align: center;
       }
 
@@ -30,6 +30,7 @@
 
       #joystick {
         position: absolute;
+        z-index: 1;
         left: 0;
         bottom: 0;
         width: 160px;
@@ -38,6 +39,7 @@
 
       #jump {
         position: absolute;
+        z-index: 1;
         right: 30px;
         bottom: 30px;
         width: 100px;
@@ -58,10 +60,9 @@
     </style>
   </head>
   <body>
-    <div id="container"></div>
     <div id="info">
       <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
-      - platformer demo. cubemap by
+      - platformer. Cubemap by
       <a href="http://www.zfight.com/" target="_blank" rel="noopener"
         >Jochum Skoglund</a
       >.<br />Click to look around with the mouse, WASD to move, SHIFT to run
@@ -74,6 +75,7 @@
     <script type="module">
       import * as THREE from "three";
       import { C3RRenderer } from "c3r-three";
+      import Stats from "three/addons/libs/stats.module.js";
       import nipplejs from "nipplejs";
 
       // player motion parameters
@@ -171,15 +173,18 @@
       })();
 
       (function () {
-        const element = document.getElementById("container");
         const sensitivity = 0.002;
 
-        element.addEventListener("click", function (e) {
-          if (e.pointerType !== "touch") element.requestPointerLock();
+        document.addEventListener("click", function (e) {
+          if (
+            e.pointerType !== "touch" &&
+            renderer.domElement.contains(e.target)
+          )
+            renderer.domElement.requestPointerLock();
         });
 
         document.addEventListener("mousemove", function (e) {
-          if (document.pointerLockElement !== element) return;
+          if (document.pointerLockElement !== renderer.domElement) return;
 
           turn(e.movementX * sensitivity, e.movementY * sensitivity);
         });
@@ -450,60 +455,48 @@
         ),
       );
 
-      // start the game
+      document.body.appendChild(renderer.domElement);
 
-      const start = function (gameLoop, gameViewportSize) {
-        const resize = function () {
-          const viewport = gameViewportSize();
-          renderer.setSize(viewport.width, viewport.height);
-          camera.aspect = viewport.width / viewport.height;
-          camera.updateProjectionMatrix();
-        };
+      const stats = new Stats();
+      document.body.appendChild(stats.dom);
 
-        window.addEventListener("resize", resize);
-        resize();
+      window.addEventListener("resize", onWindowResize);
+      onWindowResize();
 
-        let lastTimeStamp;
-        const render = function (timeStamp) {
-          const timeElapsed = lastTimeStamp ? timeStamp - lastTimeStamp : 0;
-          lastTimeStamp = timeStamp;
+      requestAnimationFrame(animate);
 
-          // call our game loop with the time elapsed since last rendering, in ms
-          gameLoop(timeElapsed);
+      if (navigator.userAgent.toLowerCase().indexOf("firefox") > -1) {
+        // The scene is not rendered in Firefox, without an initial move
+        setTimeout(function () {
+          motion.velocity.y = 0.5;
+        }, 1500);
+      }
 
-          renderer.render(scene, camera);
-          requestAnimationFrame(render);
-        };
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
 
-        requestAnimationFrame(render);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
 
-        if (navigator.userAgent.toLowerCase().indexOf("firefox") > -1) {
-          // The scene is not rendered in Firefox, without an initial move
-          setTimeout(function () {
-            motion.velocity.y = 0.5;
-          }, 1500);
-        }
-      };
+      let lastTimeStamp;
 
-      const gameLoop = function (dt) {
+      function animate(timeStamp) {
+        requestAnimationFrame(animate);
+
+        const dt = lastTimeStamp ? timeStamp - lastTimeStamp : 0;
+        lastTimeStamp = timeStamp;
+
         resetPlayer();
         keyboardControls();
         turn(look.x * 0.0015 * dt, look.y * 0.0015 * dt);
         jumpPads();
         applyPhysics(dt);
         updateCamera();
-      };
 
-      const gameViewportSize = function () {
-        return {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        };
-      };
-
-      document.getElementById("container").appendChild(renderer.domElement);
-
-      start(gameLoop, gameViewportSize);
+        renderer.render(scene, camera);
+        stats.update();
+      }
     </script>
   </body>
 </html>

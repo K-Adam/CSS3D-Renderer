@@ -12,6 +12,8 @@ import type { EdgeNeighbour, NeighbourSide } from "./planar.js";
 import { Triangle } from "./Triangle.js";
 import type { Vertex } from "./Vertex.js";
 
+export type TriangleList = readonly (readonly Vertex[])[];
+
 export interface MeshFace {
   vertices: Vertex[];
   edges: EdgeNeighbour[];
@@ -22,6 +24,15 @@ const SMOOTH_FOLD = 0.7;
 
 // Weld distance as a share of the mesh size, models round their coordinates
 const WELD = 1e-3;
+
+// For a mesh with no extent
+const MIN_WELD = 1e-9;
+
+const SLIVER = 1e-6;
+
+const COPLANAR = 1 - 1e-6;
+
+const UV_TOLERANCE = 1e-3;
 
 // A separate polygon costs a layer and a seam, worth some rasterized area
 const MERGE_SLACK = 1.25;
@@ -73,8 +84,8 @@ export class MeshBuilder {
   #borders = new Map<string, { face: Face; i: number }>();
 
   constructor(
-    groups: readonly (readonly (readonly Vertex[])[])[],
-    { uvTolerance = 1e-3 } = {},
+    groups: readonly TriangleList[],
+    { uvTolerance = UV_TOLERANCE } = {},
   ) {
     const tris = this.#weld(groups);
     const ownersOf = () =>
@@ -102,13 +113,13 @@ export class MeshBuilder {
       .map((face) => this.#output(face));
   }
 
-  #weld(groups: readonly (readonly (readonly Vertex[])[])[]): Tri[] {
+  #weld(groups: readonly TriangleList[]): Tri[] {
     const points = groups.flat(2).map((v) => v.position);
     const span = [0, 1, 2].map((k) => {
       const values = points.map((p) => p[k]);
       return Math.max(...values) - Math.min(...values);
     });
-    this.#eps = WELD * Math.hypot(...span) || 1e-9;
+    this.#eps = WELD * Math.hypot(...span) || MIN_WELD;
 
     const weld = (p: ReadonlyVec3) => {
       const id = this.#positions.findIndex((q) => vec3.dist(p, q) <= this.#eps);
@@ -121,7 +132,7 @@ export class MeshBuilder {
         const triangle = new Triangle(p, q, r);
         const ids = corners.map((v) => weld(v.position));
         const longest = Math.max(...triangle.calculateEdgeLengths());
-        const sliver = triangle.calculateArea() <= 1e-6 * longest ** 2;
+        const sliver = triangle.calculateArea() <= SLIVER * longest ** 2;
         if (sliver || new Set(ids).size < 3) return [];
         return [{ corners, ids, triangle, group }];
       }),
@@ -155,7 +166,7 @@ export class MeshBuilder {
       minRect(convexHull(ids.map((id) => plane(this.#positions[id])))).area;
     const fits = (t: Tri) =>
       t.group === seed.group &&
-      vec3.dot(t.triangle.norm, seed.triangle.norm) > 1 - 1e-6 &&
+      vec3.dot(t.triangle.norm, seed.triangle.norm) > COPLANAR &&
       t.corners.every((v) => vec2.dist(toUV(v.position), v.uv) <= uvTolerance);
 
     const face: Face = { seed, tris: [seed], ids: seed.ids };

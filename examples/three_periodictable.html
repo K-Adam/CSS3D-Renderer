@@ -5,36 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>c3r - Periodic table</title>
     <style>
-      html,
       body {
-        height: 100%;
-      }
-
-      body {
-        background-color: #000000;
         margin: 0;
+        background-color: #000000;
         font-family: Helvetica, sans-serif;
         overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
       }
 
       a {
         color: #ffffff;
       }
 
-      #info {
-        position: absolute;
-        width: 100%;
-        color: #ffffff;
-        padding: 5px;
-        font-family: Monospace;
-        font-size: 13px;
-        font-weight: bold;
-        text-align: center;
-        z-index: 1;
-      }
-
       #menu {
         position: absolute;
+        z-index: 1;
         bottom: 20px;
         width: 100%;
         text-align: center;
@@ -102,18 +98,9 @@
   </head>
   <body>
     <div id="info">
-      <a href="https://threejs.org" target="_blank" rel="noopener"
-        >three.js css3d</a
-      >
-      - periodic table.
-      <a
-        href="https://plus.google.com/113862800338869870683/posts/QcFk5HrWran"
-        target="_blank"
-        rel="noopener"
-        >info</a
-      >.
+      <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+      - css3d periodic table. Drag to rotate, scroll to zoom.
     </div>
-    <div id="container"></div>
     <div id="menu">
       <button id="table">TABLE</button>
       <button id="sphere">SPHERE</button>
@@ -126,6 +113,7 @@
       import { C3RRenderer, CSS3DObject } from "c3r-three";
       import { TrackballControls } from "three/addons/controls/TrackballControls.js";
       import * as TWEEN from "three/addons/libs/tween.module.js";
+      import Stats from "three/addons/libs/stats.module.js";
 
       const table = [
         "H",
@@ -720,7 +708,7 @@
         7,
       ];
 
-      let camera, scene, renderer;
+      let camera, scene, renderer, stats;
       let controls;
 
       const objects = [];
@@ -838,13 +826,15 @@
 
         renderer = new C3RRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById("container").appendChild(renderer.domElement);
+        document.body.appendChild(renderer.domElement);
+
+        stats = new Stats();
+        document.body.appendChild(stats.dom);
 
         controls = new TrackballControls(camera, renderer.domElement);
         controls.rotateSpeed = 0.5;
         controls.minDistance = 500;
         controls.maxDistance = 6000;
-        controls.addEventListener("change", render);
 
         const tableButton = document.getElementById("table");
         tableButton.addEventListener("click", function () {
@@ -902,11 +892,6 @@
             .easing(TWEEN.Easing.Exponential.InOut)
             .start();
         }
-
-        new TWEEN.Tween({})
-          .to({}, duration * 2)
-          .onUpdate(render)
-          .start();
       }
 
       function onWindowResize() {
@@ -914,20 +899,16 @@
         camera.updateProjectionMatrix();
 
         renderer.setSize(window.innerWidth, window.innerHeight);
-
-        render();
       }
 
       function animate() {
         requestAnimationFrame(animate);
 
         TWEEN.update();
-
         controls.update();
-      }
 
-      function render() {
         renderer.render(scene, camera);
+        stats.update();
       }
     </script>
   </body>

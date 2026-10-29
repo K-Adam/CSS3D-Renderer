@@ -11,6 +11,8 @@ import {
   PlaneGeometry,
   Scene,
   SphereGeometry,
+  Sprite,
+  SpriteMaterial,
   SRGBColorSpace,
   TextureLoader,
   WebGLRenderer,
@@ -133,4 +135,23 @@ it("renders the earth example like WebGLRenderer", async () => {
     );
   }
   expect(ratio).toBeLessThan(LIMIT);
+});
+
+it("tints a sprite's map by its color", () => {
+  const canvas = canvas2d().canvas;
+  const scene = new Scene();
+  scene.add(
+    new Sprite(
+      new SpriteMaterial({ map: new CanvasTexture(canvas), color: 0xff0000 }),
+    ),
+  );
+  const c3r = new C3RRenderer();
+  c3r.setSize(WIDTH, HEIGHT);
+  document.body.appendChild(c3r.domElement);
+  c3r.render(scene, new PerspectiveCamera());
+  const sprite = c3r.domElement.querySelector(".c3r-element")!;
+  const { backgroundImage, maskImage } = getComputedStyle(sprite);
+  expect(backgroundImage).toMatch(/^linear-gradient\(rgb\(255, 0, 0\)/);
+  expect(maskImage).toMatch(/^url\("data:/);
+  c3r.domElement.remove();
 });

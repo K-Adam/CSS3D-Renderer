@@ -1,24 +1,26 @@
 // Prints a static HTML render, after `npm run build`: node examples/node-render.mjs > examples/static.html
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
-GlobalRegistrator.register();
+GlobalRegistrator.register({
+  url: "http://localhost/",
+  settings: {
+    enableImageFileLoading: true,
+    fetch: {
+      virtualServers: [{ url: "/", directory: import.meta.dirname }],
+    },
+  },
+});
 
 const THREE = await import("three");
 const { C3RRenderer } = await import("c3r-three");
-const { cssText } = await import("c3r");
-
-const width = 800;
-const height = 600;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(70, width / height, 1, 1000);
+// Aspect unused, the view follows the window
+const camera = new THREE.PerspectiveCamera(70, 1, 1, 1000);
 camera.position.z = 500;
 
-// TextureLoader needs a browser
-const texture = new THREE.Texture(
-  Object.assign(document.createElement("img"), {
-    src: "public/textures/crate.gif",
-  }),
+const texture = await new THREE.TextureLoader().loadAsync(
+  "public/textures/crate.gif",
 );
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(200, 200, 200),
@@ -28,16 +30,13 @@ cube.rotation.set(0.4, 0.6, 0);
 scene.add(cube);
 
 const renderer = new C3RRenderer();
-renderer.setSize(width, height);
 renderer.render(scene, camera);
 
+// Without head and body tags the style lands in the head
 process.stdout.write(`<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>C3R static render</title>
-    <style>${cssText()}</style>
-  </head>
-  <body>${renderer.domElement.outerHTML}</body>
-</html>
+<meta charset="utf-8" />
+<title>C3R static render</title>
+<style>body { margin: 0 }</style>
+${await renderer.toHTML()}
 `);

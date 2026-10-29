@@ -11,10 +11,18 @@ import {
   Scene,
   Sprite,
   SpriteMaterial,
+  Texture,
   Vector3,
 } from "three";
-import { cssText } from "c3r";
+import { cssText, styleHTML } from "c3r";
 import { C3RRenderer, CSS3DObject } from "../src/C3RRenderer.js";
+
+const materialRule = (element: Element) => {
+  const name = /c3r-material-\d+/.exec(element.className)![0];
+  return cssText()
+    .split("\n")
+    .find((r) => r.startsWith(`.${name} `))!;
+};
 
 const setup = () => {
   const renderer = new C3RRenderer();
@@ -30,7 +38,7 @@ const setup = () => {
 
 const cssMatrix = (element: Element) => {
   const match = /matrix3d\(([^)]*)\)/.exec(
-    (element as HTMLElement).style.transform,
+    (element as HTMLElement).style.getPropertyValue("--c3r-matrix"),
   );
   return mat4.clone(match![1].split(",").map(Number) as unknown as mat4);
 };
@@ -167,19 +175,80 @@ it("applies the camera zoom", () => {
   expect(cssText()).toMatch(/--c3r-camera-fov: ?53\.13/);
 });
 
-it("ignores opacity and map alpha unless the material is transparent, as WebGL", () => {
+it("tints a map by its color", () => {
+  const { renderer, scene, camera, root } = setup();
+  const rule = () =>
+    materialRule(root().querySelector("[class*=c3r-material-]")!);
+
+  const image = document.createElement("img");
+  image.src = "crate.png";
+  const material = new MeshBasicMaterial({ map: new Texture(image) });
+  scene.add(new Mesh(new BoxGeometry(), material));
+  renderer.render(scene, camera);
+  expect(rule()).toMatch(/--c3r-background-color: ?transparent/);
+  expect(rule()).not.toContain("--c3r-layers");
+
+  material.color.set(0xff0000);
+  renderer.render(scene, camera);
+  expect(rule()).toMatch(/--c3r-layers: ?linear-gradient\(rgb\(100% 0% 0%\)/);
+
+  // Beyond white in HDR, clamped like getHex rather than rejected
+  material.color.setRGB(2, 0, 0);
+  renderer.render(scene, camera);
+  expect(rule()).toMatch(/--c3r-layers: ?linear-gradient\(rgb\(100% 0% 0%\)/);
+
+  material.transparent = true;
+  material.opacity = 0.4;
+  renderer.render(scene, camera);
+  expect(rule()).toMatch(/--c3r-filter: ?opacity\(0\.4\)/);
+  expect(rule()).toMatch(/--c3r-layers: ?linear-gradient/);
+  expect(rule()).toContain('url("crate.png")');
+  material.dispose();
+});
+
+it("keeps a canvas map's url across a swap", () => {
+  const { renderer, scene, camera, root } = setup();
+  const rule = () =>
+    materialRule(root().querySelector("[class*=c3r-material-]")!);
+  const canvas = document.createElement("canvas");
+  canvas.toDataURL = () => "data:image/png;base64,AA";
+  const map = new Texture(canvas);
+  const material = new MeshBasicMaterial({ map, color: 0xff0000 });
+  scene.add(new Mesh(new BoxGeometry(), material));
+  for (const next of [map, null, map]) {
+    material.map = next;
+    renderer.render(scene, camera);
+  }
+  expect(rule()).toContain("data:image/png;base64,AA");
+  material.dispose();
+});
+
+it("paints a white sprite without a map", () => {
+  const { renderer, scene, camera, root } = setup();
+  const material = new SpriteMaterial();
+  scene.add(new Sprite(material));
+  renderer.render(scene, camera);
+
+  const rule = materialRule(root().querySelector("[class*=c3r-material-]")!);
+  expect(rule).toMatch(/--c3r-background-color: ?rgba\(255, ?255, ?255/);
+  material.dispose();
+});
+
+it("ignores opacity unless the material is transparent, as WebGL", () => {
   const { renderer, scene, camera } = setup();
 
   const material = new MeshBasicMaterial({ opacity: 0.5 });
   scene.add(new Mesh(new BoxGeometry(), material));
   renderer.render(scene, camera);
-  expect(cssText()).not.toMatch(/--c3r-opacity:/);
-  expect(cssText()).not.toMatch(/--c3r-mask-image:/);
+  expect(cssText()).not.toMatch(/--c3r-filter:/);
 
   material.transparent = true;
   renderer.render(scene, camera);
-  expect(cssText()).toMatch(/--c3r-opacity: ?0\.5/);
-  expect(cssText()).toMatch(/--c3r-mask-image: ?var\(--c3r-background-image/);
+  expect(cssText()).toMatch(/--c3r-filter: ?opacity\(0\.5\)/);
+
+  material.opacity = -0.1;
+  renderer.render(scene, camera);
+  expect(cssText()).toMatch(/--c3r-filter: ?opacity\(0\)/);
   material.dispose();
 });
 
@@ -233,14 +302,9 @@ it("shows back faces unless the material is FrontSide", () => {
   scene.add(new Mesh(new BoxGeometry(), double));
   renderer.render(scene, camera);
 
-  const [frontRule, doubleRule] = [...root().children].map((mesh) => {
-    const className = /c3r-material-\d+/.exec(
-      mesh.firstElementChild!.className,
-    )![0];
-    return cssText()
-      .split("\n")
-      .find((r) => r.startsWith(`.${className} `))!;
-  });
+  const [frontRule, doubleRule] = [...root().children].map((mesh) =>
+    materialRule(mesh.firstElementChild!),
+  );
   expect(frontRule).not.toContain("backface-visibility");
   expect(doubleRule).toMatch(/backface-visibility: ?visible/);
 
@@ -261,6 +325,28 @@ it("removes the scenes and camera rules on dispose", () => {
 
   renderer.render(scene, camera);
   expect(renderer.domElement.children).toHaveLength(1);
+});
+
+it("fills the window until setSize()", () => {
+  const { scene, camera } = setup();
+  const renderer = new C3RRenderer();
+  renderer.render(scene, camera);
+  const container = renderer.domElement.firstElementChild as HTMLElement;
+  const viewport = () =>
+    container.style.getPropertyValue("--c3r-viewport-height");
+  expect(renderer.domElement.style.height).toBe("");
+  expect(viewport()).toBe("");
+
+  renderer.setSize(400, 300);
+  expect(viewport()).toBe("300px");
+});
+
+it("exports the scenes as static html", async () => {
+  const { renderer, scene, camera } = setup();
+  renderer.render(scene, camera);
+  const html = await renderer.toHTML();
+  expect(html).toBe(styleHTML() + renderer.domElement.outerHTML);
+  expect(html).toContain("c3r-container");
 });
 
 it("scales the view by its densest polygon, flat faces stay small", () => {

@@ -31,6 +31,9 @@ const newellNormal = (vertices: readonly Vertex[]): vec3 => {
 
 const MITER_LIMIT = 4;
 
+// Keeps the miter divisions finite for parallel edges
+const NEAR_ZERO = 1e-6;
+
 interface Edge {
   offset: number;
   sides: [ReadonlyVec2 | null, ReadonlyVec2 | null];
@@ -46,7 +49,7 @@ const cap = (
   if (side) {
     const u = vec2.normalize(vec2.create(), vec2.sub(vec2.create(), side, p));
     const k = vec2.dot(u, n);
-    if (k > 1e-6)
+    if (k > NEAR_ZERO)
       return vec2.scaleAndAdd(u, p, u, Math.min(d / k, MITER_LIMIT * d));
   }
   return vec2.scaleAndAdd(vec2.create(), p, n, d);
@@ -74,8 +77,20 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
     const d2 = edges[i].offset;
     if (!d1 && !d2) return [vec2.clone(p)];
 
+    // cap() returns the plain offset for a side along the normal
+    const along = (side: ReadonlyVec2 | null, dir: ReadonlyVec2) => {
+      if (!side) return true;
+      const u = vec2.sub(vec2.create(), side, p);
+      return vec2.dot(vec2.normalize(u, u), dir) > 1 - NEAR_ZERO;
+    };
+    const c = vec2.dot(n1, n2);
+    const square =
+      Math.abs(c) < NEAR_ZERO &&
+      along(edges[prev].sides[1], n1) &&
+      along(edges[i].sides[0], n2);
+
     // A miter at a convex corner pokes out of the mesh where the corner is on its border
-    if (cross2(p, points[next], points[prev]) * sign > 0) {
+    if (!square && cross2(p, points[next], points[prev]) * sign > 0) {
       const c1 = d1 ? cap(p, n1, d1, edges[prev].sides[1]) : vec2.clone(p);
       const c2 = d2 ? cap(p, n2, d2, edges[i].sides[0]) : vec2.clone(p);
       if (vec2.equals(c1, c2)) return [c1];
@@ -84,8 +99,7 @@ const dilate = (points: ReadonlyVec2[], edges: Edge[]): vec2[] => {
       return cut ? [c1, vec2.clone(p), c2] : [c1, c2];
     }
 
-    const c = vec2.dot(n1, n2);
-    const det = Math.max(1 - c * c, 1e-6);
+    const det = Math.max(1 - c * c, NEAR_ZERO);
     const m = vec2.scale(vec2.create(), n1, (d1 - d2 * c) / det);
     vec2.scaleAndAdd(m, m, n2, (d2 - d1 * c) / det);
 
@@ -114,6 +128,15 @@ export interface PolygonOptions {
   edges?: readonly EdgeNeighbour[];
 }
 
+const sameSize = (a: ReadonlyVec2 | null, b: ReadonlyVec2 | null) =>
+  a === b || (!!a && !!b && vec2.exactEquals(a, b));
+
+// Friend access for Container.bake(), a public setter would be API
+export let measurePolygon: (
+  polygon: Polygon,
+  size: ReadonlyVec2 | null,
+) => void;
+
 export class Polygon extends Object3D {
   readonly vertices: readonly Vertex[]; // vertices in CCW
   readonly contentElement: HTMLElement;
@@ -123,6 +146,7 @@ export class Polygon extends Object3D {
   #uvScale: ReadonlyVec2 = [1, 1];
   #uvOffset: ReadonlyVec2 = [0, 0];
   #textureSize: ReadonlyVec2 | null = null;
+  #measuredSize: ReadonlyVec2 | null = null;
   #pixelRatio = globalThis.devicePixelRatio || 1;
 
   #getDomSize: (size: number) => number;
@@ -197,7 +221,7 @@ export class Polygon extends Object3D {
   set uvScale(scale: ReadonlyVec2) {
     if (vec2.exactEquals(scale, this.#uvScale)) return;
     this.#uvScale = vec2.clone(scale);
-    if (this.#textureSize) this.#fit();
+    if (this.#size) this.#fit();
     this.#updateContent();
   }
 
@@ -207,9 +231,24 @@ export class Polygon extends Object3D {
   }
 
   set textureSize(size: ReadonlyVec2 | null) {
-    const old = this.#textureSize;
-    if (size === old || (size && old && vec2.exactEquals(size, old))) return;
+    if (sameSize(size, this.#textureSize)) return;
     this.#textureSize = size && vec2.clone(size);
+    this.#fit();
+    this.#updateContent();
+  }
+
+  get #size(): ReadonlyVec2 | null {
+    return this.#textureSize ?? this.#measuredSize;
+  }
+
+  static {
+    measurePolygon = (polygon, size) => polygon.#measure(size);
+  }
+
+  #measure(size: ReadonlyVec2 | null): void {
+    if (sameSize(size, this.#measuredSize)) return;
+    this.#measuredSize = size && vec2.clone(size);
+    if (this.#textureSize) return;
     this.#fit();
     this.#updateContent();
   }
@@ -222,7 +261,7 @@ export class Polygon extends Object3D {
   set pixelRatio(ratio: number) {
     if (ratio === this.#pixelRatio) return;
     this.#pixelRatio = ratio;
-    if (!this.#textureSize) return;
+    if (!this.#size) return;
     this.#fit();
     this.#updateContent();
   }
@@ -252,10 +291,16 @@ export class Polygon extends Object3D {
       this.#fitPolygon(tri);
     }
 
+    // A path on the element's box clips nothing
+    const box =
+      this.#clipPath.length === 4 &&
+      this.#clipPath.every(([x, y]) =>
+        [x, y].every((v) => Math.abs(v - Math.round(v)) < NEAR_ZERO),
+      );
     const clip = this.#clipPath
       .map((p) => `${p[0] * 100}% ${p[1] * 100}%`)
       .join();
-    this.#clipElement.style.clipPath = `polygon(${clip})`;
+    this.#clipElement.style.clipPath = box ? "" : `polygon(${clip})`;
 
     // As variables, the content follows a resize without updateContent
 
@@ -319,10 +364,11 @@ export class Polygon extends Object3D {
 
   // Texels per world unit in the most stretched direction
   #texelDensity(tri: Triangle): number {
-    if (!this.#textureSize) return 0;
+    const size = this.#size;
+    if (!size) return 0;
     const M = uvTransform(this.vertices, tri.norm);
     if (!M) return 0;
-    const [sx, sy] = vec2.mul(vec2.create(), this.#uvScale, this.#textureSize);
+    const [sx, sy] = vec2.mul(vec2.create(), this.#uvScale, size);
     const L = mat2.fromValues(M[0] * sx, M[1] * sy, M[3] * sx, M[4] * sy);
     // Largest singular value, from σ1² + σ2² = frob² and σ1·σ2 = |det|
     const frob2 = mat2.frob(L) ** 2;

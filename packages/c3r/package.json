@@ -1,6 +1,6 @@
 {
   "name": "c3r",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "CSS 3D Renderer",
   "keywords": [
     "typescript",
@@ -39,6 +39,7 @@
     "gl-matrix": "^3.4.4"
   },
   "devDependencies": {
+    "primitive-geometry": "^3.3.1",
     "vite": "^8.3.5"
   }
 }
