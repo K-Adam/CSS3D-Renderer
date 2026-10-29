@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Drawable canvas cube</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
+
+      /* The view disables pointer events for the whole scene */
+      canvas {
+        pointer-events: auto;
+        cursor: crosshair;
+        touch-action: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">Each face is a canvas element, draw on them</div>
+    <script type="module">
+      import { Container, ElementObject, Group, Transform, Tween } from "c3r";
+      import { mat4 } from "gl-matrix";
+
+      const container = new Container();
+      document.body.appendChild(container.domElement);
+
+      const box = new Group();
+      container.root.addChild(box);
+
+      container.camera.matrix = mat4.fromTranslation(
+        mat4.create(),
+        [0, 0, 400],
+      );
+
+      const turn = 2 * Math.PI;
+      const spin = new Tween({
+        keyframes: [[Transform.rotateX(turn), Transform.rotateY(turn)]],
+        duration: 2 * turn,
+        loop: true,
+      });
+      box.tween = spin;
+
+      const faces = [
+        [0, 0, "#fdd"],
+        [0, Math.PI / 2, "#dfd"],
+        [0, Math.PI, "#ddf"],
+        [0, -Math.PI / 2, "#ffd"],
+        [Math.PI / 2, 0, "#fdf"],
+        [-Math.PI / 2, 0, "#dff"],
+      ];
+
+      for (const [x, y, color] of faces) {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 200;
+        const context = canvas.getContext("2d");
+        context.fillStyle = color;
+        context.fillRect(0, 0, 200, 200);
+        context.lineWidth = 3;
+        context.lineCap = "round";
+
+        let lastX, lastY;
+        canvas.addEventListener("pointerdown", (e) => {
+          if (!e.isPrimary) return;
+          canvas.setPointerCapture(e.pointerId);
+          lastX = e.offsetX;
+          lastY = e.offsetY;
+          spin.paused = true;
+        });
+        canvas.addEventListener("pointermove", (e) => {
+          if (!canvas.hasPointerCapture(e.pointerId)) return;
+          context.beginPath();
+          context.moveTo(lastX, lastY);
+          context.lineTo(e.offsetX, e.offsetY);
+          context.stroke();
+          lastX = e.offsetX;
+          lastY = e.offsetY;
+        });
+        canvas.addEventListener("lostpointercapture", () => {
+          spin.paused = false;
+        });
+
+        const face = new ElementObject(canvas);
+        const matrix = mat4.fromXRotation(mat4.create(), x);
+        mat4.rotateY(matrix, matrix, y);
+        mat4.translate(matrix, matrix, [0, 0, 100]);
+        face.matrix = matrix;
+        box.addChild(face);
+      }
+
+      container.bake();
+    </script>
+  </body>
+</html>
