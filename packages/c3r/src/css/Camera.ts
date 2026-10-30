@@ -3,17 +3,28 @@ import "../polyfill.js";
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
 import { deleteRule, insertRule } from "./styles.js";
+import {
+  allFinite,
+  composeTransforms,
+  matrixText,
+  ownTransform,
+  type Transform,
+} from "./Transform.js";
 import { setTweens, type Tween } from "./Tween.js";
 
 let nextId = 0;
+
+const viewMatrices = new WeakMap<Camera, mat4>();
+
+export const viewMatrixOf = (camera: Camera): ReadonlyMat4 =>
+  viewMatrices.get(camera)!;
 
 // The projection math lives in styles.css, cameras only set its variables
 export abstract class Camera {
   readonly className = `c3r-camera-${nextId++}`;
   abstract readonly projectionClass: string;
 
-  #matrix = mat4.create();
-  #viewMatrix = mat4.create();
+  #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
   #paramsRule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
   // Changes every frame
@@ -23,23 +34,23 @@ export abstract class Camera {
   );
 
   constructor() {
+    viewMatrices.set(this, mat4.create());
     this.#writeMatrix();
   }
 
-  get matrix(): ReadonlyMat4 {
-    return this.#matrix;
+  get transform(): Transform | readonly Transform[] {
+    return this.#transform;
   }
 
-  set matrix(matrix: ReadonlyMat4) {
-    if (mat4.exactEquals(matrix, this.#matrix)) return;
-    if (!mat4.invert(this.#viewMatrix, matrix))
-      throw new RangeError("A camera matrix must be invertible");
-    mat4.copy(this.#matrix, matrix);
+  set transform(transform: Transform | readonly Transform[]) {
+    const view = mat4.invert(mat4.create(), composeTransforms(transform));
+    if (!view || !allFinite(view))
+      throw new RangeError("A camera transform must be invertible");
+    this.#transform = ownTransform(transform);
+    const current = viewMatrices.get(this)!;
+    if (mat4.exactEquals(view, current)) return;
+    mat4.copy(current, view);
     this.#writeMatrix();
-  }
-
-  get viewMatrix(): ReadonlyMat4 {
-    return this.#viewMatrix;
   }
 
   get tween(): Tween | readonly Tween[] | null {
@@ -54,7 +65,7 @@ export abstract class Camera {
   #writeMatrix(): void {
     this.#viewRule?.style.setProperty(
       "--c3r-camera-view",
-      `matrix3d(${[...this.#viewMatrix].join()})`,
+      matrixText(viewMatrixOf(this)),
     );
   }
 

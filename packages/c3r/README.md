@@ -27,8 +27,7 @@ TypeScript declarations are included.
 ## API
 
 ```js
-import { Container, Group, Material } from "c3r";
-import { mat4 } from "gl-matrix";
+import { Container, Group, Material, Transform } from "c3r";
 import { cube } from "primitive-geometry";
 
 const container = new Container(); // fills the window until setSize()
@@ -41,29 +40,29 @@ box.addMesh(cube({ sx: 200 }));
 box.material = new Material();
 box.material.background = "crate.jpg";
 
-container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, 400]);
+container.camera.transform = Transform.translate([0, 0, 400]);
 ```
 
-| Class                                     | What it is                                                                                                                                                                                                           |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `unitScale`, `bake()` fits it, `toHTML()` (async)                                                                                                   |
-| `Group`                                   | A transformed node: `matrix`, `tween` (one or an array), `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons, `addMesh()` takes flat `positions`, `uvs`, `cells`                                     |
-| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`, `textureSize` (set it for a data url, otherwise `bake()` measures it)                                                      |
-| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                                                                            |
-| `Tween`                                   | A CSS animation of a group or camera: `keyframes` of `Transform` and `Filter` steps, `from`, `duration`, `delay`, `easing`, `loop`, `alternate`, `paused`, `hover`                                                   |
-| `Transform`, `Filter`                     | Steps from factories: `translate` (scene units), `rotateX`, `rotateY`, `rotateZ`, `scale`; `opacity`, `brightness`, `contrast`, `saturate`, `grayscale`, `sepia`, `invert`, `hueRotate`, `tint`                      |
-| `Material`                                | `background` (`[r, g, b, a]` in 0-1, or an image URL), `filter` (one or an array of `Filter` steps, before a tween's), `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only |
-| `PerspectiveCamera`, `OrthographicCamera` | `matrix` (pose), `viewMatrix` (read-only inverse), `tween`, and `fov`, or `left`, `right`, `top`, `bottom`                                                                                                           |
+| Class                                     | What it is                                                                                                                                                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Container`                               | The viewport: `domElement`, `root` group, `camera`, `setSize()`, `unitScale`, `bake()` fits it, `toHTML()` (async)                                                                                                       |
+| `Group`                                   | A transformed node: `transform` and `tween` (one or an array each, `[]` resets `transform`), `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons, `addMesh()` takes flat `positions`, `uvs`, `cells`     |
+| `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`, `textureSize` (set it for a data url, otherwise `bake()` measures it)                                                          |
+| `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                                                                                |
+| `Tween`                                   | A CSS animation of a group or camera: `keyframes` of `Transform` and `Filter` steps, `from`, `duration`, `delay`, `easing`, `loop`, `alternate`, `paused`, `hover`                                                       |
+| `Transform`, `Filter`                     | Steps from factories: `translate` (scene units), `rotateX`, `rotateY`, `rotateZ`, `scale`, `matrix` (column-major); `opacity`, `brightness`, `contrast`, `saturate`, `grayscale`, `sepia`, `invert`, `hueRotate`, `tint` |
+| `Material`                                | `background` (`[r, g, b, a]` in 0-1, or an image URL), `filter` (one or an array of `Filter` steps, before a tween's), `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only     |
+| `PerspectiveCamera`, `OrthographicCamera` | `transform` (pose), `tween`, and `fov`, or `left`, `right`, `top`, `bottom`                                                                                                                                              |
 
 An image's alpha shows through. A color and an image don't combine, tint either with `Filter.tint`; a color hides an inherited image and an image hides an inherited color. Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
 
 A `Material`, `Tween` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
 
-A tween animates a group after its `matrix`, from rest or from the `from` steps, and a group's tweens apply in array order. Its keyframes play in sequence, `duration` seconds each unless written as `{ steps, duration }`, and `easing` applies to each; a keyframe is one step or an array of steps, and what it doesn't list holds. Transforms apply in the order they first appear, `from` first. Angles are radians and may exceed a half turn. `Filter` steps apply to the polygons and `ElementObject` elements, and a nested group's filters replace its parent's. With `hover`, a `loop` plays only while hovered; any other tween takes one keyframe and eases to it and back. Setting `paused` later pauses everything using the tween; a hover transition can't pause, so it stops responding to hover instead. It runs on the main thread and `bake()` ignores its scale. Use a negative `delay`, in seconds, to offset the phase.
+A `transform` array applies in order, like CSS. A tween animates a group after its `transform`, from rest or from the `from` steps, and a group's tweens apply in array order. Its keyframes play in sequence, `duration` seconds each unless written as `{ steps, duration }`, and `easing` applies to each; a keyframe is one step or an array of steps, and what it doesn't list holds. Transforms apply in the order they first appear, `from` first. Angles are radians and may exceed a half turn. A `Transform.matrix` keyframe tweens its translation, rotation and scale separately, and can't have shear, perspective or a zero scale. `Filter` steps apply to the polygons and `ElementObject` elements, and a nested group's filters replace its parent's. With `hover`, a `loop` plays only while hovered; any other tween takes one keyframe and eases to it and back. Setting `paused` later pauses everything using the tween; a hover transition can't pause, so it stops responding to hover instead. It runs on the main thread and `bake()` ignores its scale. Use a negative `delay`, in seconds, to offset the phase.
 
 `Filter.tint(color)` multiplies each pixel by an sRGB color in 0-1, like a sprite tint. It applies to polygons only, before the other filters, and semi-transparent pixels take a slight tint halo.
 
-Aim a camera with `mat4.targetTo(mat4.create(), eye, target, [0, 1, 0])`. Its tween moves it after its `matrix` (`translate([0, 0, 400])` backs away) and can't `hover` or scale by zero or less; its filters apply to every group without its own, and `bake()` ignores it.
+Aim a camera with gl-matrix (install it): `Transform.matrix(mat4.targetTo(mat4.create(), eye, target, [0, 1, 0]))`. Its tween moves it after its `transform` (`translate([0, 0, 400])` backs away) and can't `hover` or scale by zero or less; its filters apply to every group without its own, and `bake()` ignores it.
 
 On a live page, call `container.bake()` after building, heavily scaling or changing textures; `toHTML()` awaits it for you. It also sizes polygons to their image's texels, loading each url once.
 

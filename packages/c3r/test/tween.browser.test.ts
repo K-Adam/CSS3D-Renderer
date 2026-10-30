@@ -29,7 +29,7 @@ const square = (parent: Group) =>
 const scene = () => {
   const container = new Container();
   document.body.append(container.domElement);
-  container.camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, 400]);
+  container.camera.transform = Transform.translate([0, 0, 400]);
   const group = new Group();
   container.root.addChild(group);
   return {
@@ -40,17 +40,40 @@ const scene = () => {
   };
 };
 
+const view = (c: Container) =>
+  Array.from(
+    new DOMMatrix(getComputedStyle(c.viewElement).transform).toFloat64Array(),
+    (v) => +v.toFixed(2) + 0,
+  );
+
 const transform = (element: Element) => {
   const m = new DOMMatrix(getComputedStyle(element).transform);
   return [m.m11, m.m22, m.m41].map((v) => +v.toFixed(6));
 };
 
-it("composes the tween after the matrix, past a half turn", () => {
+it("composes the tween after the transform, past a half turn", () => {
   using s = scene();
-  s.group.matrix = mat4.fromTranslation(mat4.create(), [100, 0, 0]);
+  s.group.transform = Transform.translate([100, 0, 0]);
   using tween = new Tween({ keyframes: [Transform.rotateZ(turn)], ...half });
   s.group.tween = tween;
   expect(transform(s.group.domElement)).toEqual([-1, -1, 100]);
+});
+
+it("tweens a matrix as a rotation", () => {
+  using a = scene();
+  using b = scene();
+  using matrix = new Tween({
+    keyframes: [Transform.matrix(mat4.fromZRotation(mat4.create(), turn / 4))],
+    ...half,
+  });
+  using angle = new Tween({
+    keyframes: [Transform.rotateZ(turn / 4)],
+    ...half,
+  });
+  a.group.tween = matrix;
+  b.group.tween = angle;
+  expect(transform(a.group.domElement)).toEqual(transform(b.group.domElement));
+  expect(transform(a.group.domElement)[0]).toBeCloseTo(Math.SQRT1_2);
 });
 
 it("holds the previous keyframe's steps", () => {
@@ -65,9 +88,9 @@ it("holds the previous keyframe's steps", () => {
   expect(transform(s.group.domElement)).toEqual([-1, -1, 50]);
 });
 
-it("keeps the matrix and the other tweens when one is disposed", () => {
+it("keeps the transform and the other tweens when one is disposed", () => {
   using s = scene();
-  s.group.matrix = mat4.fromTranslation(mat4.create(), [100, 0, 0]);
+  s.group.transform = Transform.translate([100, 0, 0]);
   using spin = new Tween({ keyframes: [Transform.rotateZ(turn)], ...half });
   const tint = new Tween({ keyframes: [Filter.sepia(1)], ...half });
   using fade = new Tween({ keyframes: [Filter.opacity(0)], ...half });
@@ -82,7 +105,7 @@ it("keeps the matrix and the other tweens when one is disposed", () => {
   expect(s.group.domElement.getAnimations()).toHaveLength(1);
 });
 
-it("moves the camera after its matrix", () => {
+it("moves the camera after its transform", () => {
   using s = scene();
   using move = new Tween({
     keyframes: [[Transform.translate([100, 20, 50]), Transform.rotateY(1)]],
@@ -95,18 +118,31 @@ it("moves the camera after its matrix", () => {
   s.container.camera.tween = [move, grow];
 
   using still = scene();
-  const world = mat4.clone(s.container.camera.matrix);
-  mat4.translate(world, world, [50, 10, 25]);
-  mat4.rotateY(world, world, 0.5);
-  mat4.scale(world, world, [1.5, 1, 0.75]);
-  still.container.camera.matrix = world;
+  still.container.camera.transform = [
+    Transform.translate([0, 0, 400]),
+    Transform.translate([50, 10, 25]),
+    Transform.rotateY(0.5),
+    Transform.scale([1.5, 1, 0.75]),
+  ];
 
-  const view = (c: Container) =>
-    Array.from(
-      new DOMMatrix(getComputedStyle(c.viewElement).transform).toFloat64Array(),
-      (v) => +v.toFixed(2) + 0,
-    );
   expect(view(s.container)).toEqual(view(still.container));
+});
+
+it("moves the camera halfway along a matrix's parts", () => {
+  using a = scene();
+  using b = scene();
+  const pose = (t: number) => {
+    const m = mat4.fromTranslation(mat4.create(), [100 * t, 20 * t, 50 * t]);
+    mat4.rotate(m, m, t, [1, 2, 3]);
+    return mat4.scale(m, m, [1 + 0.5 * t, 1, 1 - 0.25 * t]);
+  };
+  using matrix = new Tween({ keyframes: [Transform.matrix(pose(1))], ...half });
+  a.container.camera.tween = matrix;
+  b.container.camera.transform = [
+    Transform.translate([0, 0, 400]),
+    Transform.matrix(pose(0.5)),
+  ];
+  expect(view(a.container)).toEqual(view(b.container));
 });
 
 it("rests a hover transition at `from`, also when assigned later", () => {

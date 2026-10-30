@@ -27,13 +27,9 @@ export class Filter {
     syntax = "<number>",
     kind: Kind = "filter",
   ): Filter {
-    return register(new Filter(), {
-      name,
-      kind,
-      syntax,
-      identity,
-      values: [value],
-    });
+    return register(new Filter(), [
+      { name, kind, syntax, identity, values: [value] },
+    ]);
   }
 
   static opacity(n: number): Filter {
@@ -83,7 +79,7 @@ export const filterSteps = (
   filter: Filter | readonly Filter[] | null,
 ): Step[] =>
   [filter ?? []].flat().map((f) => {
-    const step = stepOf(f);
+    const [step] = stepOf(f) ?? [];
     if (!step || step.kind === "transform") throw new TypeError("Not a Filter");
     return step;
   });

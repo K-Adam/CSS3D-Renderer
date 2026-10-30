@@ -45,7 +45,7 @@ export function setTweens(
     if (!part) throw new TypeError("Not a Tween");
     if (inverse && part.hover) throw new RangeError("A camera can't hover");
     if (inverse && part.transform && !part.inverse)
-      throw new RangeError("A camera scales by positive factors only");
+      throw new RangeError("A camera can't tween a zero or negative scale");
     return part;
   });
   const list = (key: keyof Style, separator: string, from = parts) =>
@@ -97,13 +97,19 @@ export class Tween {
     const apply = (changes: Steps, where: string) => {
       const names = new Set<string>();
       for (const change of [changes].flat()) {
-        const step = stepOf(change);
-        if (!step) throw new TypeError("Not a Transform or Filter");
-        if (names.has(step.name))
-          throw new RangeError(`${step.name} twice in ${where}`);
-        names.add(step.name);
-        pose.set(step.name, step);
-        invertible &&= step.invert !== null;
+        const list = stepOf(change);
+        if (!list) throw new TypeError("Not a Transform or Filter");
+        if (!list.length)
+          throw new RangeError(
+            "A tween can't decompose a matrix with shear, perspective or a zero scale",
+          );
+        for (const step of list) {
+          if (names.has(step.name))
+            throw new RangeError(`${step.name} twice in ${where}`);
+          names.add(step.name);
+          pose.set(step.name, step);
+          invertible &&= step.invert !== null;
+        }
       }
       return names.size;
     };
@@ -214,7 +220,7 @@ export class Tween {
       if (invertible)
         part.inverse = transforms
           .toReversed()
-          .map((s) => stepText(s, args(s).map(s.invert!)))
+          .map((s) => stepText(s, args(s).map(s.invert!), true))
           .join(" ");
     }
     // Inherited as resolved text, a filter on the group would flatten it

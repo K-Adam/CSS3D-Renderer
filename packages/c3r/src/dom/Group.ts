@@ -1,5 +1,8 @@
-import type { ReadonlyMat4 } from "gl-matrix";
-
+import {
+  composeTransforms,
+  ownTransform,
+  type Transform,
+} from "../css/Transform.js";
 import { setTweens, type Tween } from "../css/Tween.js";
 import {
   MeshBuilder,
@@ -24,6 +27,7 @@ export interface IndexedMesh {
 
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
+  #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
 
   constructor() {
@@ -32,11 +36,13 @@ export class Group extends Object3D {
     this.domElement.classList.add("c3r-group");
   }
 
-  override get matrix(): ReadonlyMat4 {
-    return super.matrix;
+  get transform(): Transform | readonly Transform[] {
+    return this.#transform;
   }
 
-  override set matrix(matrix: ReadonlyMat4) {
+  set transform(transform: Transform | readonly Transform[]) {
+    const matrix = composeTransforms(transform);
+    this.#transform = ownTransform(transform);
     this.setMatrix(matrix);
   }
 
@@ -59,6 +65,8 @@ export class Group extends Object3D {
   }
 
   addChild(obj: Object3D): void {
+    if (obj.domElement.contains(this.domElement))
+      throw new RangeError("A group can't contain its ancestor");
     parents.get(obj)?.removeChild(obj);
     parents.set(obj, this);
     this.#children.push(obj);

@@ -1,13 +1,13 @@
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
-import type { Camera } from "../css/Camera.js";
+import { type Camera, viewMatrixOf } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
 
 import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
-import type { Object3D } from "./Object3D.js";
+import { matrixOf, type Object3D } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
 
 // Keeps a Camera, and its rules, alive while its element is
@@ -116,7 +116,7 @@ export class Container {
         else measurePolygon(node, info?.size ?? null);
       }
       // Measuring refits the matrix
-      const m = mat4.mul(mat4.create(), parent, node.matrix);
+      const m = mat4.mul(mat4.create(), parent, matrixOf(node));
       if (node instanceof Polygon) {
         const scale = Math.min(
           Math.hypot(m[0], m[1], m[2]),
@@ -127,7 +127,7 @@ export class Container {
         for (const child of node.children) visit(child, m, image);
       }
     };
-    visit(this.#root, this.#camera.viewMatrix, null);
+    visit(this.#root, viewMatrixOf(this.#camera), null);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;
