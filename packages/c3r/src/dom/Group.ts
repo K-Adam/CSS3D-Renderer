@@ -11,10 +11,9 @@ import {
 } from "../math/MeshBuilder.js";
 import type { Vertex } from "../math/Vertex.js";
 
+import { moveTargets, parents, refreshInput } from "./Accumulator.js";
 import { Object3D } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
-
-const parents = new WeakMap<Object3D, Group>();
 
 // Keeps the tweens, and their rules, alive while their element is
 const elementTweens = new WeakMap<Element, readonly Tween[]>();
@@ -58,6 +57,7 @@ export class Group extends Object3D {
     for (const { className } of tweens) classList.add(className);
     elementTweens.set(this.domElement, tweens);
     this.#tween = Array.isArray(tween) ? tweens : tween;
+    refreshInput(this);
   }
 
   get children(): readonly Object3D[] {
@@ -69,6 +69,7 @@ export class Group extends Object3D {
       throw new RangeError("A group can't contain its ancestor");
     parents.get(obj)?.removeChild(obj);
     parents.set(obj, this);
+    moveTargets(obj, 1);
     this.#children.push(obj);
     this.domElement.appendChild(obj.domElement);
   }
@@ -78,6 +79,7 @@ export class Group extends Object3D {
     if (index < 0) return;
 
     this.#children.splice(index, 1);
+    moveTargets(obj, -1);
     parents.delete(obj);
     obj.domElement.remove();
   }

@@ -1,6 +1,13 @@
 export { Material } from "./css/Material.js";
 export { Filter } from "./css/Filter.js";
 export { Transform } from "./css/Transform.js";
+export {
+  type CssFunction,
+  type CssFunctionType,
+  type CssNode,
+  CssValue,
+  type Unit,
+} from "./css/CssValue.js";
 export { type Keyframe, Tween, type TweenOptions } from "./css/Tween.js";
 export { cssText, styleHTML } from "./css/styles.js";
 
@@ -9,6 +16,8 @@ export { Group, type IndexedMesh } from "./dom/Group.js";
 export { Container } from "./dom/Container.js";
 export { Polygon, type PolygonOptions } from "./dom/Polygon.js";
 export { ElementObject } from "./dom/ElementObject.js";
+export { Accumulator, type AccumulatorOptions } from "./dom/Accumulator.js";
+export { Billboard } from "./dom/Billboard.js";
 
 export type { Vertex } from "./math/Vertex.js";
 export {

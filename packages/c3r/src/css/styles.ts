@@ -40,12 +40,29 @@ export function insertRule(
   try {
     rule = sheet.cssRules[sheet.insertRule(text, sheet.cssRules.length)];
   } catch (error) {
-    if (!selector.startsWith("@property")) throw error;
+    // A server-side DOM rejects every @property, a browser only an invalid one
+    if (!selector.startsWith("@property") || "CSSPropertyRule" in globalThis)
+      throw error;
     rule = { cssText: text } as CSSRule;
     rejected.add(rule);
   }
   registry.register(owner, rule, rule);
   return rule as CSSStyleRule;
+}
+
+// Nothing that ends the rule, comments out the rest or loads a resource, and
+// reads other properties only when allowed
+export function plainValue(text: string, vars = false): boolean {
+  let depth = 0;
+  for (const c of text) {
+    depth += c === "(" ? 1 : c === ")" ? -1 : 0;
+    if (depth < 0) return false;
+  }
+  return (
+    !depth &&
+    (vars || !/\bvar\(/i.test(text)) &&
+    !/\/\*|\b(env|attr|url)\(|[^\w\s().,%+\-*/#]/i.test(text)
+  );
 }
 
 // Base styles as source text, a server-side DOM drops @property

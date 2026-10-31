@@ -1,3 +1,5 @@
+import { type CssFunction, CssValue, cssRaw } from "./CssValue.js";
+
 export type Kind = "transform" | "filter" | "layer";
 
 export interface Step {
@@ -10,6 +12,8 @@ export interface Step {
   values: string[];
   // Transforms only, for the camera, null without an inverse
   invert?: ((value: string) => string) | null;
+  // Set by the factories of steps that only turn, so others can undo them
+  rotates?: boolean;
 }
 
 // Only factory-made steps, a forged one would inject raw CSS
@@ -31,16 +35,20 @@ export function stepOf(value: unknown): readonly Step[] | undefined {
 }
 
 // A transform list is a whole value, the second one is its inverse
-export const stepText = (
+export const stepValue = (
   step: Step,
-  args = step.values,
+  args: string[],
   inverse = false,
-): string =>
+): CssValue =>
   step.syntax === "<transform-list>"
-    ? args[inverse ? 1 : 0]
-    : `${step.fn ?? step.name}(${args.join()})`;
+    ? cssRaw(args[inverse ? 1 : 0])
+    : CssValue.fn((step.fn ?? step.name) as CssFunction, ...args.map(cssRaw));
 
-export const radians = (angle: number): string => {
-  if (!Number.isFinite(angle)) throw new RangeError(`Invalid angle ${angle}`);
-  return `${angle}rad`;
-};
+// Steps invert their values, and a transform list picks its stored inverse
+export const inverseStepValue = (step: Step, args: string[]): CssValue =>
+  stepValue(step, args.map(step.invert!), true);
+
+export const stepText = (...args: Parameters<typeof stepValue>): string =>
+  String(stepValue(...args));
+
+export const radians = (angle: number): string => String(CssValue.rad(angle));

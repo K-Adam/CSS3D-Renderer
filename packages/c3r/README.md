@@ -49,6 +49,9 @@ container.camera.transform = Transform.translate([0, 0, 400]);
 | `Group`                                   | A transformed node: `transform` and `tween` (one or an array each, `[]` resets `transform`), `addChild()`, `addPolygon()`, `addTriangles()` merges into polygons, `addMesh()` takes flat `positions`, `uvs`, `cells`     |
 | `Polygon`                                 | A flat, convex or concave textured polygon from CCW vertices, with `uvScale`, `uvOffset`, `textureSize` (set it for a data url, otherwise `bake()` measures it)                                                          |
 | `ElementObject`                           | Any HTML element in the scene, centered on the origin, with `scale`, `center`, `rotation`                                                                                                                                |
+| `Billboard`                               | A group that faces the camera                                                                                                                                                                                            |
+| `Accumulator`                             | Folds a CSS value down the scene graph into its targets: `addTarget()`, `removeTarget()`, `restartUnder()`, `result`                                                                                                     |
+| `CssValue`                                | A CSS value built from factories: `number`, `px`, `rad`, `add`, `sub`, `mul`, `div`, `fn`, `matrixMultiply`, inspected through `node`                                                                                    |
 | `Tween`                                   | A CSS animation of a group or camera: `keyframes` of `Transform` and `Filter` steps, `from`, `duration`, `delay`, `easing`, `loop`, `alternate`, `paused`, `hover`                                                       |
 | `Transform`, `Filter`                     | Steps from factories: `translate` (scene units), `rotateX`, `rotateY`, `rotateZ`, `scale`, `matrix` (column-major); `opacity`, `brightness`, `contrast`, `saturate`, `grayscale`, `sepia`, `invert`, `hueRotate`, `tint` |
 | `Material`                                | `background` (`[r, g, b, a]` in 0-1, or an image URL), `filter` (one or an array of `Filter` steps, before a tween's), `doubleSided`, inherited by the object's descendants; on an `ElementObject`, its element only     |
@@ -56,11 +59,17 @@ container.camera.transform = Transform.translate([0, 0, 400]);
 
 An image's alpha shows through. A color and an image don't combine, tint either with `Filter.tint`; a color hides an inherited image and an image hides an inherited color. Every property applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
 
-A `Material`, `Tween` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
+A `Material`, `Tween`, `Accumulator` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
 
 A `transform` array applies in order, like CSS. A tween animates a group after its `transform`, from rest or from the `from` steps, and a group's tweens apply in array order. Its keyframes play in sequence, `duration` seconds each unless written as `{ steps, duration }`, and `easing` applies to each; a keyframe is one step or an array of steps, and what it doesn't list holds. Transforms apply in the order they first appear, `from` first. Angles are radians and may exceed a half turn. A `Transform.matrix` keyframe tweens its translation, rotation and scale separately, and can't have shear, perspective or a zero scale. `Filter` steps apply to the polygons and `ElementObject` elements, and a nested group's filters replace its parent's. With `hover`, a `loop` plays only while hovered; any other tween takes one keyframe and eases to it and back. Setting `paused` later pauses everything using the tween; a hover transition can't pause, so it stops responding to hover instead. It runs on the main thread and `bake()` ignores its scale. Use a negative `delay`, in seconds, to offset the phase.
 
 `Filter.tint(color)` multiplies each pixel by an sRGB color in 0-1, like a sprite tint. It applies to polygons only, before the other filters, and semi-transparent pixels take a slight tint halo.
+
+An `Accumulator` computes `--name` on each target, folding every node's `--name-input` into its parent's value with `combine`, from the camera's view down. Only targets and their ancestors compute it, other nodes read the `identity`.
+
+A `CssValue` comes only from its factories, which refuse text that could escape a declaration. `matrixMultiply(a, b)` composes transforms, `b` first.
+
+A `Billboard` undoes every rotation above it and its own, so turn a child group to spin it. A scale that isn't uniform, a shear, or a mirror in a tween skews it.
 
 Aim a camera with gl-matrix (install it): `Transform.matrix(mat4.targetTo(mat4.create(), eye, target, [0, 1, 0]))`. Its tween moves it after its `transform` (`translate([0, 0, 400])` backs away) and can't `hover` or scale by zero or less; its filters apply to every group without its own, and `bake()` ignores it.
 
@@ -93,7 +102,6 @@ GlobalRegistrator.register({
 const { Container } = await import("c3r");
 
 const container = new Container();
-container.setSize(800, 600);
 // ... build the scene
 
 const html = `<!doctype html>${await container.toHTML()}`;

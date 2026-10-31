@@ -2,6 +2,8 @@ import "../polyfill.js";
 
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
+import { refreshCamera } from "../dom/Accumulator.js";
+
 import { deleteRule, insertRule } from "./styles.js";
 import {
   allFinite,
@@ -51,6 +53,7 @@ export abstract class Camera {
     if (mat4.exactEquals(view, current)) return;
     mat4.copy(current, view);
     this.#writeMatrix();
+    this.#refresh();
   }
 
   get tween(): Tween | readonly Tween[] | null {
@@ -60,6 +63,7 @@ export abstract class Camera {
   set tween(tween: Tween | readonly Tween[] | null) {
     const tweens = setTweens(this.#viewRule?.style, tween, true);
     this.#tween = Array.isArray(tween) ? tweens : tween;
+    this.#refresh();
   }
 
   #writeMatrix(): void {
@@ -69,11 +73,19 @@ export abstract class Camera {
     );
   }
 
+  // Not from the constructor, an input rule may read a subclass's fields,
+  // which exist once it sets its params
+  #refresh(): void {
+    const style = this.#viewRule?.style;
+    if (style) refreshCamera(this, style);
+  }
+
   // Rewriting an unchanged rule would still restyle the whole scene
   protected setParam(name: string, value: string): void {
     const style = this.#paramsRule?.style;
-    if (style && style.getPropertyValue(name) !== value)
-      style.setProperty(name, value);
+    if (!style || style.getPropertyValue(name) === value) return;
+    style.setProperty(name, value);
+    this.#refresh();
   }
 
   [Symbol.dispose](): void {

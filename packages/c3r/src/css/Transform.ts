@@ -7,6 +7,7 @@ import {
   type ReadonlyVec3,
 } from "gl-matrix";
 
+import { CssValue, cssRaw } from "./CssValue.js";
 import { radians, register, type Step } from "./steps.js";
 
 // Finite numbers only, an object's toString would reach the stylesheet
@@ -17,7 +18,7 @@ const vector = (v: ReadonlyVec3): [number, number, number] => {
   return values as [number, number, number];
 };
 
-const negate = (value: string) => `calc(-1 * ${value})`;
+const negate = (value: string) => String(CssValue.mul(-1, cssRaw(value)));
 
 // Float32 overflows to Infinity, which CSS drops
 export function allFinite(m: ReadonlyMat4): boolean {
@@ -27,7 +28,9 @@ export function allFinite(m: ReadonlyMat4): boolean {
 
 // A tween reaches a negative scale through zero
 const scaleInverse = (scale: number[]) =>
-  scale.every((n) => n > 0) ? (value: string) => `calc(1 / ${value})` : null;
+  scale.every((n) => n > 0)
+    ? (value: string) => String(CssValue.div(1, cssRaw(value)))
+    : null;
 
 interface Decomposed {
   translation: number[];
@@ -78,21 +81,23 @@ export function decompose(m: ReadonlyMat4): Decomposed | null {
 
 // Separate tracks, so a camera can invert each one
 const matrixSteps = ({ translation, axis, angle, scale }: Decomposed) => {
-  const turn = (rad: number) => `rotate3d(${axis.join()}, ${rad}rad)`;
+  const turn = (rad: number) =>
+    String(CssValue.fn("rotate3d", ...axis, CssValue.rad(rad)));
   return [
     {
       name: "matrix",
       fn: "translate3d",
       syntax: "<length>",
       identity: "0px",
-      values: translation.map((n) => `${n}px`),
+      values: translation.map((n) => String(CssValue.px(n))),
     },
     {
       name: "matrix-rotate",
       syntax: "<transform-list>",
-      identity: "rotate3d(0, 0, 1, 0rad)",
+      identity: String(CssValue.fn("rotate3d", 0, 0, 1, CssValue.rad(0))),
       values: [turn(angle), turn(-angle)],
       invert: (value: string) => value,
+      rotates: true,
     },
     {
       name: "matrix-scale",
@@ -105,6 +110,7 @@ const matrixSteps = ({ translation, axis, angle, scale }: Decomposed) => {
   ];
 };
 
+// Per frame and per node, so joined by hand from numbers already finite
 export const matrixText = (m: ReadonlyMat4) => `matrix3d(${[...m].join()})`;
 
 const matrices = new WeakMap<Transform, ReadonlyMat4>();
@@ -159,7 +165,13 @@ export class Transform {
     angle: number,
   ): Transform {
     return Transform.#create(from(mat4.create(), angle), [
-      { name, syntax: "<angle>", identity: "0rad", values: [radians(angle)] },
+      {
+        name,
+        syntax: "<angle>",
+        identity: "0rad",
+        values: [radians(angle)],
+        rotates: true,
+      },
     ]);
   }
 
@@ -171,7 +183,7 @@ export class Transform {
         name: "translate3d",
         syntax: "<length>",
         identity: "0px",
-        values: values.map((n) => `${n}px`),
+        values: values.map((n) => String(CssValue.px(n))),
       },
     ]);
   }

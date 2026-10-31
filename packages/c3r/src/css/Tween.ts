@@ -1,8 +1,8 @@
 import "../polyfill.js";
 
 import { type Filter, filterTexts, filterVariables } from "./Filter.js";
-import { type Step, stepOf, stepText } from "./steps.js";
-import { deleteRule, insertRule } from "./styles.js";
+import { inverseStepValue, type Step, stepOf, stepText } from "./steps.js";
+import { deleteRule, insertRule, plainValue } from "./styles.js";
 import type { Transform } from "./Transform.js";
 
 type Steps = Transform | Filter | readonly (Transform | Filter)[];
@@ -32,6 +32,13 @@ interface Style {
 }
 
 const styles = new WeakMap<Tween, Style>();
+
+type AnimatedStep = { step: Step; args: string[] };
+const animatedSteps = new WeakMap<Tween, AnimatedStep[]>();
+
+// Transform steps with their animated arguments, so others can build on them
+export const transformSteps = (tween: Tween): readonly AnimatedStep[] =>
+  animatedSteps.get(tween) ?? [];
 
 // Throws before writing anything
 export function setTweens(
@@ -133,18 +140,16 @@ export class Tween {
     const timingFunction = probe.getPropertyValue("transition-timing-function");
     // Only one easing fits the shorthands, and a server-side DOM keeps any text
     let depth = 0;
-    let malformed = false;
+    let several = false;
     for (const c of timingFunction) {
       depth += c === "(" ? 1 : c === ")" ? -1 : 0;
-      if (depth < 0 || (c === "," && !depth)) malformed = true;
+      if (c === "," && !depth) several = true;
     }
     if (
-      !timingFunction ||
-      malformed ||
-      depth ||
-      /^\s*(inherit|initial|unset|revert(-layer)?)\s*$|\b(var|env|attr)\(|[^\w\s().,%+\-/]/i.test(
-        timingFunction,
-      )
+      several ||
+      !timingFunction.trim() ||
+      !plainValue(timingFunction) ||
+      /^\s*(inherit|initial|unset|revert(-layer)?)\s*$/i.test(timingFunction)
     )
       throw new RangeError(`Invalid easing ${easing}`);
     if (!Number.isFinite(delay)) throw new RangeError(`Invalid delay ${delay}`);
@@ -213,14 +218,18 @@ export class Tween {
     if (hover) style.setProperty("pointer-events", "auto");
 
     const timing = `${timingFunction} ${delay}s`;
+    const steps = transforms.map((step) => ({ step, args: args(step) }));
+    animatedSteps.set(this, steps);
     // Fallbacks keep the element's other tweens when this one is disposed
     const part: Style = { hover };
-    if (transforms.length) {
-      part.transform = transforms.map((s) => stepText(s, args(s))).join(" ");
+    if (steps.length) {
+      part.transform = steps
+        .map(({ step, args }) => stepText(step, args))
+        .join(" ");
       if (invertible)
-        part.inverse = transforms
+        part.inverse = steps
           .toReversed()
-          .map((s) => stepText(s, args(s).map(s.invert!), true))
+          .map(({ step, args }) => String(inverseStepValue(step, args)))
           .join(" ");
     }
     // Inherited as resolved text, a filter on the group would flatten it

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { mat4, quat, vec3, vec4 } from "gl-matrix";
 import { cube, cylinder } from "primitive-geometry";
 import {
+  Accumulator,
+  CssValue,
   Container,
   cssText,
   ElementObject,
@@ -1106,6 +1108,25 @@ describe("server-side rendering", () => {
       settings.enableImageFileLoading = enableImageFileLoading;
       settings.fetch.virtualServers = virtualServers;
     }
+  });
+
+  it("keeps an input rule's result inside its declaration", async () => {
+    using error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const container = new Container();
+    using acc = new Accumulator({
+      name: "unsafe",
+      syntax: "*",
+      identity: CssValue.number(0),
+      combine: (parent, input) => CssValue.add(parent, input),
+      input: () => "0; } * {color:red}" as unknown as CssValue,
+    });
+    const target = new Group();
+    container.root.addChild(target);
+    acc.addTarget(target);
+    const html = await container.toHTML();
+    expect(html).not.toMatch(/color: ?red/);
+    expect(cssText()).not.toMatch(/color: ?red/);
+    expect(error).toHaveBeenCalled();
   });
 
   it("sizes an orthographic view from setSize, without layout", () => {

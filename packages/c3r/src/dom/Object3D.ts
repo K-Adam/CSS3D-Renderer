@@ -4,6 +4,8 @@ import type { Material } from "../css/Material.js";
 import { ensureStyles } from "../css/styles.js";
 import { matrixText } from "../css/Transform.js";
 
+import { refreshInput } from "./Accumulator.js";
+
 // Keeps a Material, and its rule, alive while its element is
 const elementMaterials = new WeakMap<Element, Material>();
 
@@ -25,6 +27,7 @@ export abstract class Object3D {
     if (mat4.exactEquals(matrix, current)) return;
     mat4.copy(current, matrix);
     this.domElement.style.setProperty("--c3r-matrix", matrixText(matrix));
+    refreshInput(this);
   }
 
   get material(): Material | null {

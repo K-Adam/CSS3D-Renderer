@@ -263,11 +263,14 @@ it("tweens a tint linearly in sRGB", () => {
   using s = scene();
   using tween = new Tween({ keyframes: [Filter.tint([0, 0.5, 1])], ...half });
   s.group.tween = tween;
-  expect(
-    getComputedStyle(s.group.domElement).getPropertyValue(
-      `--${tween.className}-tint`,
-    ),
-  ).toBe("rgb(128, 191, 255)");
+  const tint = getComputedStyle(s.group.domElement).getPropertyValue(
+    `--${tween.className}-tint`,
+  );
+  // Firefox and WebKit round the end color to 8 bits before interpolating
+  const channels = tint.match(/[\d.]+/g)!.map(Number);
+  [127.5, 191.25, 255].forEach((expected, i) =>
+    expect(Math.abs(channels[i] - expected)).toBeLessThanOrEqual(1),
+  );
 });
 
 // A blob url, data urls skip the check
