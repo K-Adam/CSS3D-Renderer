@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { page } from "vitest/browser";
 import { Container, OrthographicCamera, PerspectiveCamera } from "c3r";
 
 it("resolves the camera projections from styles.css", () => {
@@ -19,4 +20,17 @@ it("resolves the camera projections from styles.css", () => {
   container.camera = new PerspectiveCamera(90);
   expect(perspective()).toBe("150px");
   expect([view().m22, view().m43]).toEqual([-1, 150]);
+});
+
+it("keeps an orthographic scale in step with a window resize", async () => {
+  await page.viewport(1000, 400);
+  const container = new Container();
+  document.body.append(container.domElement);
+  container.camera = new OrthographicCamera(0, 500, 100, 0);
+  const view = () =>
+    new DOMMatrix(getComputedStyle(container.viewElement).transform);
+  expect([view().m11, view().m22]).toEqual([2, -4]);
+
+  await page.viewport(800, 200);
+  expect([view().m11, view().m22]).toEqual([1.6, -2]);
 });

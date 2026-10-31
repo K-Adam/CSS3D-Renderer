@@ -1,0 +1,11 @@
+# CSS feature TODOs
+
+Changes to make once a feature is stable in Chrome, Firefox and Safari. Status from 2026-10-31.
+
+| Feature          | Waiting on              | Change                                                                                                                                                                                                                                                                       |
+| ---------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `inherit()`      | Chrome release, Firefox | Replace the alternating slots and `@container style()` rules in `Accumulator` with `--name: combine(inherit(--name), var(--name-input))`. Chrome 158 and 159 compute it without a flag only when the declaration contains `var()`, and `CSS.supports()` still reports false. |
+| `random()`       | Firefox, in Nightly 161 | Give the `particle()` callback of `ParticleSystem` per-element CSS values instead of the `Math.random()` numbers its `random` helper returns. This changes its API. Check the final keyword name first, `element-scoped` is being renamed to `per-element`.                  |
+| `@function`      | Firefox                 | Express the filters and transforms from the `particle()` callback as custom functions of its random values and a shared progress, so `ParticleSystem` no longer needs `Tween`s per particle.                                                                                 |
+| `image(<color>)` | WebKit `multiply` bug   | Replace the `linear-gradient(color, color)` tint layer in `Filter`. WebKit 27.2 paints `image(<color>)` without applying `background-blend-mode: multiply`, which the tint relies on.                                                                                        |
+| `user-select`    | Safari, preview only    | Remove `-webkit-user-select` from `styles.css`.                                                                                                                                                                                                                              |

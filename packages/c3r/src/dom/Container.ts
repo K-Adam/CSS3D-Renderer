@@ -36,7 +36,6 @@ export class Container {
 
     this.domElement.appendChild(this.viewElement);
     this.viewElement.appendChild(this.#root.domElement);
-    this.resetSize();
   }
 
   get root(): Group {
@@ -159,9 +158,6 @@ export class Container {
     const { style } = this.domElement;
     style.setProperty("--c3r-viewport-width", `${width}px`);
     style.setProperty("--c3r-viewport-height", `${height}px`);
-    // Unitless for the ortho scale, CSS can't divide lengths yet
-    style.setProperty("--c3r-viewport-x", String(width));
-    style.setProperty("--c3r-viewport-y", String(height));
   }
 
   resetSize(): void {
@@ -171,7 +167,5 @@ export class Container {
     const { style } = this.domElement;
     style.removeProperty("--c3r-viewport-width");
     style.removeProperty("--c3r-viewport-height");
-    style.setProperty("--c3r-viewport-x", String(innerWidth));
-    style.setProperty("--c3r-viewport-y", String(innerHeight));
   }
 }

@@ -36,13 +36,15 @@ it("types values by what they compute to", () => {
   const { px, rad, add, mul, div, fn } = CssValue;
   expect(typeOf(px(1))).toBe("<length>");
   expect(typeOf(mul(px(1), x))).toBe("<length>");
-  expect(typeOf(div(px(1), px(2)))).toBeNull();
+  expect(typeOf(div(px(1), px(2)))).toBe("<number>");
   expect(typeOf(add(px(1), 1))).toBeNull();
   expect(typeOf(fn("sin", rad(1)))).toBe("<number>");
   expect(typeOf(matrixMultiply())).toBe("<transform-list>");
   const turn = fn("rotate", rad(1));
   for (const invalid of [
     add(turn, turn),
+    div(px(1), rad(1)),
+    div(1, px(1)),
     fn("min", 1, px(1)),
     fn("sqrt", px(1)),
     fn("asin", rad(1)),

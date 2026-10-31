@@ -1176,7 +1176,7 @@ describe("server-side rendering", () => {
       "c3r-orthographic",
       camera.className,
     ]);
-    expect(style.getPropertyValue("--c3r-viewport-x")).toBe("400");
+    expect(style.getPropertyValue("--c3r-viewport-width")).toBe("400px");
     expect(cssText()).toMatch(
       new RegExp(
         String.raw`\.${camera.className} \{[^}]*--c3r-camera-left: ?-200`,

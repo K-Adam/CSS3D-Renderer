@@ -20,7 +20,7 @@ document.body.appendChild(renderer.domElement);
 renderer.render(scene, camera);
 ```
 
-Until `setSize()` the scenes fill the window and follow it, like a C3R `Container`. An orthographic camera needs `setSize()`.
+Until `setSize()` the scenes fill the window and follow it, like a C3R `Container`.
 
 `CSS3DObject` and `CSS3DSprite` are re-exported from `three/addons`, so their elements receive pointer events as with three's renderer.
 

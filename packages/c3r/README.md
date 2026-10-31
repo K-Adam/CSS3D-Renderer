@@ -79,8 +79,6 @@ Aim a camera with gl-matrix (install it): `Transform.matrix(mat4.targetTo(mat4.c
 
 On a live page, call `container.bake()` after building, heavily scaling or changing textures; `toHTML()` awaits it for you. It also sizes polygons to their image's texels, loading each url once.
 
-An orthographic camera needs `setSize()`: without it the container takes the window size at construction and does not follow resizes.
-
 The stylesheet is adopted by `document` only, so a container inside a shadow root is unstyled.
 
 ## Node

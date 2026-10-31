@@ -264,8 +264,8 @@ export function typeOf(value: Arg): string | null {
         return left === right ? left : null;
       if (node.op === "*")
         return left === "<number>" ? right : right === "<number>" ? left : null;
-      // A unit over a unit needs typed arithmetic, which Firefox lacks
-      return right === "<number>" ? left : null;
+      if (right === "<number>") return left;
+      return left === right ? "<number>" : null;
     }
   }
 }

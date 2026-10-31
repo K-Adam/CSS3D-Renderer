@@ -109,11 +109,11 @@
 .c3r-orthographic > .c3r-view {
   transform: scale(
       calc(
-        var(--c3r-viewport-x) /
+        var(--c3r-viewport-width) / 1px /
           (var(--c3r-camera-right) - var(--c3r-camera-left))
       ),
       calc(
-        var(--c3r-viewport-y) /
+        var(--c3r-viewport-height) / 1px /
           (var(--c3r-camera-top) - var(--c3r-camera-bottom))
       )
     )
