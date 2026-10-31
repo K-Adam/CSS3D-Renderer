@@ -17,6 +17,19 @@
   inherits: false;
 }
 
+/* An integer, so a stepped frame is exact for mod() and round() */
+@property --c3r-frame {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes c3r-flipbook {
+  to {
+    --c3r-frame: var(--c3r-frames);
+  }
+}
+
 .c3r-container {
   overflow: hidden;
   position: relative;
@@ -121,6 +134,11 @@
   filter: var(--c3r-filter,) var(--c3r-tween-filter,);
   transform: matrix(1, 0, 0, 1, 0, 0);
   transform-origin: 0 0;
+  /* On the content, a tween's inline animation on the group would replace it */
+  animation: var(--c3r-flipbook-animation, none);
+  /* Invalid without a flipbook, so a browser without mod() still maps plain textures */
+  --c3r-column: mod(var(--c3r-frame), var(--c3r-columns));
+  --c3r-row: round(down, var(--c3r-frame) / var(--c3r-columns), 1);
 }
 
 /* No specificity, so the user's own styles win */

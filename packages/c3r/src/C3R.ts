@@ -1,4 +1,4 @@
-export { Material } from "./css/Material.js";
+export { type Flipbook, Material } from "./css/Material.js";
 export { Filter } from "./css/Filter.js";
 export { Transform } from "./css/Transform.js";
 export {

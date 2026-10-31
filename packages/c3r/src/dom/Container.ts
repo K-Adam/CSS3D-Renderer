@@ -106,17 +106,27 @@ export class Container {
       node: Object3D,
       parent: ReadonlyMat4,
       image: string | null,
+      cells: readonly [number, number],
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
-      const background = node.material?.background;
-      if (background != null && !(node instanceof ElementObject))
+      const material = node instanceof ElementObject ? null : node.material;
+      const background = material?.background;
+      if (background != null) {
         image = typeof background === "string" ? background : null;
+        cells = [1, 1];
+      }
+      if (material?.flipbook)
+        cells = [material.flipbook.columns, material.flipbook.rows];
       if (node instanceof Polygon) {
         const info = image === null ? null : imageInfo(image);
         // Keeps the old size while a new image loads
         if (info === undefined) loading.push(loadImage(image!));
-        else measurePolygon(node, info?.size ?? null);
+        else
+          measurePolygon(
+            node,
+            info && [info.size[0] / cells[0], info.size[1] / cells[1]],
+          );
       }
       // Measuring refits the matrix
       const m = mat4.mul(mat4.create(), parent, matrixOf(node));
@@ -127,10 +137,10 @@ export class Container {
         );
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
-        for (const child of node.children) visit(child, m, image);
+        for (const child of node.children) visit(child, m, image, cells);
       }
     };
-    visit(this.#root, viewMatrixOf(this.#camera), null);
+    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1]);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;

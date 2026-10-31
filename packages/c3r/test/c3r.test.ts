@@ -211,11 +211,12 @@ describe("Polygon.clampUV", () => {
       edges: square.map(() => [{ point: [0, 0, 1], fold: "concave" }, null]),
     });
     const { style } = poly.contentElement;
+    const sizes = () =>
+      [...style.backgroundSize.matchAll(/([\d.e+-]+)%/g)].map((m) => +m[1]);
 
-    expect(parseFloat(style.backgroundSize)).toBeLessThan(100);
+    expect(sizes()[0]).toBeLessThan(100);
     poly.clampUV = true;
-    for (const size of style.backgroundSize.split(" "))
-      expect(parseFloat(size)).toBeCloseTo(100);
+    for (const size of sizes()) expect(size).toBeCloseTo(100);
   });
 });
 
@@ -581,6 +582,25 @@ describe("Material", () => {
 
     material.doubleSided = false;
     expect(rule()).not.toContain("backface-visibility");
+  });
+
+  it("plays a flipbook", () => {
+    using material = new Material();
+    const rule = () => ruleOf(material.className);
+
+    material.flipbook = { columns: 8, rows: 4, frames: 30 };
+    expect(rule()).toMatch(/c3r-flipbook 1s steps\(30, ?jump-end\) infinite/);
+    material.flipbook = null;
+    expect(rule()).not.toContain("--c3r-");
+    material.background = "leaf.png";
+    expect(rule()).toMatch(/--c3r-columns: ?initial/);
+
+    for (const flipbook of [
+      { columns: 1.5, rows: 1 },
+      { columns: 2, rows: 2, frames: 5 },
+      { columns: 2, rows: 2, fps: 0 },
+    ])
+      expect(() => (material.flipbook = flipbook)).toThrow(RangeError);
   });
 
   it("paints a color or an image, hiding the other from a parent", () => {
