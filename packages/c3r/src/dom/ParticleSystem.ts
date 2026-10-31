@@ -15,7 +15,7 @@ export interface ParticleSystemOptions {
   mesh: IndexedMesh;
   // Called once per particle, so its random values are fixed for it. Durations
   // are relative and fill the life
-  tween: (particle: {
+  particle: (context: {
     random(min?: number, max?: number): number;
   }) => Pick<TweenOptions, "from" | "keyframes" | "easing">;
 }
@@ -33,7 +33,7 @@ export class ParticleSystem extends Group {
     lifetime,
     lifetimeRandomness = 0.1,
     mesh,
-    tween,
+    particle,
   }: ParticleSystemOptions) {
     super();
     if (!(Number.isInteger(count) && count > 0))
@@ -48,7 +48,7 @@ export class ParticleSystem extends Group {
       const life = lifetime * (1 - lifetimeRandomness * random());
       // Negative, so the system starts full
       const delay = -random() * life;
-      const { from = [], keyframes, easing } = tween({ random });
+      const { from = [], keyframes, easing } = particle({ random });
       const frames = keyframes.map((k) => {
         const { steps, duration: weight = 1 } = "steps" in k ? k : { steps: k };
         if (!(weight > 0 && Number.isFinite(weight)))

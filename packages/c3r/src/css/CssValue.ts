@@ -1,11 +1,11 @@
 import { plainValue } from "./styles.js";
 
 // Typed OM unit names, so a later move onto the platform keeps them
-export type Unit = "number" | "px" | "rad";
+type Unit = "number" | "px" | "rad";
 
 type Arg = CssValue | number;
 
-export type CssNode =
+type CssNode =
   | { readonly kind: "unit"; readonly value: number; readonly unit: Unit }
   | {
       readonly kind: "math";
@@ -15,7 +15,6 @@ export type CssNode =
     }
   | {
       readonly kind: "ref";
-      readonly fn: "var";
       readonly name: string;
       readonly syntax: string;
       readonly fallback: CssValue | null;
@@ -90,7 +89,7 @@ const functionTypes = {
 } as const;
 
 export type CssFunction = keyof typeof functionTypes;
-export type CssFunctionType = (typeof functionTypes)[CssFunction];
+type CssFunctionType = (typeof functionTypes)[CssFunction];
 
 // The argument types a math function takes and the type it gives, a missing one
 // takes any numeric type and gives it back
@@ -142,12 +141,8 @@ export class CssValue {
     if (k !== key) throw new TypeError("Not a CssValue");
     this.#node = Object.freeze(node);
     this.#text = text;
-    // An own toString or node can't shadow the printed text
+    // An own toString can't shadow the printed text
     Object.freeze(this);
-  }
-
-  get node(): CssNode {
-    return this.#node;
   }
 
   toString(): string {
@@ -197,22 +192,6 @@ export class CssValue {
     );
   }
 
-  // a × b, so b applies first. Null and empty factors are the identity
-  static matrixMultiply(...factors: (CssValue | null)[]): CssValue {
-    const kept = factors.filter(
-      (f): f is CssValue => f !== null && print(checked(f)) !== "",
-    );
-    for (const f of kept) {
-      const type = typeOf(f);
-      if (type !== "<transform-function>" && type !== "<transform-list>")
-        throw new TypeError(`matrixMultiply takes transforms, not ${print(f)}`);
-    }
-    return create(
-      { kind: "matrixProduct", factors: Object.freeze(kept) },
-      kept.map((f) => print(f)).join(" "),
-    );
-  }
-
   static #unit(value: number, unit: Unit): CssValue {
     const n = finite(value);
     return create(
@@ -236,6 +215,22 @@ function checked<T extends Arg>(value: T): T {
   if (typeof value !== "object" || value === null || !isMade(value))
     throw new TypeError("Not a CssValue");
   return value;
+}
+
+// a × b, so b applies first. Null and empty factors are the identity
+export function matrixMultiply(...factors: (CssValue | null)[]): CssValue {
+  const kept = factors.filter(
+    (f): f is CssValue => f !== null && print(checked(f)) !== "",
+  );
+  for (const f of kept) {
+    const type = typeOf(f);
+    if (type !== "<transform-function>" && type !== "<transform-list>")
+      throw new TypeError(`matrixMultiply takes transforms, not ${print(f)}`);
+  }
+  return create(
+    { kind: "matrixProduct", factors: Object.freeze(kept) },
+    kept.map((f) => print(f)).join(" "),
+  );
 }
 
 export const textOf = (value: CssValue): string => read(checked(value)).text;
@@ -282,7 +277,7 @@ function print(value: Arg, operand = false): string {
   return operand && node.kind === "math" ? text.slice("calc".length) : text;
 }
 
-// Internal: users only get the references an Accumulator hands them
+// Internal: users only get Group.time
 export function cssVar(
   name: string,
   syntax: string,
@@ -291,7 +286,7 @@ export function cssVar(
   if (!/^--[\w-]+$/.test(name)) throw new RangeError(`Invalid name ${name}`);
   const or = fallback === undefined ? null : checked(fallback);
   return create(
-    { kind: "ref", fn: "var", name, syntax, fallback: or },
+    { kind: "ref", name, syntax, fallback: or },
     or ? `var(${name}, ${textOf(or)})` : `var(${name})`,
   );
 }

@@ -1,7 +1,7 @@
 import type { ReadonlyMat4 } from "gl-matrix";
 
 import { Camera, viewMatrixOf } from "../css/Camera.js";
-import { CssValue, cssVar } from "../css/CssValue.js";
+import { CssValue, cssVar, matrixMultiply } from "../css/CssValue.js";
 import { inverseStepValue, stepValue } from "../css/steps.js";
 import { insertRule } from "../css/styles.js";
 import { decompose } from "../css/Transform.js";
@@ -20,7 +20,7 @@ function counterRotationOf(m: ReadonlyMat4): CssValue | null {
   const mirror = scale.some((n) => n < 0)
     ? CssValue.fn("scale3d", ...scale.map(Math.sign))
     : null;
-  return CssValue.matrixMultiply(
+  return matrixMultiply(
     mirror,
     CssValue.fn("rotate3d", ...axis, CssValue.rad(-angle)),
   );
@@ -36,12 +36,12 @@ const rotations = (tween: Tween | readonly Tween[] | null) =>
 // The view turns by the inverse of the camera, so it counters it forwards
 function counterRotation(node: Object3D | Camera): CssValue {
   if (node instanceof Camera)
-    return CssValue.matrixMultiply(
+    return matrixMultiply(
       counterRotationOf(viewMatrixOf(node)),
       ...rotations(node.tween).map(({ step, args }) => stepValue(step, args)),
     );
   const tweens = node instanceof Group ? rotations(node.tween) : [];
-  return CssValue.matrixMultiply(
+  return matrixMultiply(
     ...tweens
       .toReversed()
       .map(({ step, args }) => inverseStepValue(step, args)),
@@ -56,11 +56,11 @@ function createFacing(): Accumulator {
     name: "c3r-facing",
     syntax: "<transform-list>",
     identity: CssValue.fn("rotate", CssValue.rad(0)),
-    combine: (parent, input) => CssValue.matrixMultiply(input, parent),
+    combine: (parent, input) => matrixMultiply(input, parent),
     input: counterRotation,
   });
-  const identity = CssValue.matrixMultiply();
-  const transform = CssValue.matrixMultiply(
+  const identity = matrixMultiply();
+  const transform = matrixMultiply(
     cssVar("--c3r-matrix", "<transform-list>", identity),
     cssVar("--c3r-tween-transform", "<transform-list>", identity),
     acc.result,

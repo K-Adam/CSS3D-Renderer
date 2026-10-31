@@ -1,7 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
 import {
-  Accumulator,
-  type AccumulatorOptions,
   Camera,
   Container,
   CssValue,
@@ -10,7 +8,11 @@ import {
   PerspectiveCamera,
   Transform,
 } from "c3r";
-import { cssVar } from "../src/css/CssValue.js";
+import { cssVar, matrixMultiply } from "../src/css/CssValue.js";
+import {
+  Accumulator,
+  type AccumulatorOptions,
+} from "../src/dom/Accumulator.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -108,7 +110,7 @@ it("rejects invalid options", () => {
     { syntax: '<number>"' },
     { name: "c3r-facing2" },
     { name: "a b" },
-    { identity: CssValue.matrixMultiply() },
+    { identity: matrixMultiply() },
     { identity: cssVar("--x", "<number>") },
   ])
     expect(() => new Accumulator({ ...options("safe"), ...bad })).toThrow(

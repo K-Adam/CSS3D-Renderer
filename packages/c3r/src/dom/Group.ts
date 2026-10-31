@@ -12,8 +12,8 @@ import {
 } from "../math/MeshBuilder.js";
 import type { Vertex } from "../math/Vertex.js";
 
-import { moveTargets, parents, refreshInput } from "./Accumulator.js";
-import { Object3D } from "./Object3D.js";
+import { moveTargets, refreshInput } from "./Accumulator.js";
+import { Object3D, parents } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
 
 // Keeps the tweens, and their rules, alive while their element is

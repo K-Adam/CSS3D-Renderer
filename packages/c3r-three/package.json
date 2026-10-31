@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.186.0",
+    "gl-matrix": "^3.4.4",
     "three": "^0.186.1",
     "vite": "^8.3.5"
   }

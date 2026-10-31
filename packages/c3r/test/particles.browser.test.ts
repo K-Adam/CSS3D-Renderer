@@ -29,7 +29,7 @@ it("tweens each particle, moving it in the scene and turning it in the view", ()
     lifetime: 2,
     lifetimeRandomness: 0,
     mesh: triangle,
-    tween: ({ random }) => {
+    particle: ({ random }) => {
       const scale = random(2, 4);
       scales.push(scale);
       return {
@@ -81,7 +81,7 @@ it("rejects invalid options", () => {
     count: 1,
     lifetime: 1,
     mesh: triangle,
-    tween: () => ({ keyframes: [Filter.opacity(0)] }),
+    particle: () => ({ keyframes: [Filter.opacity(0)] }),
   };
   expect(() => new ParticleSystem({ ...options, count: 0 })).toThrow(
     RangeError,
@@ -96,7 +96,7 @@ it("rejects invalid options", () => {
     () =>
       new ParticleSystem({
         ...options,
-        tween: () => ({
+        particle: () => ({
           keyframes: [{ steps: Filter.opacity(0), duration: -1 }],
         }),
       }),
@@ -104,7 +104,7 @@ it("rejects invalid options", () => {
   // A start alone on one side holds, like a plain tween
   using spun = new ParticleSystem({
     ...options,
-    tween: () => ({
+    particle: () => ({
       from: Transform.rotateZ(1),
       keyframes: [Transform.translate([0, 10, 0])],
     }),

@@ -5,6 +5,7 @@ import { ensureStyles } from "../css/styles.js";
 import { matrixText } from "../css/Transform.js";
 
 import { refreshInput } from "./Accumulator.js";
+import type { Group } from "./Group.js";
 
 // Keeps a Material, and its rule, alive while its element is
 const elementMaterials = new WeakMap<Element, Material>();
@@ -12,6 +13,8 @@ const elementMaterials = new WeakMap<Element, Material>();
 const matrices = new WeakMap<Object3D, mat4>();
 
 export const matrixOf = (obj: Object3D): ReadonlyMat4 => matrices.get(obj)!;
+
+export const parents = new WeakMap<Object3D, Group>();
 
 export abstract class Object3D {
   readonly domElement: HTMLDivElement = document.createElement("div");

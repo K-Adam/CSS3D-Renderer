@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { mat4, quat, vec3, vec4 } from "gl-matrix";
 import { cube, cylinder } from "primitive-geometry";
 import {
-  Accumulator,
   CssValue,
   Container,
   cssText,
@@ -20,6 +19,7 @@ import {
   type Vertex,
 } from "c3r";
 import { viewMatrixOf } from "../src/css/Camera.js";
+import { Accumulator } from "../src/dom/Accumulator.js";
 import { decompose } from "../src/css/Transform.js";
 import { matrixOf } from "../src/dom/Object3D.js";
 

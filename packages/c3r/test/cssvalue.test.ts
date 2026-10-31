@@ -1,6 +1,12 @@
 import { expect, it } from "vitest";
 import { CssValue } from "c3r";
-import { cssRaw, cssVar, textOf, typeOf } from "../src/css/CssValue.js";
+import {
+  cssRaw,
+  cssVar,
+  matrixMultiply,
+  textOf,
+  typeOf,
+} from "../src/css/CssValue.js";
 
 const x = cssVar("--x", "<number>");
 
@@ -18,14 +24,12 @@ it("prints math as calc, nesting in parentheses", () => {
 
 it("matrix multiplies transforms only, skipping identities", () => {
   const turn = CssValue.fn("rotateX", CssValue.rad(1));
-  const list = cssVar("--t", "<transform-list>", CssValue.matrixMultiply());
-  expect(
-    String(
-      CssValue.matrixMultiply(turn, null, CssValue.matrixMultiply(), list),
-    ),
-  ).toBe("rotateX(1rad) var(--t, )");
+  const list = cssVar("--t", "<transform-list>", matrixMultiply());
+  expect(String(matrixMultiply(turn, null, matrixMultiply(), list))).toBe(
+    "rotateX(1rad) var(--t, )",
+  );
   for (const value of [x, CssValue.number(2), CssValue.fn("opacity", 1)])
-    expect(() => CssValue.matrixMultiply(value)).toThrow(TypeError);
+    expect(() => matrixMultiply(value)).toThrow(TypeError);
 });
 
 it("types values by what they compute to", () => {
@@ -35,7 +39,7 @@ it("types values by what they compute to", () => {
   expect(typeOf(div(px(1), px(2)))).toBeNull();
   expect(typeOf(add(px(1), 1))).toBeNull();
   expect(typeOf(fn("sin", rad(1)))).toBe("<number>");
-  expect(typeOf(CssValue.matrixMultiply())).toBe("<transform-list>");
+  expect(typeOf(matrixMultiply())).toBe("<transform-list>");
   const turn = fn("rotate", rad(1));
   for (const invalid of [
     add(turn, turn),

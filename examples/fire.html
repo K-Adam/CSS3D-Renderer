@@ -178,7 +178,7 @@
         lifetime: 6,
         lifetimeRandomness: 0.3,
         mesh: quad({ scale: 60 }),
-        tween: ({ random }) => {
+        particle: ({ random }) => {
           const [x, z] = [random(-15, 15), random(-15, 15)];
           const [lean, rise, drift] = [
             random(60, 110),
@@ -213,7 +213,7 @@
         lifetime: 2,
         lifetimeRandomness: 0.4,
         mesh: quad({ scale: 8 }),
-        tween: ({ random }) => {
+        particle: ({ random }) => {
           // Two swirls at different rates make an erratic path
           const swirl = (rate, size) => {
             const [speed, phase] = [random(rate, rate * 2), random(0, turn)];

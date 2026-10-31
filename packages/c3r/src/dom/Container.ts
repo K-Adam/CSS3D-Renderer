@@ -5,10 +5,9 @@ import { imageInfo, loadImage } from "../css/images.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
 
-import { parents } from "./Accumulator.js";
 import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
-import { matrixOf, type Object3D } from "./Object3D.js";
+import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
 
 // Keeps a Camera, and its rules, alive while its element is

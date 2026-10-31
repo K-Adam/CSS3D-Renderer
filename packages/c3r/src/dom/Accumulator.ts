@@ -2,8 +2,7 @@ import type { Camera } from "../css/Camera.js";
 import { cssVar, type CssValue, textOf } from "../css/CssValue.js";
 import { deleteRule, insertRule, plainValue } from "../css/styles.js";
 
-import type { Group } from "./Group.js";
-import type { Object3D } from "./Object3D.js";
+import { type Object3D, parents } from "./Object3D.js";
 
 export interface AccumulatorOptions {
   // --name is the result, --name-input each node's input
@@ -14,8 +13,6 @@ export interface AccumulatorOptions {
   combine: (parent: CssValue, input: CssValue) => CssValue;
   input?: (node: Object3D | Camera) => CssValue | null;
 }
-
-export const parents = new WeakMap<Object3D, Group>();
 
 // Targets in each node's subtree, per accumulator
 const counts = new WeakMap<Object3D, Map<Accumulator, number>>();
@@ -117,6 +114,8 @@ export class Accumulator {
   // Weak, so dispose can clean the chain without keeping its nodes alive
   readonly #chain = new Set<WeakRef<Object3D>>();
   readonly #chainRefs = new WeakMap<Object3D, WeakRef<Object3D>>();
+  // Collected nodes leave dead refs, swept whenever the set doubles
+  #pruneAt = 64;
 
   static {
     shift = (acc, from, n) => {
@@ -246,6 +245,8 @@ export class Accumulator {
       const ref = new WeakRef(node);
       this.#chainRefs.set(node, ref);
       this.#chain.add(ref);
+      if (this.#chain.size >= this.#pruneAt)
+        this.#pruneAt = 2 * live(this.#chain).length + 64;
       this.#write(node, node.domElement.style);
     } else {
       this.#chain.delete(this.#chainRefs.get(node)!);
