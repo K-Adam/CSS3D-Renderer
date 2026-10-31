@@ -35,7 +35,6 @@
     <div id="info">Each face is a canvas element, draw on them</div>
     <script type="module">
       import { Container, ElementObject, Group, Transform, Tween } from "c3r";
-      import { mat4 } from "gl-matrix";
 
       const container = new Container();
       document.body.appendChild(container.domElement);
@@ -43,10 +42,7 @@
       const box = new Group();
       container.root.addChild(box);
 
-      container.camera.matrix = mat4.fromTranslation(
-        mat4.create(),
-        [0, 0, 400],
-      );
+      container.camera.transform = Transform.translate([0, 0, 400]);
 
       const turn = 2 * Math.PI;
       const spin = new Tween({
@@ -96,10 +92,11 @@
         });
 
         const face = new ElementObject(canvas);
-        const matrix = mat4.fromXRotation(mat4.create(), x);
-        mat4.rotateY(matrix, matrix, y);
-        mat4.translate(matrix, matrix, [0, 0, 100]);
-        face.matrix = matrix;
+        face.transform = [
+          Transform.rotateX(x),
+          Transform.rotateY(y),
+          Transform.translate([0, 0, 100]),
+        ];
         box.addChild(face);
       }
 

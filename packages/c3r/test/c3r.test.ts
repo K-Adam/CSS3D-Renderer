@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { mat4, vec3, vec4 } from "gl-matrix";
+import { mat4, quat, vec3, vec4 } from "gl-matrix";
 import { cube, cylinder } from "primitive-geometry";
 import {
+  CssValue,
   Container,
   cssText,
   ElementObject,
@@ -17,6 +18,10 @@ import {
   Tween,
   type Vertex,
 } from "c3r";
+import { viewMatrixOf } from "../src/css/Camera.js";
+import { Accumulator } from "../src/dom/Accumulator.js";
+import { decompose } from "../src/css/Transform.js";
+import { matrixOf } from "../src/dom/Object3D.js";
 
 const vertex = (x: number, y: number, z: number, u = 0, v = 0): Vertex => ({
   position: [x, y, z],
@@ -52,7 +57,7 @@ describe("Polygon", () => {
   ])("places the element on the vertices of a %s, front side out", (_, vertices) => {
     const poly = new Polygon(vertices);
 
-    const M = poly.matrix;
+    const M = matrixOf(poly);
     const MI = mat4.invert(mat4.create(), M)!;
     const width = parseFloat(poly.domElement.style.getPropertyValue("--c3r-width"));
     const height = parseFloat(poly.domElement.style.getPropertyValue("--c3r-height"));
@@ -85,7 +90,7 @@ describe("Polygon", () => {
       vertex(1, 0, 0),
       vertex(0, 1, 0),
     ]);
-    const M = poly.matrix;
+    const M = matrixOf(poly);
     const col = (i: number) => Math.hypot(M[i * 4], M[i * 4 + 1], M[i * 4 + 2]);
     expect(col(2) / col(0)).toBeCloseTo(1);
 
@@ -206,11 +211,12 @@ describe("Polygon.clampUV", () => {
       edges: square.map(() => [{ point: [0, 0, 1], fold: "concave" }, null]),
     });
     const { style } = poly.contentElement;
+    const sizes = () =>
+      [...style.backgroundSize.matchAll(/([\d.e+-]+)%/g)].map((m) => +m[1]);
 
-    expect(parseFloat(style.backgroundSize)).toBeLessThan(100);
+    expect(sizes()[0]).toBeLessThan(100);
     poly.clampUV = true;
-    for (const size of style.backgroundSize.split(" "))
-      expect(parseFloat(size)).toBeCloseTo(100);
+    for (const size of sizes()) expect(size).toBeCloseTo(100);
   });
 });
 
@@ -331,7 +337,7 @@ describe("Group.addTriangles", () => {
       .clipPath;
     for (const [, x, y] of clip.matchAll(/([-\d.e]+)% ([-\d.e]+)%/g)) {
       const p = vec3.fromValues((+x / 100) * width, (+y / 100) * height, 0);
-      vec3.transformMat4(p, p, poly.matrix);
+      vec3.transformMat4(p, p, matrixOf(poly));
       expect(p[1]).toBeGreaterThan(-1e-6);
     }
   });
@@ -357,7 +363,7 @@ describe("Group.addTriangles", () => {
       const points = [...clip.matchAll(/([-\d.e]+)% ([-\d.e]+)%/g)].map(
         ([, x, y]) => {
           const p = vec3.fromValues((+x / 100) * width, (+y / 100) * height, 0);
-          return vec3.transformMat4(p, p, poly.matrix);
+          return vec3.transformMat4(p, p, matrixOf(poly));
         },
       );
       // The centre is on or inside every edge of the clip path
@@ -491,6 +497,16 @@ describe("Group", () => {
     expect(child.domElement.parentElement).toBe(b.domElement);
   });
 
+  it("rejects an ancestor without changing either group", () => {
+    const parent = new Group();
+    const child = new Group();
+    parent.addChild(child);
+
+    expect(() => child.addChild(parent)).toThrow(RangeError);
+    expect(child.children).toHaveLength(0);
+    expect(parent.children).toEqual([child]);
+  });
+
   it("replaces the container root in the DOM", () => {
     const container = new Container();
     const root = new Group();
@@ -566,6 +582,25 @@ describe("Material", () => {
 
     material.doubleSided = false;
     expect(rule()).not.toContain("backface-visibility");
+  });
+
+  it("plays a flipbook", () => {
+    using material = new Material();
+    const rule = () => ruleOf(material.className);
+
+    material.flipbook = { columns: 8, rows: 4, frames: 30 };
+    expect(rule()).toMatch(/--c3r-frames: ?30;.*--c3r-flipbook-duration: ?1s/);
+    material.flipbook = null;
+    expect(rule()).not.toContain("--c3r-");
+    material.background = "leaf.png";
+    expect(rule()).toMatch(/--c3r-columns: ?initial/);
+
+    for (const flipbook of [
+      { columns: 1.5, rows: 1 },
+      { columns: 2, rows: 2, frames: 5 },
+      { columns: 2, rows: 2, fps: 0 },
+    ])
+      expect(() => (material.flipbook = flipbook)).toThrow(RangeError);
   });
 
   it("paints a color or an image, hiding the other from a parent", () => {
@@ -655,12 +690,90 @@ describe("Material", () => {
   });
 });
 
+describe("Transform", () => {
+  it("composes in CSS order", () => {
+    const group = new Group();
+    const steps = [Transform.translate([1, 2, 3]), Transform.rotateZ(1)];
+    group.transform = steps;
+    steps.pop();
+    const expected = mat4.fromTranslation(mat4.create(), [1, 2, 3]);
+    mat4.rotateZ(expected, expected, 1);
+    expect(matrixOf(group)).toEqual(expected);
+    expect(group.transform).toHaveLength(2);
+  });
+
+  it("rejects an invalid matrix", () => {
+    expect(() => Transform.matrix([1, 0, 0])).toThrow(RangeError);
+    expect(() => Transform.matrix(Array(16).fill(NaN))).toThrow(RangeError);
+    const huge = Transform.scale(1e20);
+    expect(() => (new Group().transform = [huge, huge])).toThrow(RangeError);
+    using camera = new PerspectiveCamera();
+    expect(() => (camera.transform = Transform.scale(1e-39))).toThrow(
+      RangeError,
+    );
+  });
+
+  it("decomposes a matrix into translation, rotation and scale", () => {
+    const rebuild = (m: mat4) => {
+      const { translation, axis, angle, scale } = decompose(m)!;
+      const q = quat.setAxisAngle(quat.create(), axis as vec3, angle);
+      return mat4.fromRotationTranslationScale(
+        mat4.create(),
+        q,
+        translation as vec3,
+        scale as vec3,
+      );
+    };
+    const turned = mat4.fromTranslation(mat4.create(), [1, 2, 3]);
+    mat4.rotate(turned, turned, 2, [1, 2, 3]);
+    mat4.scale(turned, turned, [0.5, 2, 3]);
+    const halfTurn = mat4.fromYRotation(mat4.create(), Math.PI);
+    for (const m of [turned, mat4.create(), halfTurn])
+      for (const [i, n] of rebuild(m).entries()) expect(n).toBeCloseTo(m[i], 5);
+
+    const mirror = decompose(mat4.fromScaling(mat4.create(), [1, 1, -1]))!;
+    expect(mirror.angle).toBe(0);
+    expect(mirror.scale).toEqual([1, 1, -1]);
+
+    const shear = mat4.fromTranslation(mat4.create(), [1e5, 0, 0]);
+    shear[4] = 0.01;
+    const perspective = mat4.create();
+    perspective[11] = -0.001;
+    for (const m of [shear, perspective, new Float32Array(16)])
+      expect(decompose(m)).toBeNull();
+  });
+
+  it("tweens a matrix only when it decomposes", () => {
+    const zero = Transform.matrix(new Float32Array(16));
+    expect(() => (new Group().transform = zero)).not.toThrow();
+    expect(() => new Tween({ keyframes: [zero] })).toThrow(RangeError);
+    const moved = Transform.matrix(mat4.fromXRotation(mat4.create(), 1));
+    expect(() =>
+      new Tween({
+        keyframes: [[Transform.translate([1, 2, 3]), moved]],
+      })[Symbol.dispose](),
+    ).not.toThrow();
+    expect(() => (new Material().filter = zero as never)).toThrow(TypeError);
+  });
+
+  it("copies its input", () => {
+    const v: [number, number, number] = [1, 2, 3];
+    using tween = new Tween({ keyframes: [Transform.translate(v)] });
+    v[0] = 9;
+    const keyframes = new RegExp(
+      String.raw`@keyframes ${tween.className} \{[^@]*`,
+    ).exec(cssText())![0];
+    expect(keyframes).toContain(": 1px");
+    expect(keyframes).not.toContain("9px");
+  });
+});
+
 describe("Tween", () => {
   const turn = 2 * Math.PI;
 
   it("animates groups through class rules, removed on dispose", () => {
     const group = new Group();
-    group.matrix = mat4.fromTranslation(mat4.create(), [1, 2, 3]);
+    group.transform = Transform.translate([1, 2, 3]);
     expect(group.domElement.style.getPropertyValue("--c3r-matrix")).toBe(
       "matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,1,2,3,1)",
     );
@@ -776,6 +889,21 @@ describe("Tween", () => {
     ])
       expect(cssText()).toContain(block);
     expect(ruleOf(sequence.className)).toContain(`${sequence.className} 5s`);
+  });
+
+  it("keeps a Firefox copy of each keyframes rule in the output", () => {
+    const copy = (name: string) =>
+      new RegExp(
+        `@supports \\(-moz-appearance: none\\) \\{\\s*@keyframes ${name} \\{[^@]*min-width: 0\\.001px`,
+      );
+    expect(cssText()).toMatch(copy("c3r-flipbook"));
+    expect(cssText().indexOf("@supports (-moz-appearance")).toBeGreaterThan(
+      cssText().indexOf("@keyframes c3r-flipbook"),
+    );
+    const tween = new Tween({ keyframes: [Filter.opacity(0)] });
+    expect(cssText()).toMatch(copy(tween.className));
+    tween[Symbol.dispose]();
+    expect(cssText()).not.toContain(tween.className);
   });
 
   it("plays a loop on hover only, removed on dispose", () => {
@@ -960,7 +1088,7 @@ describe("server-side rendering", () => {
   it("exports the scene as static html", async () => {
     const container = new Container();
     const group = new Group();
-    group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
+    group.transform = Transform.scale(0.01);
     group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
     container.root.addChild(group);
 
@@ -1017,6 +1145,25 @@ describe("server-side rendering", () => {
     }
   });
 
+  it("keeps an input rule's result inside its declaration", async () => {
+    using error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const container = new Container();
+    using acc = new Accumulator({
+      name: "unsafe",
+      syntax: "*",
+      identity: CssValue.number(0),
+      combine: (parent, input) => CssValue.add(parent, input),
+      input: () => "0; } * {color:red}" as unknown as CssValue,
+    });
+    const target = new Group();
+    container.root.addChild(target);
+    acc.addTarget(target);
+    const html = await container.toHTML();
+    expect(html).not.toMatch(/color: ?red/);
+    expect(cssText()).not.toMatch(/color: ?red/);
+    expect(error).toHaveBeenCalled();
+  });
+
   it("sizes an orthographic view from setSize, without layout", () => {
     const container = new Container();
     container.setSize(400, 300);
@@ -1029,7 +1176,7 @@ describe("server-side rendering", () => {
       "c3r-orthographic",
       camera.className,
     ]);
-    expect(style.getPropertyValue("--c3r-viewport-x")).toBe("400");
+    expect(style.getPropertyValue("--c3r-viewport-width")).toBe("400px");
     expect(cssText()).toMatch(
       new RegExp(
         String.raw`\.${camera.className} \{[^}]*--c3r-camera-left: ?-200`,
@@ -1043,13 +1190,13 @@ describe("cameras", () => {
     const container = new Container();
     {
       using camera = new PerspectiveCamera(60);
-      camera.matrix = mat4.fromTranslation(mat4.create(), [0, 0, 400]);
+      const pose = Transform.translate([0, 0, 400]);
+      camera.transform = pose;
       container.camera = camera;
-      expect(camera.viewMatrix[14]).toBe(-400);
-      expect(
-        () => (camera.matrix = mat4.fromScaling(mat4.create(), [0, 0, 0])),
-      ).toThrow(RangeError);
-      expect(camera.matrix[14]).toBe(400);
+      expect(viewMatrixOf(camera)[14]).toBe(-400);
+      expect(() => (camera.transform = Transform.scale(0))).toThrow(RangeError);
+      expect(camera.transform).toBe(pose);
+      expect(viewMatrixOf(camera)[14]).toBe(-400);
 
       expect(container.domElement.classList).toContain("c3r-perspective");
       expect(cssText()).toMatch(
@@ -1081,14 +1228,14 @@ describe("cameras", () => {
   it("fits the unit scale to the densest visible polygon", () => {
     const container = new Container();
     const group = new Group();
-    group.matrix = mat4.fromScaling(mat4.create(), [0.01, 0.01, 0.01]);
+    group.transform = Transform.scale(0.01);
     container.root.addChild(group);
     const poly = group.addPolygon([
       vertex(0, 0, 0),
       vertex(1, 0, 0),
       vertex(0, 1, 0),
     ]);
-    const [x, y, z] = poly.matrix;
+    const [x, y, z] = matrixOf(poly);
     const domPixel = Math.hypot(x, y, z) * 0.01;
     const fit = () => {
       container.bake();
@@ -1100,14 +1247,14 @@ describe("cameras", () => {
     expect(scale * domPixel).toBeGreaterThanOrEqual(1);
     expect(scale * domPixel).toBeLessThan(2);
 
-    container.camera.matrix = mat4.fromScaling(mat4.create(), [0.5, 0.5, 0.5]);
+    container.camera.transform = Transform.scale(0.5);
     expect(fit()).toBe(scale / 2);
 
     group.domElement.style.display = "none";
     expect(fit()).toBe(1);
 
     group.domElement.style.display = "";
-    group.matrix = mat4.fromScaling(mat4.create(), [0, 0, 0]);
+    group.transform = Transform.scale(0);
     expect(fit()).toBe(1);
   });
 });

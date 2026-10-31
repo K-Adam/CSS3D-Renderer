@@ -490,8 +490,8 @@ export class Polygon extends Object3D {
     const scx = 1 / xsize;
     const scy = 1 / ysize;
 
-    const position = `calc(var(--c3r-width) * ${-txmin * scx}) calc(var(--c3r-height) * ${1 + tymin * scy})`;
-    const size = `${100 * scx}% ${100 * scy}%`;
+    const position = `calc(var(--c3r-width) * ${-scx} * (${txmin} + var(--c3r-column, 0))) calc(var(--c3r-height) * (1 + ${scy} * (${tymin} - var(--c3r-row, 0) - 1)))`;
+    const size = `calc(${100 * scx}% * var(--c3r-columns, 1)) calc(${100 * scy}% * var(--c3r-rows, 1))`;
     style.backgroundPosition = style.maskPosition = position;
     style.backgroundSize = style.maskSize = size;
 

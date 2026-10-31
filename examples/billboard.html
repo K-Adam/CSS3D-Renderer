@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Billboards</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      Sprites that always face the camera, on a tumbling ring around a box
+    </div>
+    <script type="module">
+      import {
+        Billboard,
+        Container,
+        Group,
+        Material,
+        Transform,
+        Tween,
+      } from "c3r";
+      import { cube, quad } from "primitive-geometry";
+
+      const container = new Container();
+      document.body.appendChild(container.domElement);
+
+      const turn = 2 * Math.PI;
+
+      const ring = new Group();
+      container.root.addChild(ring);
+      ring.tween = new Tween({
+        keyframes: [[Transform.rotateX(turn), Transform.rotateY(turn)]],
+        duration: 12,
+        loop: true,
+      });
+
+      const box = new Group();
+      ring.addChild(box);
+      box.addMesh(cube({ sx: 120 }));
+      box.material = new Material();
+      box.material.background = "textures/crate.jpg";
+
+      const sprite = new Material();
+      sprite.background = "textures/sprite.png";
+      sprite.doubleSided = true;
+
+      for (let i = 0; i < 8; i++) {
+        const billboard = new Billboard();
+        ring.addChild(billboard);
+        billboard.transform = [
+          Transform.rotateY((i / 8) * turn),
+          Transform.translate([250, 0, 0]),
+        ];
+        billboard.material = sprite;
+        billboard.addMesh(quad({ scale: 100 }));
+      }
+
+      container.camera.tween = new Tween({
+        from: [
+          Transform.rotateY(0),
+          Transform.rotateX(-0.4),
+          Transform.translate([0, 0, 800]),
+        ],
+        keyframes: [Transform.rotateY(turn)],
+        duration: 20,
+        loop: true,
+      });
+
+      container.bake();
+    </script>
+  </body>
+</html>

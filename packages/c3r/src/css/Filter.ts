@@ -1,5 +1,6 @@
 import type { ReadonlyVec3 } from "gl-matrix";
 
+import { type CssValue, textOf, typeOf } from "./CssValue.js";
 import {
   type Kind,
   radians,
@@ -9,7 +10,15 @@ import {
   stepText,
 } from "./steps.js";
 
-const amount = (n: number): string => {
+const amount = (n: number | CssValue): string => {
+  if (typeof n !== "number") {
+    const text = textOf(n);
+    // A wrong type invalidates the whole filter list without an error, and a
+    // negative literal is a parse error while an expression clamps
+    if (typeOf(n) !== "<number>" || Number(text) < 0)
+      throw new RangeError(`Invalid amount ${text}`);
+    return text;
+  }
   if (!(n >= 0 && Number.isFinite(n)))
     throw new RangeError(`Invalid amount ${n}`);
   return String(n);
@@ -27,40 +36,36 @@ export class Filter {
     syntax = "<number>",
     kind: Kind = "filter",
   ): Filter {
-    return register(new Filter(), {
-      name,
-      kind,
-      syntax,
-      identity,
-      values: [value],
-    });
+    return register(new Filter(), [
+      { name, kind, syntax, identity, values: [value] },
+    ]);
   }
 
-  static opacity(n: number): Filter {
+  static opacity(n: number | CssValue): Filter {
     return Filter.#create("opacity", "1", amount(n));
   }
 
-  static brightness(n: number): Filter {
+  static brightness(n: number | CssValue): Filter {
     return Filter.#create("brightness", "1", amount(n));
   }
 
-  static contrast(n: number): Filter {
+  static contrast(n: number | CssValue): Filter {
     return Filter.#create("contrast", "1", amount(n));
   }
 
-  static saturate(n: number): Filter {
+  static saturate(n: number | CssValue): Filter {
     return Filter.#create("saturate", "1", amount(n));
   }
 
-  static grayscale(n: number): Filter {
+  static grayscale(n: number | CssValue): Filter {
     return Filter.#create("grayscale", "0", amount(n));
   }
 
-  static sepia(n: number): Filter {
+  static sepia(n: number | CssValue): Filter {
     return Filter.#create("sepia", "0", amount(n));
   }
 
-  static invert(n: number): Filter {
+  static invert(n: number | CssValue): Filter {
     return Filter.#create("invert", "0", amount(n));
   }
 
@@ -83,7 +88,7 @@ export const filterSteps = (
   filter: Filter | readonly Filter[] | null,
 ): Step[] =>
   [filter ?? []].flat().map((f) => {
-    const step = stepOf(f);
+    const [step] = stepOf(f) ?? [];
     if (!step || step.kind === "transform") throw new TypeError("Not a Filter");
     return step;
   });

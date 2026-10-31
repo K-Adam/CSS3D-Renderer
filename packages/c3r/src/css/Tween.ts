@@ -1,11 +1,11 @@
 import "../polyfill.js";
 
 import { type Filter, filterTexts, filterVariables } from "./Filter.js";
-import { type Step, stepOf, stepText } from "./steps.js";
-import { deleteRule, insertRule } from "./styles.js";
+import { inverseStepValue, type Step, stepOf, stepText } from "./steps.js";
+import { deleteRule, insertRule, plainValue } from "./styles.js";
 import type { Transform } from "./Transform.js";
 
-type Steps = Transform | Filter | readonly (Transform | Filter)[];
+export type Steps = Transform | Filter | readonly (Transform | Filter)[];
 export type Keyframe = Steps | { steps: Steps; duration?: number };
 
 export interface TweenOptions {
@@ -33,11 +33,20 @@ interface Style {
 
 const styles = new WeakMap<Tween, Style>();
 
+type AnimatedStep = { step: Step; args: string[] };
+const animatedSteps = new WeakMap<Tween, AnimatedStep[]>();
+
+// Transform steps with their animated arguments, so others can build on them
+export const transformSteps = (tween: Tween): readonly AnimatedStep[] =>
+  animatedSteps.get(tween) ?? [];
+
 // Throws before writing anything
 export function setTweens(
   style: CSSStyleDeclaration | undefined,
   tween: Tween | readonly Tween[] | null,
   inverse = false,
+  // An inline animation replaces any other, so the group's clock joins the list
+  extra = "",
 ): readonly Tween[] {
   const tweens = Object.freeze([...new Set([tween ?? []].flat())]);
   const parts = tweens.map((tween) => {
@@ -45,7 +54,7 @@ export function setTweens(
     if (!part) throw new TypeError("Not a Tween");
     if (inverse && part.hover) throw new RangeError("A camera can't hover");
     if (inverse && part.transform && !part.inverse)
-      throw new RangeError("A camera scales by positive factors only");
+      throw new RangeError("A camera can't tween a zero or negative scale");
     return part;
   });
   const list = (key: keyof Style, separator: string, from = parts) =>
@@ -54,7 +63,7 @@ export function setTweens(
     "--c3r-tween-transform": inverse
       ? list("inverse", " ", parts.toReversed())
       : list("transform", " "),
-    animation: list("animation", ", "),
+    animation: [list("animation", ", "), extra].filter(Boolean).join(", "),
     transition: list("transition", ", "),
     ...filterVariables(
       "--c3r-tween-",
@@ -97,13 +106,23 @@ export class Tween {
     const apply = (changes: Steps, where: string) => {
       const names = new Set<string>();
       for (const change of [changes].flat()) {
-        const step = stepOf(change);
-        if (!step) throw new TypeError("Not a Transform or Filter");
-        if (names.has(step.name))
-          throw new RangeError(`${step.name} twice in ${where}`);
-        names.add(step.name);
-        pose.set(step.name, step);
-        invertible &&= step.invert !== null;
+        const list = stepOf(change);
+        if (!list) throw new TypeError("Not a Transform or Filter");
+        if (!list.length)
+          throw new RangeError(
+            "A tween can't decompose a matrix with shear, perspective or a zero scale",
+          );
+        for (const step of list) {
+          // A from value becomes an initial-value, which can't read var(), and
+          // Firefox steps a var() keyframe
+          if (!step.values.every((v) => plainValue(v)))
+            throw new RangeError("A tween can't animate a var()");
+          if (names.has(step.name))
+            throw new RangeError(`${step.name} twice in ${where}`);
+          names.add(step.name);
+          pose.set(step.name, step);
+          invertible &&= step.invert !== null;
+        }
       }
       return names.size;
     };
@@ -127,18 +146,16 @@ export class Tween {
     const timingFunction = probe.getPropertyValue("transition-timing-function");
     // Only one easing fits the shorthands, and a server-side DOM keeps any text
     let depth = 0;
-    let malformed = false;
+    let several = false;
     for (const c of timingFunction) {
       depth += c === "(" ? 1 : c === ")" ? -1 : 0;
-      if (depth < 0 || (c === "," && !depth)) malformed = true;
+      if (c === "," && !depth) several = true;
     }
     if (
-      !timingFunction ||
-      malformed ||
-      depth ||
-      /^\s*(inherit|initial|unset|revert(-layer)?)\s*$|\b(var|env|attr)\(|[^\w\s().,%+\-/]/i.test(
-        timingFunction,
-      )
+      several ||
+      !timingFunction.trim() ||
+      !plainValue(timingFunction) ||
+      /^\s*(inherit|initial|unset|revert(-layer)?)\s*$/i.test(timingFunction)
     )
       throw new RangeError(`Invalid easing ${easing}`);
     if (!Number.isFinite(delay)) throw new RangeError(`Invalid delay ${delay}`);
@@ -207,14 +224,18 @@ export class Tween {
     if (hover) style.setProperty("pointer-events", "auto");
 
     const timing = `${timingFunction} ${delay}s`;
+    const steps = transforms.map((step) => ({ step, args: args(step) }));
+    animatedSteps.set(this, steps);
     // Fallbacks keep the element's other tweens when this one is disposed
     const part: Style = { hover };
-    if (transforms.length) {
-      part.transform = transforms.map((s) => stepText(s, args(s))).join(" ");
+    if (steps.length) {
+      part.transform = steps
+        .map(({ step, args }) => stepText(step, args))
+        .join(" ");
       if (invertible)
-        part.inverse = transforms
+        part.inverse = steps
           .toReversed()
-          .map((s) => stepText(s, args(s).map(s.invert!)))
+          .map(({ step, args }) => String(inverseStepValue(step, args)))
           .join(" ");
     }
     // Inherited as resolved text, a filter on the group would flatten it

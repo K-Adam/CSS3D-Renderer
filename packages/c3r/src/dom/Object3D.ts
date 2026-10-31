@@ -2,30 +2,35 @@ import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
 import type { Material } from "../css/Material.js";
 import { ensureStyles } from "../css/styles.js";
+import { matrixText } from "../css/Transform.js";
+
+import { refreshInput } from "./Accumulator.js";
+import type { Group } from "./Group.js";
 
 // Keeps a Material, and its rule, alive while its element is
 const elementMaterials = new WeakMap<Element, Material>();
 
+const matrices = new WeakMap<Object3D, mat4>();
+
+export const matrixOf = (obj: Object3D): ReadonlyMat4 => matrices.get(obj)!;
+
+export const parents = new WeakMap<Object3D, Group>();
+
 export abstract class Object3D {
   readonly domElement: HTMLDivElement = document.createElement("div");
-  #matrix = mat4.create();
   #material: Material | null = null;
 
   constructor() {
     ensureStyles();
-  }
-
-  get matrix(): ReadonlyMat4 {
-    return this.#matrix;
+    matrices.set(this, mat4.create());
   }
 
   protected setMatrix(matrix: ReadonlyMat4): void {
-    if (mat4.exactEquals(matrix, this.#matrix)) return;
-    mat4.copy(this.#matrix, matrix);
-    this.domElement.style.setProperty(
-      "--c3r-matrix",
-      `matrix3d(${[...matrix].join()})`,
-    );
+    const current = matrices.get(this)!;
+    if (mat4.exactEquals(matrix, current)) return;
+    mat4.copy(current, matrix);
+    this.domElement.style.setProperty("--c3r-matrix", matrixText(matrix));
+    refreshInput(this);
   }
 
   get material(): Material | null {

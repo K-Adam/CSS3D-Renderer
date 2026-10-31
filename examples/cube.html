@@ -37,7 +37,6 @@
         Transform,
         Tween,
       } from "c3r";
-      import { mat4 } from "gl-matrix";
       import { cube } from "primitive-geometry";
 
       const container = new Container();
@@ -50,10 +49,7 @@
       box.material = new Material();
       box.material.background = "textures/crate.jpg";
 
-      container.camera.matrix = mat4.fromTranslation(
-        mat4.create(),
-        [0, 0, 400],
-      );
+      container.camera.transform = Transform.translate([0, 0, 400]);
 
       const turn = 2 * Math.PI;
       const spin = new Tween({

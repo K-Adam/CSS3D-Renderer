@@ -1,5 +1,9 @@
-import type { ReadonlyMat4 } from "gl-matrix";
-
+import { type CssValue, cssVar } from "../css/CssValue.js";
+import {
+  composeTransforms,
+  ownTransform,
+  type Transform,
+} from "../css/Transform.js";
 import { setTweens, type Tween } from "../css/Tween.js";
 import {
   MeshBuilder,
@@ -8,10 +12,9 @@ import {
 } from "../math/MeshBuilder.js";
 import type { Vertex } from "../math/Vertex.js";
 
-import { Object3D } from "./Object3D.js";
+import { moveTargets, refreshInput } from "./Accumulator.js";
+import { Object3D, parents } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
-
-const parents = new WeakMap<Object3D, Group>();
 
 // Keeps the tweens, and their rules, alive while their element is
 const elementTweens = new WeakMap<Element, readonly Tween[]>();
@@ -24,7 +27,9 @@ export interface IndexedMesh {
 
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
+  #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
+  #clock = false;
 
   constructor() {
     super();
@@ -32,11 +37,13 @@ export class Group extends Object3D {
     this.domElement.classList.add("c3r-group");
   }
 
-  override get matrix(): ReadonlyMat4 {
-    return super.matrix;
+  get transform(): Transform | readonly Transform[] {
+    return this.#transform;
   }
 
-  override set matrix(matrix: ReadonlyMat4) {
+  set transform(transform: Transform | readonly Transform[]) {
+    const matrix = composeTransforms(transform);
+    this.#transform = ownTransform(transform);
     this.setMatrix(matrix);
   }
 
@@ -46,12 +53,32 @@ export class Group extends Object3D {
 
   set tween(tween: Tween | readonly Tween[] | null) {
     const { classList, style } = this.domElement;
-    const tweens = setTweens(style, tween);
+    const tweens = setTweens(
+      style,
+      tween,
+      false,
+      this.#clock ? "c3r-time 3600s linear infinite" : "",
+    );
     for (const old of elementTweens.get(this.domElement) ?? [])
       classList.remove(old.className);
     for (const { className } of tweens) classList.add(className);
     elementTweens.set(this.domElement, tweens);
     this.#tween = Array.isArray(tween) ? tweens : tween;
+    refreshInput(this);
+  }
+
+  // Seconds, read where a group above runs its clock
+  static readonly time: CssValue = cssVar("--c3r-time", "<number>");
+
+  // Opt-in, every frame restyles the group's subtree
+  get clock(): boolean {
+    return this.#clock;
+  }
+
+  set clock(clock: boolean) {
+    if (clock === this.#clock) return;
+    this.#clock = clock;
+    this.tween = this.#tween;
   }
 
   get children(): readonly Object3D[] {
@@ -59,8 +86,11 @@ export class Group extends Object3D {
   }
 
   addChild(obj: Object3D): void {
+    if (obj.domElement.contains(this.domElement))
+      throw new RangeError("A group can't contain its ancestor");
     parents.get(obj)?.removeChild(obj);
     parents.set(obj, this);
+    moveTargets(obj, 1);
     this.#children.push(obj);
     this.domElement.appendChild(obj.domElement);
   }
@@ -70,6 +100,7 @@ export class Group extends Object3D {
     if (index < 0) return;
 
     this.#children.splice(index, 1);
+    moveTargets(obj, -1);
     parents.delete(obj);
     obj.domElement.remove();
   }

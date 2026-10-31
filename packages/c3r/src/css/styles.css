@@ -17,6 +17,39 @@
   inherits: false;
 }
 
+@property --c3r-flipbook-progress {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* Firefox animates a var() keyframe discretely, so this one is a plain number */
+@keyframes c3r-flipbook {
+  to {
+    --c3r-flipbook-progress: 1;
+  }
+}
+
+/* An integer, so a stepped frame is exact for mod() and round() */
+@property --c3r-frame {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-time {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Wraps hourly, a whole number of cycles per hour has no seam */
+@keyframes c3r-time {
+  to {
+    --c3r-time: 3600;
+  }
+}
+
 .c3r-container {
   overflow: hidden;
   position: relative;
@@ -76,11 +109,11 @@
 .c3r-orthographic > .c3r-view {
   transform: scale(
       calc(
-        var(--c3r-viewport-x) /
+        var(--c3r-viewport-width) / 1px /
           (var(--c3r-camera-right) - var(--c3r-camera-left))
       ),
       calc(
-        var(--c3r-viewport-y) /
+        var(--c3r-viewport-height) / 1px /
           (var(--c3r-camera-top) - var(--c3r-camera-bottom))
       )
     )
@@ -121,6 +154,14 @@
   filter: var(--c3r-filter,) var(--c3r-tween-filter,);
   transform: matrix(1, 0, 0, 1, 0, 0);
   transform-origin: 0 0;
+  /* On the content, a tween's inline animation on the group would replace it.
+     Invalid without a flipbook's frames, so none plays */
+  animation: c3r-flipbook var(--c3r-flipbook-duration)
+    steps(var(--c3r-frames), jump-end) var(--c3r-flipbook-delay, 0s) infinite;
+  --c3r-frame: calc(var(--c3r-flipbook-progress) * var(--c3r-frames));
+  /* Invalid without a flipbook, so a browser without mod() still maps plain textures */
+  --c3r-column: mod(var(--c3r-frame), var(--c3r-columns));
+  --c3r-row: round(down, var(--c3r-frame) / var(--c3r-columns), 1);
 }
 
 /* No specificity, so the user's own styles win */

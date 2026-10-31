@@ -1,13 +1,13 @@
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
-import type { Camera } from "../css/Camera.js";
+import { type Camera, viewMatrixOf } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
 
 import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
-import type { Object3D } from "./Object3D.js";
+import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
 
 // Keeps a Camera, and its rules, alive while its element is
@@ -36,7 +36,6 @@ export class Container {
 
     this.domElement.appendChild(this.viewElement);
     this.viewElement.appendChild(this.#root.domElement);
-    this.resetSize();
   }
 
   get root(): Group {
@@ -45,7 +44,9 @@ export class Container {
 
   set root(root: Group) {
     if (root === this.#root) return;
-    this.#root.domElement.replaceWith(root.domElement);
+    parents.get(root)?.removeChild(root);
+    // The old root may have moved into another group
+    this.viewElement.replaceChildren(root.domElement);
     this.#root = root;
   }
 
@@ -103,20 +104,30 @@ export class Container {
       node: Object3D,
       parent: ReadonlyMat4,
       image: string | null,
+      cells: readonly [number, number],
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
-      const background = node.material?.background;
-      if (background != null && !(node instanceof ElementObject))
+      const material = node instanceof ElementObject ? null : node.material;
+      const background = material?.background;
+      if (background != null) {
         image = typeof background === "string" ? background : null;
+        cells = [1, 1];
+      }
+      if (material?.flipbook)
+        cells = [material.flipbook.columns, material.flipbook.rows];
       if (node instanceof Polygon) {
         const info = image === null ? null : imageInfo(image);
         // Keeps the old size while a new image loads
         if (info === undefined) loading.push(loadImage(image!));
-        else measurePolygon(node, info?.size ?? null);
+        else
+          measurePolygon(
+            node,
+            info && [info.size[0] / cells[0], info.size[1] / cells[1]],
+          );
       }
       // Measuring refits the matrix
-      const m = mat4.mul(mat4.create(), parent, node.matrix);
+      const m = mat4.mul(mat4.create(), parent, matrixOf(node));
       if (node instanceof Polygon) {
         const scale = Math.min(
           Math.hypot(m[0], m[1], m[2]),
@@ -124,10 +135,10 @@ export class Container {
         );
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
-        for (const child of node.children) visit(child, m, image);
+        for (const child of node.children) visit(child, m, image, cells);
       }
     };
-    visit(this.#root, this.#camera.viewMatrix, null);
+    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1]);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;
@@ -147,9 +158,6 @@ export class Container {
     const { style } = this.domElement;
     style.setProperty("--c3r-viewport-width", `${width}px`);
     style.setProperty("--c3r-viewport-height", `${height}px`);
-    // Unitless for the ortho scale, CSS can't divide lengths yet
-    style.setProperty("--c3r-viewport-x", String(width));
-    style.setProperty("--c3r-viewport-y", String(height));
   }
 
   resetSize(): void {
@@ -159,7 +167,5 @@ export class Container {
     const { style } = this.domElement;
     style.removeProperty("--c3r-viewport-width");
     style.removeProperty("--c3r-viewport-height");
-    style.setProperty("--c3r-viewport-x", String(innerWidth));
-    style.setProperty("--c3r-viewport-y", String(innerHeight));
   }
 }

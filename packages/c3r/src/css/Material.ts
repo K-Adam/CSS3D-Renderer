@@ -11,6 +11,13 @@ import {
 import { loadImage } from "./images.js";
 import { deleteRule, insertRule } from "./styles.js";
 
+export interface Flipbook {
+  columns: number;
+  rows: number;
+  frames?: number;
+  fps?: number;
+}
+
 let nextId = 0;
 
 export class Material {
@@ -20,6 +27,7 @@ export class Material {
   #filter: Filter | readonly Filter[] | null = null;
   #filterKey = "";
   #doubleSided = false;
+  #flipbook: Required<Flipbook> | null = null;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -73,6 +81,7 @@ export class Material {
     this.#set("--c3r-background-alpha", alpha);
     // Masks a tint layer out of transparent pixels
     this.#set("--c3r-alpha-mask", image);
+    this.#applyFlipbook();
   }
 
   get filter(): Filter | readonly Filter[] | null {
@@ -98,6 +107,39 @@ export class Material {
     if (doubleSided === this.#doubleSided) return;
     this.#doubleSided = doubleSided;
     this.#set("backface-visibility", doubleSided ? "visible" : null);
+  }
+
+  get flipbook(): Readonly<Flipbook> | null {
+    return this.#flipbook;
+  }
+
+  set flipbook(flipbook: Flipbook | null) {
+    let values: Required<Flipbook> | null = null;
+    if (flipbook) {
+      const { columns, rows, frames = columns * rows, fps = 30 } = flipbook;
+      if (![columns, rows, frames].every((n) => Number.isInteger(n) && n > 0))
+        throw new RangeError("Flipbook counts must be positive integers");
+      if (frames > columns * rows)
+        throw new RangeError("More frames than cells");
+      if (!(fps > 0 && Number.isFinite(fps)))
+        throw new RangeError(`Invalid fps ${fps}`);
+      values = Object.freeze({ columns, rows, frames, fps });
+    }
+    this.#flipbook = values;
+    this.#applyFlipbook();
+  }
+
+  #applyFlipbook(): void {
+    const values = this.#flipbook;
+    // Like a background, its own one hides an inherited flipbook
+    const none = this.#background === null ? null : "initial";
+    this.#set("--c3r-columns", values ? String(values.columns) : none);
+    this.#set("--c3r-rows", values ? String(values.rows) : none);
+    this.#set("--c3r-frames", values ? String(values.frames) : none);
+    this.#set(
+      "--c3r-flipbook-duration",
+      values ? `${values.frames / values.fps}s` : none,
+    );
   }
 
   #set(name: string, value: string | null): void {

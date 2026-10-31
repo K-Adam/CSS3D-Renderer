@@ -72,6 +72,7 @@ export class C3RRenderer {
   #children = new WeakMap<C3R.Group, Map<Object3D, C3R.Group>>();
   #meshes = new WeakMap<C3R.Group, MeshState>();
   #materials = new WeakMap<Material, MaterialState>();
+  #poses = new WeakMap<C3R.Group | C3R.Camera, number[]>();
 
   getSize(): { width: number; height: number } {
     return { width: this.#width, height: this.#height };
@@ -112,7 +113,7 @@ export class C3RRenderer {
       camera.updateMatrixWorld();
 
     this.#syncCamera(container, camera);
-    this.#syncObject(scene, container.root, container);
+    this.#syncObject(scene, container.root, camera);
     void container.bake();
   }
 
@@ -149,14 +150,10 @@ export class C3RRenderer {
       }
     }
 
-    container.camera.matrix = camera.matrixWorld.elements;
+    this.#setPose(container.camera, camera.matrixWorld.elements);
   }
 
-  #syncObject(
-    object: Object3D,
-    node: C3R.Group,
-    container: C3R.Container,
-  ): void {
+  #syncObject(object: Object3D, node: C3R.Group, camera: Camera): void {
     const { style } = node.domElement;
     const display = object.visible ? "" : "none";
     if (style.display !== display) style.display = display;
@@ -164,12 +161,12 @@ export class C3RRenderer {
 
     const isSprite = object instanceof Sprite || object instanceof CSS3DSprite;
     const matrix = isSprite
-      ? this.#spriteMatrix(object, node, container)
+      ? this.#spriteMatrix(object, node, camera)
       : object.matrix.elements;
 
-    node.matrix = matrix;
+    this.#setPose(node, matrix);
 
-    this.#syncChildren(object, node, container);
+    this.#syncChildren(object, node, camera);
 
     if (isSprite && node instanceof C3R.ElementObject) {
       node.rotation =
@@ -182,13 +179,17 @@ export class C3RRenderer {
     if (object instanceof Mesh) this.#syncMesh(object, node);
   }
 
-  #spriteMatrix(
-    object: Object3D,
-    node: C3R.Group,
-    container: C3R.Container,
-  ): number[] {
+  // Most nodes hold still, a new Transform each frame is the slow part
+  #setPose(target: C3R.Group | C3R.Camera, elements: number[]): void {
+    const last = this.#poses.get(target);
+    if (last?.every((v, i) => v === elements[i])) return;
+    target.transform = C3R.Transform.matrix(elements);
+    this.#poses.set(target, [...elements]);
+  }
+
+  #spriteMatrix(object: Object3D, node: C3R.Group, camera: Camera): number[] {
     // Billboard in world space
-    _matrix.extractRotation(_matrix.fromArray(container.camera.matrix));
+    _matrix.extractRotation(camera.matrixWorld);
 
     object.matrixWorld.decompose(_position, _quaternion, _scale);
     _matrix.setPosition(_position).scale(_scale);
@@ -206,11 +207,7 @@ export class C3RRenderer {
     return _matrix.elements;
   }
 
-  #syncChildren(
-    object: Object3D,
-    node: C3R.Group,
-    container: C3R.Container,
-  ): void {
+  #syncChildren(object: Object3D, node: C3R.Group, camera: Camera): void {
     const previous = this.#children.get(node) ?? new Map<Object3D, C3R.Group>();
     const current = new Map<Object3D, C3R.Group>();
 
@@ -230,7 +227,7 @@ export class C3RRenderer {
     this.#children.set(node, current);
 
     for (const [child, childNode] of current) {
-      this.#syncObject(child, childNode, container);
+      this.#syncObject(child, childNode, camera);
     }
   }
 

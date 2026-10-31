@@ -52,7 +52,6 @@
         Transform,
         Tween,
       } from "c3r";
-      import { mat4 } from "gl-matrix";
       import {
         cone,
         cube,
@@ -65,10 +64,7 @@
 
       const container = new Container();
       document.body.appendChild(container.domElement);
-      container.camera.matrix = mat4.fromTranslation(
-        mat4.create(),
-        [0, 0, 320],
-      );
+      container.camera.transform = Transform.translate([0, 0, 320]);
 
       // A disc facing up or down at height y
       const cap = (radius, segments, y, texture) => ({
@@ -78,11 +74,10 @@
           innerSegments: 1,
           mapping: mappings.rectangular,
         }),
-        matrix: mat4.rotateX(
-          mat4.create(),
-          mat4.fromTranslation(mat4.create(), [0, y, 0]),
-          -Math.sign(y) * (Math.PI / 2),
-        ),
+        transform: [
+          Transform.translate([0, y, 0]),
+          Transform.rotateX(-Math.sign(y) * (Math.PI / 2)),
+        ],
         texture,
       });
 
@@ -193,14 +188,14 @@
         container.root.addChild(model);
         const { mesh, texture, caps = [] } = shapes[i % shapes.length];
         model.addMesh(mesh);
-        model.matrix = mat4.fromTranslation(mat4.create(), [x, y, 0]);
+        model.transform = Transform.translate([x, y, 0]);
         model.material = textured(texture, filter);
         // Caps inherit the model's filters and tweens
-        for (const { mesh, matrix, texture } of caps) {
+        for (const { mesh, transform, texture } of caps) {
           const lid = new Group();
           model.addChild(lid);
           lid.addMesh(mesh);
-          lid.matrix = matrix;
+          lid.transform = transform;
           lid.material = textured(texture);
         }
         const spin = new Tween({
@@ -217,7 +212,7 @@
         const text = new ElementObject(caption);
         text.setSize(160, 16);
         container.root.addChild(text);
-        text.matrix = mat4.fromTranslation(mat4.create(), [x, y - 62, 0]);
+        text.transform = Transform.translate([x, y - 62, 0]);
       });
 
       ["Hover to\nplay", "Static"].forEach((title, row) => {
@@ -227,7 +222,7 @@
         const text = new ElementObject(heading);
         text.setSize(60, 32);
         container.root.addChild(text);
-        text.matrix = mat4.fromTranslation(mat4.create(), at(-1, row));
+        text.transform = Transform.translate(at(-1, row));
       });
 
       container.bake();

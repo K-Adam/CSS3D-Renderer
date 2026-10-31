@@ -8,7 +8,6 @@
   },
   "devDependencies": {
     "@picocss/pico": "^2.1.1",
-    "gl-matrix": "^3.4.4",
     "nipplejs": "^1.0.4",
     "primitive-geometry": "^3.3.1",
     "three": "^0.186.1",
