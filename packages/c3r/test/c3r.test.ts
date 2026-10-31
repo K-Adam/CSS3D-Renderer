@@ -589,7 +589,7 @@ describe("Material", () => {
     const rule = () => ruleOf(material.className);
 
     material.flipbook = { columns: 8, rows: 4, frames: 30 };
-    expect(rule()).toMatch(/c3r-flipbook 1s steps\(30, ?jump-end\) infinite/);
+    expect(rule()).toMatch(/--c3r-frames: ?30;.*--c3r-flipbook-duration: ?1s/);
     material.flipbook = null;
     expect(rule()).not.toContain("--c3r-");
     material.background = "leaf.png";
@@ -889,6 +889,21 @@ describe("Tween", () => {
     ])
       expect(cssText()).toContain(block);
     expect(ruleOf(sequence.className)).toContain(`${sequence.className} 5s`);
+  });
+
+  it("keeps a Firefox copy of each keyframes rule in the output", () => {
+    const copy = (name: string) =>
+      new RegExp(
+        `@supports \\(-moz-appearance: none\\) \\{\\s*@keyframes ${name} \\{[^@]*min-width: 0\\.001px`,
+      );
+    expect(cssText()).toMatch(copy("c3r-flipbook"));
+    expect(cssText().indexOf("@supports (-moz-appearance")).toBeGreaterThan(
+      cssText().indexOf("@keyframes c3r-flipbook"),
+    );
+    const tween = new Tween({ keyframes: [Filter.opacity(0)] });
+    expect(cssText()).toMatch(copy(tween.className));
+    tween[Symbol.dispose]();
+    expect(cssText()).not.toContain(tween.className);
   });
 
   it("plays a loop on hover only, removed on dispose", () => {

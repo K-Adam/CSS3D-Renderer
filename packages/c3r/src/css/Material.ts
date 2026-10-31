@@ -135,12 +135,10 @@ export class Material {
     const none = this.#background === null ? null : "initial";
     this.#set("--c3r-columns", values ? String(values.columns) : none);
     this.#set("--c3r-rows", values ? String(values.rows) : none);
-    this.#set("--c3r-frames", values && String(values.frames));
+    this.#set("--c3r-frames", values ? String(values.frames) : none);
     this.#set(
-      "--c3r-flipbook-animation",
-      values
-        ? `c3r-flipbook ${values.frames / values.fps}s steps(${values.frames}, jump-end) infinite`
-        : none,
+      "--c3r-flipbook-duration",
+      values ? `${values.frames / values.fps}s` : none,
     );
   }
 

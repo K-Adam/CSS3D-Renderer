@@ -22,12 +22,16 @@ export type CssNode =
     }
   | {
       readonly kind: "fn";
-      readonly name: string;
+      readonly name: CssFunction;
       readonly type: CssFunctionType;
       readonly args: readonly Arg[];
     }
   | { readonly kind: "matrixProduct"; readonly factors: readonly CssValue[] }
-  | { readonly kind: "raw"; readonly text: string };
+  | {
+      readonly kind: "raw";
+      readonly text: string;
+      readonly type: string | null;
+    };
 
 // What each function produces, a math one typed by its arguments. Only
 // comma-separated functions, and none loads a resource or reads the page
@@ -53,7 +57,6 @@ const functionTypes = {
   skewX: "<transform-function>",
   skewY: "<transform-function>",
   perspective: "<transform-function>",
-  blur: "<filter-function>",
   brightness: "<filter-function>",
   contrast: "<filter-function>",
   grayscale: "<filter-function>",
@@ -88,6 +91,30 @@ const functionTypes = {
 
 export type CssFunction = keyof typeof functionTypes;
 export type CssFunctionType = (typeof functionTypes)[CssFunction];
+
+// The argument types a math function takes and the type it gives, a missing one
+// takes any numeric type and gives it back
+const mathTypes: Partial<Record<CssFunction, readonly [string[], string]>> = {
+  sign: [[], "<number>"],
+  sin: [["<number>", "<angle>"], "<number>"],
+  cos: [["<number>", "<angle>"], "<number>"],
+  tan: [["<number>", "<angle>"], "<number>"],
+  asin: [["<number>"], "<angle>"],
+  acos: [["<number>"], "<angle>"],
+  atan: [["<number>"], "<angle>"],
+  atan2: [[], "<angle>"],
+  pow: [["<number>"], "<number>"],
+  sqrt: [["<number>"], "<number>"],
+  log: [["<number>"], "<number>"],
+  exp: [["<number>"], "<number>"],
+};
+
+const unitTypes: Record<Unit, string> = {
+  number: "<number>",
+  px: "<length>",
+  rad: "<angle>",
+};
+const numeric = new Set<string | null>(Object.values(unitTypes));
 
 // Only the factories can construct, a subclass could pass any text
 const key = Symbol();
@@ -176,15 +203,9 @@ export class CssValue {
       (f): f is CssValue => f !== null && print(checked(f)) !== "",
     );
     for (const f of kept) {
-      const { node } = read(f);
-      if (
-        node.kind === "raw" ||
-        node.kind === "matrixProduct" ||
-        (node.kind === "fn" && node.type === "<transform-function>") ||
-        (node.kind === "ref" && node.syntax === "<transform-list>")
-      )
-        continue;
-      throw new TypeError(`matrixMultiply takes transforms, not ${print(f)}`);
+      const type = typeOf(f);
+      if (type !== "<transform-function>" && type !== "<transform-list>")
+        throw new TypeError(`matrixMultiply takes transforms, not ${print(f)}`);
     }
     return create(
       { kind: "matrixProduct", factors: Object.freeze(kept) },
@@ -219,6 +240,41 @@ function checked<T extends Arg>(value: T): T {
 
 export const textOf = (value: CssValue): string => read(checked(value)).text;
 
+// The type a value computes to, null when unknown or invalid
+export function typeOf(value: Arg): string | null {
+  if (typeof value === "number") return "<number>";
+  const { node } = read(checked(value));
+  switch (node.kind) {
+    case "unit":
+      return unitTypes[node.unit];
+    case "ref":
+      return node.syntax;
+    case "raw":
+      return node.type;
+    case "matrixProduct":
+      return "<transform-list>";
+    case "fn": {
+      if (node.type !== "<math-function>") return node.type;
+      const types = new Set(node.args.map(typeOf));
+      const [type] = types;
+      if (types.size !== 1 || !numeric.has(type)) return null;
+      const [takes = [], gives = type] = mathTypes[node.name] ?? [];
+      return !takes.length || takes.includes(type!) ? gives : null;
+    }
+    case "math": {
+      const left = typeOf(node.left);
+      const right = typeOf(node.right);
+      if (!numeric.has(left) || !numeric.has(right)) return null;
+      if (node.op === "+" || node.op === "-")
+        return left === right ? left : null;
+      if (node.op === "*")
+        return left === "<number>" ? right : right === "<number>" ? left : null;
+      // A unit over a unit needs typed arithmetic, which Firefox lacks
+      return right === "<number>" ? left : null;
+    }
+  }
+}
+
 // Inside calc() a nested calc() only needs its parentheses
 function print(value: Arg, operand = false): string {
   if (typeof value === "number") return String(value);
@@ -241,7 +297,7 @@ export function cssVar(
 }
 
 // Internal: bridges text the library built itself, such as tween arguments
-export function cssRaw(text: string): CssValue {
+export function cssRaw(text: string, type: string | null = null): CssValue {
   if (!plainValue(text, true)) throw new RangeError(`Invalid value ${text}`);
-  return create({ kind: "raw", text }, text);
+  return create({ kind: "raw", text, type }, text);
 }

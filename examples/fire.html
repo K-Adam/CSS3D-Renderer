@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Fire</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      A campfire of flipbooks and particles animated by CSS alone
+    </div>
+    <script type="module">
+      import {
+        Billboard,
+        Container,
+        CssValue,
+        Filter,
+        Group,
+        Material,
+        ParticleSystem,
+        Transform,
+        Tween,
+      } from "c3r";
+      import { cylinder, disc, mappings, quad } from "primitive-geometry";
+
+      const { add, mul, fn } = CssValue;
+      const turn = 2 * Math.PI;
+
+      const container = new Container();
+      document.body.appendChild(container.domElement);
+
+      const textured = (url, filter) =>
+        Object.assign(new Material(), { background: url, filter });
+
+      const ground = new Group();
+      container.root.addChild(ground);
+      ground.transform = Transform.rotateX(-Math.PI / 2);
+      ground.addMesh(quad({ scale: 600 }));
+      ground.material = textured("textures/dirt.jpg", [
+        Filter.tint([1, 0.75, 0.55]),
+        Filter.brightness(0.45),
+      ]);
+
+      const glow = new Group();
+      container.root.addChild(glow);
+      glow.transform = [
+        Transform.translate([0, 1, 0]),
+        Transform.rotateX(-Math.PI / 2),
+      ];
+      glow.addMesh(quad({ scale: 340 }));
+      // Whole cycles per hour, so the clock's wrap has no seam
+      const wave = (hz, amplitude, phase) =>
+        mul(fn("sin", add(mul(Group.time, hz * turn), phase)), amplitude);
+      glow.clock = true;
+      glow.material = textured(
+        "textures/firelight.svg",
+        Filter.opacity(
+          add(
+            add(add(0.45, wave(1.75, 0.05, 0)), wave(3.25, 0.03, 1)),
+            wave(5.75, 0.02, 2),
+          ),
+        ),
+      );
+
+      const bark = textured("textures/bark.jpg", [
+        Filter.tint([1, 0.72, 0.5]),
+        Filter.brightness(0.6),
+      ]);
+      const endGrain = textured("textures/log_end.png", [
+        Filter.tint([1, 0.7, 0.5]),
+        Filter.brightness(0.45),
+      ]);
+      // Crisscrossed, the upper pair resting on the lower one
+      const radius = 10;
+      const endCap = disc({
+        radius,
+        segments: 10,
+        innerSegments: 1,
+        mapping: mappings.rectangular,
+      });
+      for (let i = 0; i < 4; i++) {
+        const log = new Group();
+        container.root.addChild(log);
+        const layer = Math.floor(i / 2);
+        const side = (i % 2) * 2 - 1;
+        log.transform = [
+          Transform.rotateY(layer * (Math.PI / 2) + 0.3),
+          Transform.translate([0, radius * (1 + 2 * layer), side * 26]),
+          Transform.rotateZ(Math.PI / 2),
+        ];
+        const body = new Group();
+        log.addChild(body);
+        body.addMesh(
+          cylinder({
+            height: 100,
+            radiusBase: radius,
+            radiusApex: radius,
+            nx: 10,
+            capBase: false,
+            capApex: false,
+          }),
+        );
+        body.material = bark;
+        // Own caps would share the bark material
+        for (const facing of [1, -1]) {
+          const end = new Group();
+          log.addChild(end);
+          end.transform = [
+            Transform.translate([0, facing * 50, 0]),
+            Transform.rotateX(-facing * (Math.PI / 2)),
+          ];
+          end.addMesh(endCap);
+          end.material = endGrain;
+        }
+      }
+
+      // A looping flipbook stretched taller, its origin where the flames start
+      const fireQuad = (width, mirrored) => {
+        const mesh = quad({ scale: width });
+        const positions = Float32Array.from(mesh.positions);
+        for (let i = 1; i < positions.length; i += 3)
+          positions[i] = (positions[i] + width * 0.42) * 1.6;
+        const uvs = Float32Array.from(mesh.uvs);
+        if (mirrored)
+          for (let i = 0; i < uvs.length; i += 2) uvs[i] = 1 - uvs[i];
+        return { ...mesh, positions, uvs };
+      };
+      // Cards spread over the logs and out of step show depth as the camera
+      // turns. A card reaches below its origin, so each stays clear of the ground
+      for (const [sheet, fps, width, mirrored, offset] of [
+        [1, 20, 95, false, [0, 13, 0]],
+        [2, 17, 80, true, [-9, 12, 7]],
+        [1, 23, 75, true, [9, 12, -7]],
+        [2, 21, 60, false, [29, 36, 6]],
+        [1, 15, 55, true, [21, 36, -19]],
+        [2, 19, 60, true, [-22, 36, 17]],
+        [1, 22, 55, false, [-29, 36, -6]],
+      ]) {
+        const fire = new Billboard();
+        container.root.addChild(fire);
+        fire.transform = Transform.translate(offset);
+        fire.addMesh(fireQuad(width, mirrored));
+        fire.material = textured(`textures/bonfire_${sheet}.png`);
+        fire.material.flipbook = { columns: 8, rows: 8, fps };
+      }
+
+      // A particle's pose at each age, 0 to 1 over its life
+      const along = (ages, pose) => ({
+        from: pose(0),
+        keyframes: ages.map((age, i) => ({
+          steps: pose(age),
+          duration: age - (ages[i - 1] ?? 0),
+        })),
+      });
+
+      // Many faint puffs overlap into one column
+      const smoke = new ParticleSystem({
+        count: 36,
+        lifetime: 6,
+        lifetimeRandomness: 0.3,
+        mesh: quad({ scale: 60 }),
+        tween: ({ random }) => {
+          const [x, z] = [random(-15, 15), random(-15, 15)];
+          const [lean, rise, drift] = [
+            random(60, 110),
+            random(220, 280),
+            random(-10, 10),
+          ];
+          const [rate, phase] = [random(3, 5), random(0, turn)];
+          const [angle, spin, grow] = [
+            random(0, turn),
+            random(-1, 1),
+            random(2, 2.8),
+          ];
+          return along([0.125, 0.4, 0.7, 1], (age) => [
+            Transform.translate([
+              x + age * age * lean + Math.sin(age * rate + phase) * age * 25,
+              80 + age * (1.4 - age * 0.4) * rise,
+              z + age * drift,
+            ]),
+            Transform.rotateZ(angle + age * spin),
+            Transform.scale(0.9 + age * grow),
+            Filter.opacity(Math.min(age * 8, (1 - age) * 1.5, 1) * 0.07),
+            Filter.sepia(0.8 - age * 0.8),
+            Filter.brightness(0.95 - age * 0.7),
+          ]);
+        },
+      });
+      container.root.addChild(smoke);
+      smoke.material = textured("textures/smoke_puff.png");
+
+      const embers = new ParticleSystem({
+        count: 14,
+        lifetime: 2,
+        lifetimeRandomness: 0.4,
+        mesh: quad({ scale: 8 }),
+        tween: ({ random }) => {
+          // Two swirls at different rates make an erratic path
+          const swirl = (rate, size) => {
+            const [speed, phase] = [random(rate, rate * 2), random(0, turn)];
+            return (age) => Math.sin(age * speed + phase) * size;
+          };
+          const [x, z, rise, size] = [
+            random(-30, 30),
+            random(-30, 30),
+            random(200, 320),
+            random(0.6, 1.2),
+          ];
+          const [x1, x2, z1, z2] = [
+            swirl(4, 18),
+            swirl(11, 6),
+            swirl(4, 18),
+            swirl(11, 6),
+          ];
+          const flicker = random(0, turn);
+          const tint = Filter.tint([1, random(0.5, 0.8), random(0.1, 0.3)]);
+          const ages = Array.from({ length: 24 }, (_, i) => (i + 1) / 24);
+          return along(ages, (age) => [
+            Transform.translate([
+              x + x1(age) + x2(age),
+              40 + age * rise,
+              z + z1(age) + z2(age),
+            ]),
+            Transform.scale(size * (1 - age * 0.6)),
+            tint,
+            Filter.opacity(
+              Math.min(1, age * 10, (1 - age) * 2) *
+                (0.6 + Math.sin(age * 40 + flicker) * 0.4),
+            ),
+          ]);
+        },
+      });
+      container.root.addChild(embers);
+      embers.material = textured("textures/lensflare/lensflare0_alpha.png");
+
+      container.camera.transform = Transform.translate([0, 80, 0]);
+      container.camera.tween = new Tween({
+        from: [
+          Transform.rotateY(0),
+          Transform.rotateX(-0.28),
+          Transform.translate([0, 0, 320]),
+        ],
+        keyframes: [Transform.rotateY(turn)],
+        duration: 40,
+        loop: true,
+      });
+
+      container.bake();
+    </script>
+  </body>
+</html>

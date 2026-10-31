@@ -3,11 +3,24 @@ import css from "./styles.css?inline";
 let sheet: CSSStyleSheet | undefined;
 let baseRules = 0;
 
+// Firefox stops an out of view animation unless it changes layout, which a
+// custom property never does. A min-width under its 1/60px unit counts but
+// moves nothing, and as text it survives server-side output
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1487412
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1992412
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2087794
+const firefoxCopy = (keyframes: string): string =>
+  `@supports (-moz-appearance: none) { ${keyframes.replace(/}\s*$/, "0% { min-width: 0px } 100% { min-width: 0.001px } }")} }`;
+const copies = new WeakMap<CSSRule, CSSRule>();
+
 export function ensureStyles(): CSSStyleSheet {
   if (!sheet) {
     sheet = new CSSStyleSheet();
     sheet.replaceSync(css);
     baseRules = sheet.cssRules.length;
+    for (const { cssText } of Array.from(sheet.cssRules))
+      if (cssText.startsWith("@keyframes"))
+        sheet.insertRule(firefoxCopy(cssText), sheet.cssRules.length);
     document.adoptedStyleSheets.push(sheet);
   }
   return sheet;
@@ -18,6 +31,7 @@ const rejected = new Set<CSSRule>();
 
 export function deleteRule(rule: CSSRule | null): void {
   if (!rule) return;
+  deleteRule(copies.get(rule) ?? null);
   registry.unregister(rule);
   rejected.delete(rule);
   const sheet = rule.parentStyleSheet;
@@ -47,6 +61,8 @@ export function insertRule(
     rejected.add(rule);
   }
   registry.register(owner, rule, rule);
+  if (selector.startsWith("@keyframes"))
+    copies.set(rule, insertRule(firefoxCopy(text), owner, ""));
   return rule as CSSStyleRule;
 }
 

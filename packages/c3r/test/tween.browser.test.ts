@@ -3,6 +3,7 @@ import { userEvent } from "vitest/browser";
 import { mat4 } from "gl-matrix";
 import {
   Container,
+  CssValue,
   cssText,
   Filter,
   Group,
@@ -354,4 +355,38 @@ it("keeps the rest of the animation after a commented easing", () => {
   expect(getComputedStyle(s.group.domElement).animationIterationCount).toBe(
     "infinite",
   );
+});
+
+it("runs a clock that filters read, beside the tweens", () => {
+  using s = scene();
+  s.group.material = new Material();
+  s.group.material.filter = Filter.opacity(CssValue.div(Group.time, 10));
+  using tween = new Tween({ keyframes: [Filter.brightness(2)], ...half });
+  s.group.tween = tween;
+  s.group.clock = true;
+
+  const animations = s.group.domElement.getAnimations();
+  expect(animations.map((a) => (a as CSSAnimation).animationName)).toEqual([
+    tween.className,
+    "c3r-time",
+  ]);
+  animations[1].pause();
+  animations[1].currentTime = 5000;
+  expect(getComputedStyle(s.face.contentElement).filter).toBe(
+    "opacity(0.5) brightness(1.5)",
+  );
+
+  s.group.clock = false;
+  expect(s.group.domElement.getAnimations()).toHaveLength(1);
+  expect(() => new Tween({ keyframes: [Filter.opacity(Group.time)] })).toThrow(
+    RangeError,
+  );
+});
+
+it("rejects a filter amount of the wrong type", () => {
+  expect(() => Filter.opacity(CssValue.px(1))).toThrow(RangeError);
+  expect(() => Filter.opacity(CssValue.number(-1))).toThrow(RangeError);
+  expect(() =>
+    Filter.opacity(CssValue.fn("sin", CssValue.mul(Group.time, 2))),
+  ).not.toThrow();
 });

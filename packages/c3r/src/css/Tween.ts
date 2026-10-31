@@ -5,7 +5,7 @@ import { inverseStepValue, type Step, stepOf, stepText } from "./steps.js";
 import { deleteRule, insertRule, plainValue } from "./styles.js";
 import type { Transform } from "./Transform.js";
 
-type Steps = Transform | Filter | readonly (Transform | Filter)[];
+export type Steps = Transform | Filter | readonly (Transform | Filter)[];
 export type Keyframe = Steps | { steps: Steps; duration?: number };
 
 export interface TweenOptions {
@@ -45,6 +45,8 @@ export function setTweens(
   style: CSSStyleDeclaration | undefined,
   tween: Tween | readonly Tween[] | null,
   inverse = false,
+  // An inline animation replaces any other, so the group's clock joins the list
+  extra = "",
 ): readonly Tween[] {
   const tweens = Object.freeze([...new Set([tween ?? []].flat())]);
   const parts = tweens.map((tween) => {
@@ -61,7 +63,7 @@ export function setTweens(
     "--c3r-tween-transform": inverse
       ? list("inverse", " ", parts.toReversed())
       : list("transform", " "),
-    animation: list("animation", ", "),
+    animation: [list("animation", ", "), extra].filter(Boolean).join(", "),
     transition: list("transition", ", "),
     ...filterVariables(
       "--c3r-tween-",
@@ -111,6 +113,10 @@ export class Tween {
             "A tween can't decompose a matrix with shear, perspective or a zero scale",
           );
         for (const step of list) {
+          // A from value becomes an initial-value, which can't read var(), and
+          // Firefox steps a var() keyframe
+          if (!step.values.every((v) => plainValue(v)))
+            throw new RangeError("A tween can't animate a var()");
           if (names.has(step.name))
             throw new RangeError(`${step.name} twice in ${where}`);
           names.add(step.name);

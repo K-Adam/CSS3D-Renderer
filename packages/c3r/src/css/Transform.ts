@@ -184,6 +184,7 @@ export class Transform {
         syntax: "<length>",
         identity: "0px",
         values: values.map((n) => String(CssValue.px(n))),
+        moves: true,
       },
     ]);
   }

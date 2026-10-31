@@ -1,3 +1,4 @@
+import { type CssValue, cssVar } from "../css/CssValue.js";
 import {
   composeTransforms,
   ownTransform,
@@ -28,6 +29,7 @@ export class Group extends Object3D {
   readonly #children: Object3D[] = [];
   #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
+  #clock = false;
 
   constructor() {
     super();
@@ -51,13 +53,32 @@ export class Group extends Object3D {
 
   set tween(tween: Tween | readonly Tween[] | null) {
     const { classList, style } = this.domElement;
-    const tweens = setTweens(style, tween);
+    const tweens = setTweens(
+      style,
+      tween,
+      false,
+      this.#clock ? "c3r-time 3600s linear infinite" : "",
+    );
     for (const old of elementTweens.get(this.domElement) ?? [])
       classList.remove(old.className);
     for (const { className } of tweens) classList.add(className);
     elementTweens.set(this.domElement, tweens);
     this.#tween = Array.isArray(tween) ? tweens : tween;
     refreshInput(this);
+  }
+
+  // Seconds, read where a group above runs its clock
+  static readonly time: CssValue = cssVar("--c3r-time", "<number>");
+
+  // Opt-in, every frame restyles the group's subtree
+  get clock(): boolean {
+    return this.#clock;
+  }
+
+  set clock(clock: boolean) {
+    if (clock === this.#clock) return;
+    this.#clock = clock;
+    this.tween = this.#tween;
   }
 
   get children(): readonly Object3D[] {

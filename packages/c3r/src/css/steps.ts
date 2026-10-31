@@ -14,6 +14,8 @@ export interface Step {
   invert?: ((value: string) => string) | null;
   // Set by the factories of steps that only turn, so others can undo them
   rotates?: boolean;
+  // Set by the factories of steps that only move
+  moves?: boolean;
 }
 
 // Only factory-made steps, a forged one would inject raw CSS
@@ -41,8 +43,11 @@ export const stepValue = (
   inverse = false,
 ): CssValue =>
   step.syntax === "<transform-list>"
-    ? cssRaw(args[inverse ? 1 : 0])
-    : CssValue.fn((step.fn ?? step.name) as CssFunction, ...args.map(cssRaw));
+    ? cssRaw(args[inverse ? 1 : 0], "<transform-list>")
+    : CssValue.fn(
+        (step.fn ?? step.name) as CssFunction,
+        ...args.map((arg) => cssRaw(arg)),
+      );
 
 // Steps invert their values, and a transform list picks its stored inverse
 export const inverseStepValue = (step: Step, args: string[]): CssValue =>

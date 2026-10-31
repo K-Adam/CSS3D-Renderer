@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { CssValue } from "c3r";
-import { cssRaw, cssVar, textOf } from "../src/css/CssValue.js";
+import { cssRaw, cssVar, textOf, typeOf } from "../src/css/CssValue.js";
 
 const x = cssVar("--x", "<number>");
 
@@ -24,12 +24,26 @@ it("matrix multiplies transforms only, skipping identities", () => {
       CssValue.matrixMultiply(turn, null, CssValue.matrixMultiply(), list),
     ),
   ).toBe("rotateX(1rad) var(--t, )");
-  for (const value of [
-    x,
-    CssValue.number(2),
-    CssValue.fn("blur", CssValue.px(1)),
-  ])
+  for (const value of [x, CssValue.number(2), CssValue.fn("opacity", 1)])
     expect(() => CssValue.matrixMultiply(value)).toThrow(TypeError);
+});
+
+it("types values by what they compute to", () => {
+  const { px, rad, add, mul, div, fn } = CssValue;
+  expect(typeOf(px(1))).toBe("<length>");
+  expect(typeOf(mul(px(1), x))).toBe("<length>");
+  expect(typeOf(div(px(1), px(2)))).toBeNull();
+  expect(typeOf(add(px(1), 1))).toBeNull();
+  expect(typeOf(fn("sin", rad(1)))).toBe("<number>");
+  expect(typeOf(CssValue.matrixMultiply())).toBe("<transform-list>");
+  const turn = fn("rotate", rad(1));
+  for (const invalid of [
+    add(turn, turn),
+    fn("min", 1, px(1)),
+    fn("sqrt", px(1)),
+    fn("asin", rad(1)),
+  ])
+    expect(typeOf(invalid)).toBeNull();
 });
 
 it("refuses values that could leave the declaration", () => {

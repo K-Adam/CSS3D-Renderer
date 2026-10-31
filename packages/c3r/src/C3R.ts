@@ -18,6 +18,10 @@ export { Polygon, type PolygonOptions } from "./dom/Polygon.js";
 export { ElementObject } from "./dom/ElementObject.js";
 export { Accumulator, type AccumulatorOptions } from "./dom/Accumulator.js";
 export { Billboard } from "./dom/Billboard.js";
+export {
+  ParticleSystem,
+  type ParticleSystemOptions,
+} from "./dom/ParticleSystem.js";
 
 export type { Vertex } from "./math/Vertex.js";
 export {
