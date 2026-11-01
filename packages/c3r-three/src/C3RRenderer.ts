@@ -1,9 +1,14 @@
 import {
+  AmbientLight,
   ClampToEdgeWrapping,
+  DirectionalLight,
   FrontSide,
   InterleavedBufferAttribute,
   Matrix4,
   Mesh,
+  MeshLambertMaterial,
+  MeshPhongMaterial,
+  MeshStandardMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   Quaternion,
@@ -63,9 +68,29 @@ const _scale = new Vector3();
 const _rgb = { r: 0, g: 0, b: 0 };
 const RAD2DEG = 180 / Math.PI;
 
+const shadingOf = (material: Material): C3R.Shading | null =>
+  material instanceof MeshLambertMaterial ||
+  material instanceof MeshPhongMaterial ||
+  material instanceof MeshStandardMaterial
+    ? material.flatShading
+      ? "flat"
+      : "smooth"
+    : null;
+
+// Divided by π like three.js' diffuse, so a scene is as bright as under WebGL
+const lightLevel = ({ color, intensity }: AmbientLight | DirectionalLight) =>
+  (intensity * (0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b)) /
+  Math.PI;
+
+export interface C3RRendererOptions {
+  shading?: boolean;
+}
+
 export class C3RRenderer {
   readonly domElement: HTMLDivElement = document.createElement("div");
 
+  #shading: boolean;
+  #lights = new WeakMap<C3R.Container, string>();
   #width = 0;
   #height = 0;
   #containers = new Map<Scene, C3R.Container>(); // multiple scenes can overlap
@@ -73,6 +98,10 @@ export class C3RRenderer {
   #meshes = new WeakMap<C3R.Group, MeshState>();
   #materials = new WeakMap<Material, MaterialState>();
   #poses = new WeakMap<C3R.Group | C3R.Camera, number[]>();
+
+  constructor({ shading = false }: C3RRendererOptions = {}) {
+    this.#shading = shading;
+  }
 
   getSize(): { width: number; height: number } {
     return { width: this.#width, height: this.#height };
@@ -113,8 +142,35 @@ export class C3RRenderer {
       camera.updateMatrixWorld();
 
     this.#syncCamera(container, camera);
+    if (this.#shading) this.#syncLights(scene, container);
     this.#syncObject(scene, container.root, camera);
     void container.bake();
+  }
+
+  #syncLights(scene: Scene, container: C3R.Container): void {
+    let ambient = 0;
+    let directional: C3R.Lights["directional"];
+    scene.traverseVisible((object) => {
+      if (object instanceof AmbientLight) ambient += lightLevel(object);
+      if (!(object instanceof DirectionalLight) || directional) return;
+      if (lightLevel(object) <= 0) return;
+      const direction = new Vector3()
+        .setFromMatrixPosition(object.target.matrixWorld)
+        .sub(_position.setFromMatrixPosition(object.matrixWorld));
+      if (direction.lengthSq())
+        directional = {
+          direction: direction.toArray(),
+          intensity: lightLevel(object),
+        };
+    });
+    const lights = {
+      ambient: { intensity: Math.max(0, ambient) },
+      directional,
+    };
+    const key = JSON.stringify(lights);
+    if (this.#lights.get(container) === key) return;
+    this.#lights.set(container, key);
+    container.lights = lights;
   }
 
   async toHTML(): Promise<string> {
@@ -236,6 +292,7 @@ export class C3RRenderer {
     const { index, attributes, drawRange } = geometry;
     const { position, uv } = attributes;
     if (!position) return;
+    const normal = this.#shading ? attributes.normal : undefined;
 
     const total = index ? index.count : position.count;
 
@@ -269,6 +326,8 @@ export class C3RRenderer {
       version(position),
       uv,
       version(uv),
+      normal,
+      version(normal),
     ];
     ranges.forEach((r, i) => key.push(r.start, r.count, !maps[i]));
 
@@ -276,7 +335,7 @@ export class C3RRenderer {
     if (!state || !sameKey(state.key, key)) {
       state?.groups.forEach((g) => node.removeChild(g.node));
       const builder = new C3R.MeshBuilder(
-        ranges.map((r) => readTriangles(geometry, r)),
+        ranges.map((r) => readTriangles(geometry, r, normal)),
         { uvTolerance },
       );
       const groups = ranges.map((_, i) => {
@@ -339,6 +398,7 @@ export class C3RRenderer {
 
     const target = state.material;
     node.material = target;
+    target.shading = this.#shading ? shadingOf(material) : null;
 
     const { map } = material;
     const image: unknown = map?.image;
@@ -450,6 +510,7 @@ function createNode(object: Object3D): C3R.Group {
 function readTriangles(
   geometry: BufferGeometry,
   { start, count }: Range,
+  normal?: BufferAttribute | InterleavedBufferAttribute,
 ): C3R.Vertex[][] {
   const { index } = geometry;
   const { position, uv } = geometry.attributes;
@@ -459,6 +520,9 @@ function readTriangles(
     return {
       position: [position.getX(i), position.getY(i), position.getZ(i)],
       uv: uv ? [uv.getX(i), uv.getY(i)] : [0, 0],
+      ...(normal && {
+        normal: [normal.getX(i), normal.getY(i), normal.getZ(i)],
+      }),
     };
   };
 

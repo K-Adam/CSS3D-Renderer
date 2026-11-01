@@ -13,7 +13,7 @@ import {
   type Vertex,
 } from "c3r";
 import { mat3, type ReadonlyMat4, vec3, type ReadonlyVec3 } from "gl-matrix";
-import { cube } from "primitive-geometry";
+import { cube, icosphere } from "primitive-geometry";
 import { composeTransforms } from "../src/css/Transform.js";
 
 const SQUARE: Vertex[] = [
@@ -267,20 +267,37 @@ it("refuses invalid lights and shading", () => {
   ])
     expect(() => (s.container.lights = bad)).toThrow(RangeError);
   expect(s.container.domElement.style.cssText).toBe(before);
-  expect(() => (new Material().shading = "smooth" as "flat")).toThrow(
+  expect(() => (new Material().shading = "phong" as "flat")).toThrow(
     RangeError,
   );
 });
 
-const centerColor = async (element: Element) => {
+// At world (x, y) under an orthographic camera on the unit square, the view
+// flips y
+const colorsAt = async (element: Element, points: number[][]) => {
   const { base64 } = await page.screenshot({ element, base64: true });
   const image = new Image();
   image.src = `data:image/png;base64,${base64}`;
   await image.decode();
-  const context = document.createElement("canvas").getContext("2d")!;
-  context.drawImage(image, -image.width / 2, -image.height / 2);
-  return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext("2d")!;
+  context.drawImage(image, 0, 0);
+  return points.map(([x, y]) => [
+    ...context
+      .getImageData(
+        Math.min(x * image.width, image.width - 1),
+        Math.min((1 - y) * image.height, image.height - 1),
+        1,
+        1,
+      )
+      .data.slice(0, 3),
+  ]);
 };
+
+const centerColor = async (element: Element) =>
+  (await colorsAt(element, [[0.5, 0.5]]))[0];
 
 const imageOf = async (fill: string | null) => {
   const canvas = document.createElement("canvas");
@@ -326,4 +343,191 @@ it("multiplies a color or an opaque image by the linear light", async () => {
 it("leaves transparent texels transparent", async () => {
   using s = await paint(await imageOf(null));
   expect(await centerColor(s.container.domElement)).toEqual([255, 255, 255]);
+});
+
+const encode = (s: number) =>
+  255 * (s <= 0.0031308 ? 12.92 * s : 1.055 * s ** (1 / 2.4) - 0.055);
+
+const smoothScene = (lights: Lights = TOP) => {
+  const s = scene(lights);
+  s.container.camera = new OrthographicCamera(0, 1, 1, 0);
+  s.root.material!.shading = "smooth";
+  return s;
+};
+
+const shown = async (s: ReturnType<typeof scene>, points: number[][]) => {
+  await s.container.bake();
+  await flush();
+  const colors = await colorsAt(s.container.domElement, points);
+  return colors.map(([red]) => red);
+};
+
+const leaning = (x: number, y: number) =>
+  vec3.normalize(vec3.create(), [x, y, 1]);
+
+const CORNERS = [
+  { position: [0, 0, 0], uv: [0, 0], normal: leaning(-1, -1) },
+  { position: [1, 0, 0], uv: [1, 0], normal: leaning(1, -1) },
+  { position: [0, 1, 0], uv: [0, 1], normal: leaning(-1, 1) },
+];
+
+const SIDE: Lights = {
+  directional: { direction: [-0.5, -0.3, -1], intensity: 1 },
+};
+
+const litAt = (b: number[]) => {
+  const toLight = vec3.normalize(vec3.create(), [0.5, 0.3, 1]);
+  const n = vec3.create();
+  CORNERS.forEach(({ normal }, i) => vec3.scaleAndAdd(n, n, normal, b[i]));
+  return vec3.dot(n, toLight);
+};
+
+it("interpolates vertex normals between the corners", async () => {
+  using s = smoothScene(SIDE);
+  s.root.addPolygon(CORNERS);
+  const weights = [
+    [0.9, 0.05, 0.05],
+    [0.05, 0.9, 0.05],
+    [0.05, 0.05, 0.9],
+    [1 / 3, 1 / 3, 1 / 3],
+  ];
+  const colors = await shown(
+    s,
+    weights.map(([, x, y]) => [x, y]),
+  );
+  colors.forEach((color, i) =>
+    expect(Math.abs(color - encode(litAt(weights[i])))).toBeLessThanOrEqual(2),
+  );
+});
+
+it("leaks no unshaded color along the edges of a sphere", async () => {
+  using s = scene({ ambient: { intensity: 0.25 } });
+  s.container.setSize(400, 400);
+  // Tiny gaps between polygons can only darken it
+  s.container.domElement.style.background = "black";
+  s.container.camera.transform = Transform.translate([0, 0, 5]);
+  s.root.material!.shading = "smooth";
+  s.root.material!.background = [0.25, 0.25, 0.25, 1];
+  s.root.addMesh(icosphere({ radius: 1, subdivisions: 2 }));
+  const inside = Array.from({ length: 21 }, (_, i) =>
+    Array.from({ length: 21 }, (_, j) => [0.4 + i / 100, 0.4 + j / 100]),
+  ).flat();
+  const colors = await shown(s, inside);
+  // A quarter of the light once sRGB encoded, on a quarter gray
+  expect(Math.max(...colors)).toBeLessThanOrEqual(37);
+  expect(Math.max(...colors)).toBeGreaterThan(25);
+});
+
+it("doesn't wrap the image's far edge into a polygon in one tile", async () => {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 8;
+  const context = canvas.getContext("2d")!;
+  context.fillStyle = "#f00";
+  context.fillRect(0, 0, 4, 8);
+  context.fillStyle = "#00f";
+  context.fillRect(4, 0, 4, 8);
+  const image = canvas.toDataURL();
+  for (const tile of [0, 1]) {
+    using s = smoothScene({ ambient: { intensity: 1 } });
+    s.root.material!.background = image;
+    s.root.addPolygon(
+      SQUARE.map((v) => ({ ...v, uv: [v.uv[0] + tile, v.uv[1]] })),
+    );
+    const [left, right] = await shown(s, [
+      [0.02, 0.5],
+      [0.98, 0.5],
+    ]);
+    expect(left).toBeGreaterThan(240);
+    expect(right).toBeLessThan(15);
+  }
+});
+
+it("clamps at the terminator, not at the vertices", async () => {
+  using s = smoothScene({
+    ambient: { intensity: 0.2 },
+    directional: { direction: [-1, 0, 0], intensity: 0.8 },
+  });
+  s.root.addPolygon([
+    { position: [0, 0, 0], uv: [0, 0], normal: [-1, 0, 0] },
+    { position: [1, 0, 0], uv: [1, 0], normal: [1, 0, 0] },
+    { position: [1, 1, 0], uv: [1, 1], normal: [1, 0, 0] },
+    { position: [0, 1, 0], uv: [0, 1], normal: [-1, 0, 0] },
+  ]);
+  const colors = await shown(s, [
+    [0.25, 0.5],
+    [0.75, 0.5],
+    [0.95, 0.5],
+  ]);
+  expect(Math.abs(colors[0] - encode(0.2))).toBeLessThanOrEqual(2);
+  // D = 2x - 1, so half of the diffuse at x = 0.75
+  expect(Math.abs(colors[1] - encode(0.2 + 0.8 * 0.5))).toBeLessThanOrEqual(2);
+  expect(Math.abs(colors[2] - encode(0.2 + 0.8 * 0.9))).toBeLessThanOrEqual(2);
+});
+
+it("keeps the shade on the polygon when a later uv is off the mapping", async () => {
+  using s = smoothScene({
+    directional: { direction: [-1, 0, 0], intensity: 1 },
+  });
+  s.root.material!.background = await imageOf("#fff");
+  const normal = (x: number) => [2 * x - 1, 0, 0.5];
+  s.root.addPolygon(
+    SQUARE.map((v, i) => ({
+      ...v,
+      uv: i === 3 ? [0.6, 1] : v.uv,
+      normal: normal(v.position[0]),
+    })),
+  );
+  const [left, right] = await shown(s, [
+    [0.75, 0.2],
+    [0.75, 0.8],
+  ]);
+  expect(Math.abs(left - right)).toBeLessThanOrEqual(2);
+});
+
+it("takes the face normal for a vertex without one", async () => {
+  using s = smoothScene(SIDE);
+  s.root.addPolygon(SQUARE);
+  const [color] = await shown(s, [[0.5, 0.5]]);
+  const toLight = vec3.normalize(vec3.create(), [0.5, 0.3, 1]);
+  expect(Math.abs(color - encode(toLight[2]))).toBeLessThanOrEqual(2);
+});
+
+it("stays on the polygon whatever the texture does", async () => {
+  const white = await imageOf("#fff");
+  const weights = [0.2, 0.5, 0.8];
+  const points = weights.map((x) => [x, 0.1]);
+  const expected = weights.map((x) => encode(litAt([0.9 - x, x, 0.1])));
+  const uvCases = [
+    (uv: readonly number[]) => [uv[0] * 3, uv[1] * 3],
+    (uv: readonly number[]) => [uv[0] + 0.4 * uv[1], 0.3 * uv[0] + uv[1]],
+  ];
+  for (const toUV of uvCases) {
+    using s = smoothScene(SIDE);
+    s.root.material!.background = white;
+    s.root.material!.flipbook = { columns: 2, rows: 1 };
+    s.root.addPolygon(CORNERS.map((v) => ({ ...v, uv: toUV(v.uv) })));
+    const colors = await shown(s, points);
+    colors.forEach((color, i) =>
+      expect(Math.abs(color - expected[i])).toBeLessThanOrEqual(2),
+    );
+  }
+});
+
+it("follows the fold in a smooth gradient, and goes back to flat", async () => {
+  using s = smoothScene();
+  const polygon = s.root.addPolygon(SQUARE);
+  await s.container.bake();
+  const center = () =>
+    getComputedStyle(polygon.contentElement, "::before").getPropertyValue(
+      "--c3r-gradient-center",
+    );
+  s.root.transform = Transform.rotateX(1);
+  expect(Number(center())).toBeCloseTo(Math.cos(1), 3);
+  const clip = polygon.contentElement.parentElement!.style;
+  expect(clip.clipPath).not.toBe("");
+
+  s.root.material!.shading = "flat";
+  await s.container.bake();
+  expect(shadeOf(polygon)).toBeCloseTo(Math.cos(1), 3);
+  expect(clip.clipPath).toBe("");
 });

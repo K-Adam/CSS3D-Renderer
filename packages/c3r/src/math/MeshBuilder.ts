@@ -40,6 +40,8 @@ const MERGE_SLACK = 1.25;
 interface Tri {
   corners: readonly Vertex[];
   ids: number[];
+  // Parallel to corners, unlike ids after splitting T-junctions
+  cornerIds: number[];
   triangle: Triangle;
   group: number;
   face?: Face;
@@ -134,7 +136,7 @@ export class MeshBuilder {
         const longest = Math.max(...triangle.calculateEdgeLengths());
         const sliver = triangle.calculateArea() <= SLIVER * longest ** 2;
         if (sliver || new Set(ids).size < 3) return [];
-        return [{ corners, ids, triangle, group }];
+        return [{ corners, ids, cornerIds: ids, triangle, group }];
       }),
     );
   }
@@ -200,6 +202,16 @@ export class MeshBuilder {
     return { point, fold };
   }
 
+  #normalAt(face: Face, id: number): vec3 | null {
+    const sum = vec3.create();
+    for (const { corners, cornerIds } of face.tris)
+      cornerIds.forEach((corner, k) => {
+        const { normal } = corners[k];
+        if (corner === id && normal) vec3.add(sum, sum, normal);
+      });
+    return vec3.length(sum) ? vec3.normalize(sum, sum) : null;
+  }
+
   #output(face: Face): MeshFace {
     const { ids } = face;
     const toUV = uvMap(face.seed);
@@ -210,10 +222,14 @@ export class MeshBuilder {
     );
 
     return {
-      vertices: corners.map((i) => ({
-        position: point(i),
-        uv: toUV(point(i)),
-      })),
+      vertices: corners.map((i) => {
+        const normal = this.#normalAt(face, ids[i]);
+        return {
+          position: point(i),
+          uv: toUV(point(i)),
+          ...(normal && { normal }),
+        };
+      }),
       edges: corners.map((i, k): EdgeNeighbour => {
         const j = at(corners, k + 1);
         return [

@@ -6,6 +6,7 @@ import {
   convexHull,
   cross2,
   minRect,
+  normalField,
   simplify,
   toPlane,
   uvTransform,
@@ -137,6 +138,20 @@ export let measurePolygon: (
   size: ReadonlyVec2 | null,
 ) => void;
 
+// In DOM pixels
+const PAST_CLIP = 2;
+
+// Friend access for Shading
+export let setSmooth: (
+  polygon: Polygon,
+  smooth: boolean,
+  hasImage: boolean,
+) => void;
+
+const FIELD = ["center", "x", "y"].flatMap((name) =>
+  ["x", "y", "z"].map((k) => `--c3r-normal-${name}-${k}`),
+);
+
 export class Polygon extends Object3D {
   readonly vertices: readonly Vertex[]; // vertices in CCW
   readonly contentElement: HTMLElement;
@@ -161,6 +176,9 @@ export class Polygon extends Object3D {
 
   #blockWidth = 0;
   #blockHeight = 0;
+
+  #smooth = false;
+  #hasImage = false;
 
   constructor(
     vertices: readonly Vertex[],
@@ -243,6 +261,39 @@ export class Polygon extends Object3D {
 
   static {
     measurePolygon = (polygon, size) => polygon.#measure(size);
+    setSmooth = (polygon, smooth, hasImage) =>
+      polygon.#setSmooth(smooth, hasImage);
+  }
+
+  #setSmooth(smooth: boolean, hasImage: boolean): void {
+    hasImage &&= smooth;
+    if (smooth === this.#smooth && hasImage === this.#hasImage) return;
+    const toggled = smooth !== this.#smooth;
+    this.#smooth = smooth;
+    this.#hasImage = hasImage;
+    this.domElement.classList.toggle("c3r-smooth", smooth);
+    if (toggled) this.#fit();
+    this.#updateContent();
+  }
+
+  // Around the content box's center, which a gradient line runs through
+  #writeNormalField(contentPoints: readonly ReadonlyVec2[]): void {
+    const points = contentPoints.map(([u, v]) =>
+      vec2.fromValues(
+        (u - 0.5) * this.#blockWidth,
+        (v - 0.5) * this.#blockHeight,
+      ),
+    );
+    const face = newellNormal(this.vertices);
+    const { style } = this.domElement;
+    style.setProperty("--c3r-normal-width", String(this.#blockWidth));
+    style.setProperty("--c3r-normal-height", String(this.#blockHeight));
+    const normals = this.vertices.map(({ normal }) => {
+      const n = normal && vec3.normalize(vec3.create(), normal);
+      return n && vec3.length(n) ? n : face;
+    });
+    const field = normalField(points, normals);
+    FIELD.forEach((name, i) => style.setProperty(name, String(field[i])));
   }
 
   #measure(size: ReadonlyVec2 | null): void {
@@ -291,8 +342,10 @@ export class Polygon extends Object3D {
       this.#fitPolygon(tri);
     }
 
-    // A path on the element's box clips nothing
+    // A path on the element's box clips nothing, unless the content reaches past
+    // it, where overflow would cut at whole pixels
     const box =
+      !this.#smooth &&
       this.#clipPath.length === 4 &&
       this.#clipPath.every(([x, y]) =>
         [x, y].every((v) => Math.abs(v - Math.round(v)) < NEAR_ZERO),
@@ -443,6 +496,7 @@ export class Polygon extends Object3D {
       style.removeProperty("mask-position");
       style.removeProperty("mask-size");
       style.removeProperty("transform");
+      if (this.#smooth) this.#writeNormalField(this.#vertexPoints);
       return;
     }
 
@@ -466,6 +520,21 @@ export class Polygon extends Object3D {
       vec2.transformMat3(vec2.create(), p, toUV),
     );
 
+    // Blending an antialiased box edge would leak the unshaded color, so the clip
+    // alone cuts a shade and what it multiplies
+    const [mx, my] = [
+      PAST_CLIP / this.#blockWidth,
+      PAST_CLIP / this.#blockHeight,
+    ];
+    const pastClip = this.#smooth
+      ? [
+          [-mx, -my],
+          [1 + mx, -my],
+          [1 + mx, 1 + my],
+          [-mx, 1 + my],
+        ].map(([x, y]) => vec2.transformMat3(vec2.create(), [x, y], toUV))
+      : [];
+
     // CSS has no clamped background, squeeze the mapping onto the texture instead
     if (this.#clampUV) {
       for (const k of [0, 1]) {
@@ -478,11 +547,26 @@ export class Polygon extends Object3D {
           if (uv[k] < lo) s = Math.min(s, (c - lo) / (c - uv[k]));
           if (uv[k] > hi) s = Math.min(s, (hi - c) / (uv[k] - c));
         }
-        for (const uv of [...uvs, ...clipUVs]) uv[k] = c + s * (uv[k] - c);
+        for (const uv of [...uvs, ...clipUVs, ...pastClip])
+          uv[k] = c + s * (uv[k] - c);
       }
     }
 
-    const [txmin, txmax, tymin, tymax] = bounds([...uvs, ...clipUVs]);
+    // Flush with the image's whole tiles, a repeat would filter the far edge into
+    // the visible one
+    if (this.#hasImage)
+      for (const k of [0, 1]) {
+        const values = [...uvs, ...clipUVs].map((uv) => uv[k]);
+        const lo = Math.floor(Math.min(...values) + NEAR_ZERO);
+        const hi = Math.ceil(Math.max(...values) - NEAR_ZERO);
+        for (const uv of pastClip) uv[k] = Math.min(Math.max(uv[k], lo), hi);
+      }
+
+    const [txmin, txmax, tymin, tymax] = bounds([
+      ...uvs,
+      ...clipUVs,
+      ...pastClip,
+    ]);
 
     const xsize = txmax - txmin;
     const ysize = tymax - tymin;
@@ -515,5 +599,13 @@ export class Polygon extends Object3D {
     style.transform =
       `translate(${TX[6] * 100}%,${TX[7] * 100}%)` +
       `matrix(${[TX[0], TX[1] * bh, TX[3] / bh, TX[4], 0, 0].join()})`;
+
+    if (!this.#smooth) return;
+    const toContent = mat3.invert(mat3.create(), TX) ?? mat3.create();
+    this.#writeNormalField(
+      this.#vertexPoints.map((p) =>
+        vec2.transformMat3(vec2.create(), p, toContent),
+      ),
+    );
   }
 }

@@ -40,6 +40,54 @@
   inherits: false;
 }
 
+@property --c3r-gradient-x {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-y {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-center {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-from {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-to {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-shade-from {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-shade-to {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-reach {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 /* Firefox animates a var() keyframe discretely, so this one is a plain number */
 @keyframes c3r-flipbook {
   to {
@@ -179,6 +227,76 @@
   /* Invalid without a flipbook, so a browser without mod() still maps plain textures */
   --c3r-column: mod(var(--c3r-frame), var(--c3r-columns));
   --c3r-row: round(down, var(--c3r-frame) / var(--c3r-columns), 1);
+}
+
+/* Off the layers above, which tile and move with the texture. Both stops stay
+   on the gradient line and in range: Firefox misplaces a stop off the box,
+   WebKit clamps a color before interpolating. From and to are n·l values */
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  --c3r-gradient-length: max(
+    hypot(var(--c3r-gradient-x), var(--c3r-gradient-y)),
+    1e-6
+  );
+  --c3r-gradient-reach: calc(
+    (
+        abs(var(--c3r-gradient-x)) * var(--c3r-normal-width) +
+          abs(var(--c3r-gradient-y)) * var(--c3r-normal-height)
+      ) /
+      2
+  );
+  --c3r-shade-low: min(var(--c3r-light-ambient), 1);
+  --c3r-shade-high: min(var(--c3r-light-ambient) + var(--c3r-light-diffuse), 1);
+  --c3r-gradient-from: clamp(
+    var(--c3r-gradient-center) - var(--c3r-gradient-reach),
+    0,
+    var(--c3r-gradient-center) + var(--c3r-gradient-reach)
+  );
+  --c3r-gradient-to: clamp(
+    var(--c3r-gradient-center) - var(--c3r-gradient-reach),
+    (var(--c3r-shade-high) - var(--c3r-shade-low)) /
+      max(var(--c3r-light-diffuse), 1e-6),
+    var(--c3r-gradient-center) + var(--c3r-gradient-reach)
+  );
+  --c3r-shade-from: clamp(
+    var(--c3r-shade-low),
+    var(--c3r-shade-low) + var(--c3r-light-diffuse) * var(--c3r-gradient-from),
+    var(--c3r-shade-high)
+  );
+  --c3r-shade-to: clamp(
+    var(--c3r-shade-low),
+    var(--c3r-shade-low) + var(--c3r-light-diffuse) * var(--c3r-gradient-to),
+    var(--c3r-shade-high)
+  );
+  background-image: linear-gradient(
+    atan2(var(--c3r-gradient-x), calc(-1 * var(--c3r-gradient-y))) in
+      srgb-linear,
+    color(
+        srgb-linear var(--c3r-shade-from) var(--c3r-shade-from)
+          var(--c3r-shade-from)
+      )
+      calc(
+        (
+            var(--c3r-gradient-from) - var(--c3r-gradient-center) +
+              var(--c3r-gradient-reach)
+          ) /
+          var(--c3r-gradient-length) * 1px
+      ),
+    color(
+        srgb-linear var(--c3r-shade-to) var(--c3r-shade-to) var(--c3r-shade-to)
+      )
+      calc(
+        (
+            var(--c3r-gradient-to) - var(--c3r-gradient-center) +
+              var(--c3r-gradient-reach)
+          ) /
+          var(--c3r-gradient-length) * 1px
+      )
+  );
 }
 
 /* No specificity, so the user's own styles win */

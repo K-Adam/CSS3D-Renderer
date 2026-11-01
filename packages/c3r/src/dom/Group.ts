@@ -23,6 +23,7 @@ export interface IndexedMesh {
   positions: ArrayLike<number>;
   uvs: ArrayLike<number>;
   cells: ArrayLike<number>;
+  normals?: ArrayLike<number>;
 }
 
 export class Group extends Object3D {
@@ -127,12 +128,15 @@ export class Group extends Object3D {
   }
 
   addMesh(
-    { positions, uvs, cells }: IndexedMesh,
+    { positions, uvs, cells, normals }: IndexedMesh,
     options?: PolygonOptions,
   ): Polygon[] {
     const vertex = (i: number): Vertex => ({
       position: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]],
       uv: [uvs[i * 2], uvs[i * 2 + 1]],
+      ...(normals && {
+        normal: [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]],
+      }),
     });
     const triangles: Vertex[][] = [];
     for (let i = 0; i + 2 < cells.length; i += 3) {

@@ -436,6 +436,30 @@ describe("MeshBuilder", () => {
       return s + (x1 * y2 - x2 * y1) / 2;
     }, 0);
 
+  it("merges whatever the normals, and keeps them on the corners", () => {
+    const [a, b] = squares([0, 0]);
+    const lean = (v: Vertex) => ({
+      ...v,
+      normal: [v.position[0], v.position[1], 2] as const,
+    });
+    const [face, ...rest] = new MeshBuilder([[a.map(lean), b.map(lean)]]).faces(
+      0,
+    );
+    expect(rest).toHaveLength(0);
+    expect(face.vertices).toHaveLength(4);
+    for (const { position, normal } of face.vertices) {
+      const expected = vec3.normalize(vec3.create(), [
+        position[0],
+        position[1],
+        2,
+      ]);
+      expect(vec3.dist(normal!, expected)).toBeLessThan(1e-5);
+    }
+    expect(
+      new MeshBuilder([[a, b]]).faces(0)[0].vertices[0],
+    ).not.toHaveProperty("normal");
+  });
+
   it("merges within the uv tolerance", () => {
     const [a, b] = squares([0, 0]);
     const off = { ...b[2], uv: [b[2].uv[0] + 5e-4, b[2].uv[1]] as const };
@@ -1179,6 +1203,20 @@ describe("server-side rendering", () => {
     expect(html).not.toMatch(/color: ?red/);
     expect(cssText()).not.toMatch(/color: ?red/);
     expect(error).toHaveBeenCalled();
+  });
+
+  it("writes a smooth polygon's field and rules to the HTML", async () => {
+    const container = new Container();
+    container.root.material = new Material();
+    container.root.material.shading = "smooth";
+    container.root.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    const html = await container.toHTML();
+    expect(html).toContain("--c3r-normal-center-z:");
+    expect(html).toContain("--c3r-gradient-center:");
   });
 
   it("sizes an orthographic view from setSize, without layout", () => {

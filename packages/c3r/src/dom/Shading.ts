@@ -4,13 +4,14 @@ import type { Camera } from "../css/Camera.js";
 import { CssMatrix, CssVector } from "../css/CssMatrix.js";
 import { CssValue, cssVar, textOf } from "../css/CssValue.js";
 import { layerText } from "../css/Filter.js";
+import type { Shading } from "../css/Material.js";
 import { insertRule } from "../css/styles.js";
 import { transformSteps } from "../css/Tween.js";
 
 import { type Accumulator, libraryAccumulator } from "./Accumulator.js";
 import { Group } from "./Group.js";
 import { matrixOf, type Object3D } from "./Object3D.js";
-import type { Polygon } from "./Polygon.js";
+import { type Polygon, setSmooth } from "./Polygon.js";
 
 // A unit determinant spares normalizing per polygon, exact under rotation and
 // uniform scale
@@ -37,6 +38,11 @@ function lightInput(node: Object3D | Camera): CssMatrix | null {
 const FACE = ["--c3r-face-x", "--c3r-face-y", "--c3r-face-z"];
 
 const light = (name: string) => cssVar(`--c3r-light-${name}`, "<number>");
+
+const fieldVector = (name: string) =>
+  new CssVector(
+    ["x", "y", "z"].map((k) => cssVar(`--c3r-normal-${name}-${k}`, "<number>")),
+  );
 
 type LightFold = Accumulator<CssVector, CssMatrix>;
 
@@ -72,23 +78,38 @@ function createLights(): LightFold {
       .map((name) => `--c3r-light-${name}: 0;`)
       .join(" ")} }`,
   );
+  const polygon = `.c3r-polygon.${acc.className}`;
+  const content = "> .c3r-polygon-clip > .c3r-polygon-content";
   // Linear, so the multiply is close to light times albedo after encoding
   const gray = "var(--c3r-shade)";
   const layer = layerText(`color(srgb-linear ${gray} ${gray} ${gray})`);
   insertRule(
-    `.c3r-polygon.${acc.className} > .c3r-polygon-clip > .c3r-polygon-content`,
+    `${polygon}:not(.c3r-smooth) ${content}`,
     acc,
-    `{ --c3r-shade: ${textOf(shade)}; --c3r-shade-layer: ${layer}; --c3r-shaded: alpha; }`,
+    `{ --c3r-shade: ${textOf(shade)}; --c3r-shade-layer: ${layer}; }`,
+  );
+  insertRule(`${polygon} ${content}`, acc, "{ --c3r-shaded: alpha; }");
+  const along = (name: string) => textOf(fieldVector(name).dot(acc.result));
+  insertRule(
+    `${polygon}.c3r-smooth ${content}::before`,
+    acc,
+    `{ --c3r-gradient-x: ${along("x")}; --c3r-gradient-y: ${along("y")}; --c3r-gradient-center: ${along("center")}; }`,
   );
   return acc;
 }
 
-export const setShaded = (polygon: Polygon, shaded: boolean): void => {
-  if (!shaded) {
+export const setShaded = (
+  polygon: Polygon,
+  shading: Shading | null,
+  hasImage: boolean,
+): void => {
+  setSmooth(polygon, shading === "smooth", hasImage);
+  if (!shading) {
     lights?.removeTarget(polygon);
     return;
   }
   (lights ??= createLights()).addTarget(polygon);
+  if (shading === "smooth") return;
   // A rotation and a uniform scale, so the third column is the normal
   const m = matrixOf(polygon);
   const normal = vec3.normalize(vec3.create(), [m[8], m[9], m[10]]);

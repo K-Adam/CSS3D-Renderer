@@ -18,7 +18,7 @@ export interface Flipbook {
   fps?: number;
 }
 
-export type Shading = "flat";
+export type Shading = "flat" | "smooth";
 
 let nextId = 0;
 
@@ -138,7 +138,7 @@ export class Material {
   }
 
   set shading(shading: Shading | null) {
-    if (shading !== null && shading !== "flat")
+    if (shading !== null && shading !== "flat" && shading !== "smooth")
       throw new RangeError(`Invalid shading ${shading}`);
     this.#shading = shading;
   }

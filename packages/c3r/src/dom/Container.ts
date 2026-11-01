@@ -2,6 +2,7 @@ import { mat4, type ReadonlyMat4, type ReadonlyVec3, vec3 } from "gl-matrix";
 
 import { type Camera, viewMatrixOf } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
+import type { Shading } from "../css/Material.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
 import { vector } from "../css/Transform.js";
@@ -161,7 +162,7 @@ export class Container {
       parent: ReadonlyMat4,
       image: string | null,
       cells: readonly [number, number],
-      flat: boolean,
+      shading: Shading | null,
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
@@ -173,9 +174,9 @@ export class Container {
       }
       if (material?.flipbook)
         cells = [material.flipbook.columns, material.flipbook.rows];
-      flat ||= material?.shading === "flat";
+      shading = material?.shading ?? shading;
       if (node instanceof Polygon) {
-        setShaded(node, flat);
+        setShaded(node, shading, image !== null);
         const info = image === null ? null : imageInfo(image);
         // Keeps the old size while a new image loads
         if (info === undefined) loading.push(loadImage(image!));
@@ -194,10 +195,11 @@ export class Container {
         );
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
-        for (const child of node.children) visit(child, m, image, cells, flat);
+        for (const child of node.children)
+          visit(child, m, image, cells, shading);
       }
     };
-    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1], false);
+    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1], null);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;

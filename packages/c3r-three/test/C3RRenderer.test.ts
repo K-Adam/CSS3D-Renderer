@@ -1,11 +1,14 @@
 import { expect, it } from "vitest";
 import { mat4 } from "gl-matrix";
 import {
+  AmbientLight,
   BoxGeometry,
+  DirectionalLight,
   DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
+  MeshPhongMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
@@ -373,4 +376,67 @@ it("scales the view by its densest polygon, flat faces stay small", () => {
   mesh.scale.setScalar(0);
   renderer.render(scene, camera);
   expect(unitScale()).toBe("1");
+});
+
+it("shades by the three.js material and lights only when asked", () => {
+  const scene = new Scene();
+  scene.add(new AmbientLight(0xffffff, 0.5));
+  const light = new DirectionalLight(0xffffff, 2);
+  light.position.set(0, 3, 0);
+  scene.add(light);
+  const box = new BoxGeometry();
+  scene.add(
+    ...[
+      new MeshPhongMaterial({ flatShading: true }),
+      new MeshPhongMaterial(),
+      new MeshBasicMaterial(),
+    ].map((material) => new Mesh(box, material)),
+  );
+  scene.updateMatrixWorld();
+  const camera = new PerspectiveCamera();
+
+  const classes = (renderer: C3RRenderer) =>
+    [...renderer.domElement.querySelectorAll(".c3r-polygon")].map((p) =>
+      /smooth/.test(p.className)
+        ? "smooth"
+        : /accumulator/.test(p.className)
+          ? "flat"
+          : "plain",
+    );
+  const faces = (kind: string) => Array<string>(6).fill(kind);
+
+  const plain = new C3RRenderer();
+  plain.render(scene, camera);
+  expect(new Set(classes(plain))).toEqual(new Set(["plain"]));
+
+  const shaded = new C3RRenderer({ shading: true });
+  shaded.render(scene, camera);
+  expect(classes(shaded)).toEqual([
+    ...faces("flat"),
+    ...faces("smooth"),
+    ...faces("plain"),
+  ]);
+
+  const { style } = shaded.domElement.firstElementChild as HTMLElement;
+  const value = (name: string) =>
+    Number(style.getPropertyValue(`--c3r-light-${name}`));
+  expect(value("ambient")).toBeCloseTo(0.5 / Math.PI, 5);
+  expect(value("diffuse")).toBeCloseTo(2 / Math.PI, 5);
+  expect(value("y")).toBeCloseTo(1, 5);
+});
+
+it("leaves out lights that give no light", () => {
+  const scene = new Scene();
+  scene.add(new AmbientLight(0xffffff, -1));
+  const off = new DirectionalLight(0xffffff, 0);
+  off.position.set(1, 0, 0);
+  const on = new DirectionalLight(0xffffff, 2);
+  on.position.set(0, 3, 0);
+  scene.add(off, on);
+  scene.updateMatrixWorld();
+  const renderer = new C3RRenderer({ shading: true });
+  renderer.render(scene, new PerspectiveCamera());
+  const { style } = renderer.domElement.firstElementChild as HTMLElement;
+  expect(style.getPropertyValue("--c3r-light-ambient")).toBe("0");
+  expect(Number(style.getPropertyValue("--c3r-light-y"))).toBeCloseTo(1, 5);
 });
