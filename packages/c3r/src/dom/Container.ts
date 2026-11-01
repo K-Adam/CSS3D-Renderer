@@ -1,14 +1,31 @@
-import { mat4, type ReadonlyMat4 } from "gl-matrix";
+import { mat4, type ReadonlyMat4, type ReadonlyVec3, vec3 } from "gl-matrix";
 
 import { type Camera, viewMatrixOf } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
+import { vector } from "../css/Transform.js";
 
 import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
 import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
+import { setShaded } from "./Shading.js";
+
+export interface Lights {
+  ambient?: { readonly intensity: number };
+  // In world space, direction is the way the light travels
+  directional?: {
+    readonly direction: ReadonlyVec3;
+    readonly intensity: number;
+  };
+}
+
+const intensityOf = (n: number): number => {
+  if (!(n >= 0 && Number.isFinite(n)))
+    throw new RangeError(`Invalid light intensity ${n}`);
+  return n;
+};
 
 // Keeps a Camera, and its rules, alive while its element is
 const elementCameras = new WeakMap<Element, Camera>();
@@ -24,6 +41,7 @@ export class Container {
   #height = 0;
   #unitScale = 1;
   #refit: Promise<void> | null = null;
+  #lights: Readonly<Lights> | null = null;
 
   constructor() {
     this.domElement.classList.add(
@@ -62,6 +80,44 @@ export class Container {
     classList.add(camera.projectionClass, camera.className);
     elementCameras.set(this.domElement, camera);
     this.#camera = camera;
+  }
+
+  get lights(): Readonly<Lights> | null {
+    return this.#lights;
+  }
+
+  set lights(lights: Lights | null) {
+    const { ambient, directional } = lights ?? {};
+    const level = ambient ? intensityOf(ambient.intensity) : 0;
+    const diffuse = directional ? intensityOf(directional.intensity) : 0;
+    const direction = directional && vector(directional.direction);
+    const toLight = vec3.create();
+    if (direction) {
+      vec3.normalize(toLight, vec3.negate(toLight, direction));
+      if (!vec3.length(toLight))
+        throw new RangeError(`Invalid light direction ${direction}`);
+    }
+    this.#lights =
+      lights &&
+      Object.freeze({
+        ...(ambient && { ambient: Object.freeze({ intensity: level }) }),
+        ...(direction && {
+          directional: Object.freeze({
+            direction: Object.freeze(direction),
+            intensity: diffuse,
+          }),
+        }),
+      });
+    const [x, y, z] = toLight;
+    const { style } = this.domElement;
+    for (const [name, value] of Object.entries({
+      ambient: level,
+      diffuse,
+      x,
+      y,
+      z,
+    }))
+      style.setProperty(`--c3r-light-${name}`, String(value));
   }
 
   get width(): number {
@@ -105,6 +161,7 @@ export class Container {
       parent: ReadonlyMat4,
       image: string | null,
       cells: readonly [number, number],
+      flat: boolean,
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
@@ -116,7 +173,9 @@ export class Container {
       }
       if (material?.flipbook)
         cells = [material.flipbook.columns, material.flipbook.rows];
+      flat ||= material?.shading === "flat";
       if (node instanceof Polygon) {
+        setShaded(node, flat);
         const info = image === null ? null : imageInfo(image);
         // Keeps the old size while a new image loads
         if (info === undefined) loading.push(loadImage(image!));
@@ -135,10 +194,10 @@ export class Container {
         );
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
-        for (const child of node.children) visit(child, m, image, cells);
+        for (const child of node.children) visit(child, m, image, cells, flat);
       }
     };
-    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1]);
+    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1], false);
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;

@@ -7,11 +7,12 @@ import {
   type ReadonlyVec3,
 } from "gl-matrix";
 
-import { CssValue, cssRaw } from "./CssValue.js";
+import { CssMatrix } from "./CssMatrix.js";
+import { type Arg, CssValue, cssRaw } from "./CssValue.js";
 import { radians, register, type Step } from "./steps.js";
 
 // Finite numbers only, an object's toString would reach the stylesheet
-const vector = (v: ReadonlyVec3): [number, number, number] => {
+export const vector = (v: ReadonlyVec3): [number, number, number] => {
   const values = Array.from(v);
   if (values.length !== 3 || !values.every(Number.isFinite))
     throw new RangeError(`Invalid vector ${values}`);
@@ -31,6 +32,25 @@ const scaleInverse = (scale: number[]) =>
   scale.every((n) => n > 0)
     ? (value: string) => String(CssValue.div(1, cssRaw(value)))
     : null;
+
+// A rotation is its own inverse-transpose
+const rotationNormal =
+  (columns: (c: CssValue, s: CssValue, minusS: CssValue) => Arg[]) =>
+  ([arg]: string[]) => {
+    const angle = cssRaw(arg, "<angle>");
+    const s = CssValue.fn("sin", angle);
+    return new CssMatrix(
+      columns(CssValue.fn("cos", angle), s, CssValue.mul(-1, s)),
+    );
+  };
+
+const scaleNormal = (args: string[]) => {
+  const [x, y, z] = args.map((arg) => cssRaw(arg, "<number>"));
+  const volume = CssValue.mul(CssValue.mul(x, y), z);
+  const size = CssValue.fn("pow", CssValue.fn("abs", volume), 1 / 3);
+  const over = (s: CssValue) => CssValue.div(size, s);
+  return new CssMatrix([over(x), 0, 0, 0, over(y), 0, 0, 0, over(z)]);
+};
 
 interface Decomposed {
   translation: number[];
@@ -163,6 +183,7 @@ export class Transform {
     name: string,
     from: (out: mat4, rad: number) => mat4,
     angle: number,
+    normal: Step["normal"],
   ): Transform {
     return Transform.#create(from(mat4.create(), angle), [
       {
@@ -171,6 +192,7 @@ export class Transform {
         identity: "0rad",
         values: [radians(angle)],
         rotates: true,
+        normal,
       },
     ]);
   }
@@ -190,15 +212,30 @@ export class Transform {
   }
 
   static rotateX(angle: number): Transform {
-    return Transform.#rotate("rotateX", mat4.fromXRotation, angle);
+    return Transform.#rotate(
+      "rotateX",
+      mat4.fromXRotation,
+      angle,
+      rotationNormal((c, s, n) => [1, 0, 0, 0, c, s, 0, n, c]),
+    );
   }
 
   static rotateY(angle: number): Transform {
-    return Transform.#rotate("rotateY", mat4.fromYRotation, angle);
+    return Transform.#rotate(
+      "rotateY",
+      mat4.fromYRotation,
+      angle,
+      rotationNormal((c, s, n) => [c, 0, n, 0, 1, 0, s, 0, c]),
+    );
   }
 
   static rotateZ(angle: number): Transform {
-    return Transform.#rotate("rotateZ", mat4.fromZRotation, angle);
+    return Transform.#rotate(
+      "rotateZ",
+      mat4.fromZRotation,
+      angle,
+      rotationNormal((c, s, n) => [c, s, 0, n, c, 0, 0, 0, 1]),
+    );
   }
 
   static scale(s: number | ReadonlyVec3): Transform {
@@ -210,6 +247,7 @@ export class Transform {
         identity: "1",
         values: values.map(String),
         invert: scaleInverse(values),
+        normal: scaleNormal,
       },
     ]);
   }

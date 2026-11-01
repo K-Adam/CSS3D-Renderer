@@ -1,4 +1,4 @@
-import { type Arg, CssValue, typeOf } from "./CssValue.js";
+import { type Arg, CssValue, textOf, typeOf } from "./CssValue.js";
 
 export interface Composite {
   readonly components: readonly CssValue[];
@@ -15,6 +15,9 @@ const numbers = (values: Iterable<Arg>): readonly CssValue[] =>
       return value;
     }),
   );
+
+const ZERO = CssValue.number(0);
+const isZero = (value: CssValue) => textOf(value) === "0";
 
 export class CssVector implements Composite {
   readonly components: readonly CssValue[];
@@ -50,8 +53,14 @@ export class CssVector implements Composite {
     return new CssVector(this.components.map((c) => CssValue.mul(c, k)));
   }
 
+  // Skips literal zeros, a matrix product would otherwise triple its text per
+  // factor until a browser drops it
   dot(v: CssVector): CssValue {
-    return this.#zip(v, CssValue.mul).reduce((a, b) => CssValue.add(a, b));
+    return this.#zip(v, (a, b) =>
+      isZero(a) || isZero(b) ? ZERO : CssValue.mul(a, b),
+    ).reduce((sum, term) =>
+      isZero(term) ? sum : isZero(sum) ? term : CssValue.add(sum, term),
+    );
   }
 
   length(): CssValue {

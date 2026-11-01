@@ -1099,6 +1099,23 @@ describe("server-side rendering", () => {
     expect(outerHTML).toContain("--c3r-unit-scale");
   });
 
+  it("serializes flat shading with a tween in its input", async () => {
+    const container = new Container();
+    container.lights = { ambient: { intensity: 0.5 } };
+    const group = new Group();
+    container.root.addChild(group);
+    group.material = new Material();
+    group.material.shading = "flat";
+    group.tween = new Tween({
+      keyframes: [[Transform.rotateX(1), Transform.rotateY(1)]],
+    });
+    group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
+
+    const html = await container.toHTML();
+    expect(html).toContain("srgb-linear");
+    expect(html).toContain("cos(");
+  });
+
   it("keeps every value inside the exported style element", async () => {
     const container = new Container();
     const group = new Group();

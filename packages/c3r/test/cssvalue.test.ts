@@ -64,8 +64,9 @@ it("builds matrices column-major from numbers or expressions", () => {
     "1",
   ]);
   const [first, second] = m.mul(new CssMatrix([x, 0, 0, 1])).components;
-  expect(String(first)).toBe("calc((1 * var(--x)) + (3 * 0))");
-  expect(String(second)).toBe("calc((2 * var(--x)) + (4 * 0))");
+  expect(String(first)).toBe("calc(1 * var(--x))");
+  expect(String(second)).toBe("calc(2 * var(--x))");
+  expect(String(m.mul(new CssMatrix([0, 0, 0, 0])).components[0])).toBe("0");
   expect(m.transform(new CssVector([x, 1])).components.map(String)).toEqual([
     "calc((1 * var(--x)) + (3 * 1))",
     "calc((2 * var(--x)) + (4 * 1))",

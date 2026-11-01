@@ -19,6 +19,8 @@ export interface AccumulatorOptions<
   start?: T;
   // For an input of another shape
   inputIdentity?: I;
+  // A target polygon keeps its parent's value instead of folding an input
+  polygonsRead?: boolean;
   combine: (parent: T, input: I) => T;
   input?: (node: Object3D | Camera) => I | null;
 }
@@ -225,6 +227,7 @@ export class Accumulator<
         `{ syntax: "${syntax}"; inherits: ${inherits}; initial-value: ${initial}; }`,
       );
     const cls = `.${this.className}`;
+    const folding = options.polygonsRead ? `${cls}:not(.c3r-polygon)` : cls;
     try {
       resultProperties.forEach((result, k) => {
         for (const property of [result, slot(0, k), slot(1, k)])
@@ -239,11 +242,11 @@ export class Accumulator<
       // the flag alternating them down the chain
       this.#addRule(
         `@container not style(${flag}: 1)`,
-        `{ ${cls} { ${flag}: 1; ${set(0)} } }`,
+        `{ ${folding} { ${flag}: 1; ${set(0)} } }`,
       );
       this.#addRule(
         `@container style(${flag}: 1)`,
-        `{ ${cls} { ${flag}: 0; ${set(1)} } }`,
+        `{ ${folding} { ${flag}: 0; ${set(1)} } }`,
       );
       this.#addRule(`.c3r-view:has(> ${cls})`, `{ ${seed} }`);
       // Off the chain, a changing value restyles no deeper than one level

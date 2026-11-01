@@ -108,7 +108,8 @@ export function filterVariables(
 }
 
 // Background layers must be images, a solid color has no image form yet
-const layerText = (color: string) => `linear-gradient(${color}, ${color}),`;
+export const layerText = (color: string) =>
+  `linear-gradient(${color}, ${color}),`;
 
 export function filterTexts(
   steps: Step[],

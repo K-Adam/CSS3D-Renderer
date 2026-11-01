@@ -18,6 +18,8 @@ export interface Flipbook {
   fps?: number;
 }
 
+export type Shading = "flat";
+
 let nextId = 0;
 
 export class Material {
@@ -28,6 +30,7 @@ export class Material {
   #filterKey = "";
   #doubleSided = false;
   #flipbook: Required<Flipbook> | null = null;
+  #shading: Shading | null = null;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -127,6 +130,17 @@ export class Material {
     }
     this.#flipbook = values;
     this.#applyFlipbook();
+  }
+
+  // Takes effect at the next bake, which finds the polygons it reaches
+  get shading(): Shading | null {
+    return this.#shading;
+  }
+
+  set shading(shading: Shading | null) {
+    if (shading !== null && shading !== "flat")
+      throw new RangeError(`Invalid shading ${shading}`);
+    this.#shading = shading;
   }
 
   #applyFlipbook(): void {
