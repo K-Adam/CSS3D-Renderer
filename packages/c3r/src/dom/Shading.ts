@@ -3,7 +3,6 @@ import { mat3, vec3 } from "gl-matrix";
 import type { Camera } from "../css/Camera.js";
 import { CssMatrix, CssVector } from "../css/CssMatrix.js";
 import { CssValue, cssVar, textOf } from "../css/CssValue.js";
-import { layerText } from "../css/Filter.js";
 import type { Shading } from "../css/Material.js";
 import { insertRule } from "../css/styles.js";
 import { transformSteps } from "../css/Tween.js";
@@ -55,7 +54,13 @@ function createLights(): LightFold {
     identity: new CssVector([0, 0, 0]),
     start: new CssVector(["x", "y", "z"].map(light)),
     inputIdentity: CssMatrix.identity(3),
-    combine: (parent, input) => input.transform(parent),
+    // A change too small to see stops here instead of restyling the subtree
+    combine: (parent, input) => {
+      const moved = input.transform(parent);
+      return moved.withComponents(
+        moved.components.map((c) => CssValue.fn("round", c, 1 / 1024)),
+      );
+    },
     input: lightInput,
     polygonsRead: true,
   });
@@ -80,15 +85,25 @@ function createLights(): LightFold {
   );
   const polygon = `.c3r-polygon.${acc.className}`;
   const content = "> .c3r-polygon-clip > .c3r-polygon-content";
-  // Linear, so the multiply is close to light times albedo after encoding
-  const gray = "var(--c3r-shade)";
-  const layer = layerText(`color(srgb-linear ${gray} ${gray} ${gray})`);
+  insertRule(`${polygon} ${content}`, acc, "{ --c3r-shaded: alpha; }");
+  insertRule(
+    `${polygon} ${content}::before`,
+    acc,
+    '{ content: ""; position: absolute; inset: 0; pointer-events: none; }',
+  );
+  // Opaque under a transparent texel, so the mask applies its alpha once
   insertRule(
     `${polygon}:not(.c3r-smooth) ${content}`,
     acc,
-    `{ --c3r-shade: ${textOf(shade)}; --c3r-shade-layer: ${layer}; }`,
+    "{ --c3r-flat-backdrop: var(--c3r-shade-backdrop, white); }",
   );
-  insertRule(`${polygon} ${content}`, acc, "{ --c3r-shaded: alpha; }");
+  // Black over the encoded color multiplies it by the encoded light, a gradient
+  // layer paints the same at several times the cost in Firefox
+  insertRule(
+    `${polygon}:not(.c3r-smooth) ${content}::before`,
+    acc,
+    `{ --c3r-shade: ${textOf(shade)}; background-color: rgb(0 0 0 / calc(1.055 * (1 - pow(var(--c3r-shade), 1 / 2.4)))); }`,
+  );
   const along = (name: string) => textOf(fieldVector(name).dot(acc.result));
   insertRule(
     `${polygon}.c3r-smooth ${content}::before`,

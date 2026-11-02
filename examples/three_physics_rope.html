@@ -547,8 +547,13 @@
             ms.getWorldTransform(transformAux1);
             const p = transformAux1.getOrigin();
             const q = transformAux1.getRotation();
-            objThree.position.set(p.x(), p.y(), p.z());
-            objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
+            const next = [p.x(), p.y(), p.z(), q.x(), q.y(), q.z(), q.w()];
+            const current = [...objThree.position, ...objThree.quaternion];
+            // Bodies never sleep here, and a jitter too small to see still restyles
+            if (current.some((v, k) => Math.abs(v - next[k]) > 1e-3)) {
+              objThree.position.fromArray(next);
+              objThree.quaternion.fromArray(next, 3);
+            }
           }
         }
       }

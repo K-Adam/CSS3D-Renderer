@@ -55,12 +55,14 @@ export class Material {
     let color: string | null = null;
     let opaque: string | null = null;
     let alpha: string | null = null;
+    let backdrop: string | null = null;
     if (typeof background === "string") {
       // A newline only has a hex escape
       const escape = (c: string) => `\\${c.charCodeAt(0).toString(16)} `;
       image = `url("${background.replace(/["\\\n\r\f]/g, escape)}")`;
       color = opaque = "transparent";
       alpha = "1";
+      backdrop = "white";
       this.#background = background;
       void loadImage(background).then((info) => {
         if (info?.opaque && this.#background === background)
@@ -72,7 +74,7 @@ export class Material {
       image = "none";
       color = `rgba(${rgb.join()},${a})`;
       // Faded by opacity on polygons, so a tint stays exact
-      opaque = `rgb(${rgb.join()})`;
+      backdrop = opaque = `rgb(${rgb.join()})`;
       alpha = String(a);
       this.#background = vec4.clone(background);
     } else {
@@ -82,6 +84,7 @@ export class Material {
     this.#set("--c3r-background-color", color);
     this.#set("--c3r-background-opaque", opaque);
     this.#set("--c3r-background-alpha", alpha);
+    this.#set("--c3r-shade-backdrop", backdrop);
     // Masks a tint layer out of transparent pixels
     this.#set("--c3r-alpha-mask", image);
     this.#applyFlipbook();

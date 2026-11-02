@@ -29,8 +29,8 @@
   initial-value: 1;
 }
 
-/* Not inherited, so a container inside a flat polygon isn't shaded */
-@property --c3r-shade-layer {
+/* Not inherited, so a container inside a flat polygon keeps its own */
+@property --c3r-flat-backdrop {
   syntax: "*";
   inherits: false;
 }
@@ -205,10 +205,13 @@
 .c3r-polygon-content {
   width: 100%;
   height: 100%;
-  background-color: var(--c3r-background-opaque, white);
+  background-color: var(
+    --c3r-flat-backdrop,
+    var(--c3r-background-opaque, white)
+  );
   /* Layers end in a comma and multiply what is below */
-  background-image: var(--c3r-shade-layer,) var(--c3r-tween-layers,)
-    var(--c3r-layers,) var(--c3r-background-image, none);
+  background-image: var(--c3r-tween-layers,) var(--c3r-layers,)
+    var(--c3r-background-image, none);
   background-size: 100% 100%;
   background-blend-mode: multiply;
   opacity: var(--c3r-background-alpha, 1);
@@ -233,10 +236,6 @@
    on the gradient line and in range: Firefox misplaces a stop off the box,
    WebKit clamps a color before interpolating. From and to are n·l values */
 .c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
   mix-blend-mode: multiply;
   --c3r-gradient-length: max(
     hypot(var(--c3r-gradient-x), var(--c3r-gradient-y)),

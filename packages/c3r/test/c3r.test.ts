@@ -1136,7 +1136,7 @@ describe("server-side rendering", () => {
     group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
 
     const html = await container.toHTML();
-    expect(html).toContain("srgb-linear");
+    expect(html).toContain("--c3r-shade:");
     expect(html).toContain("cos(");
   });
 

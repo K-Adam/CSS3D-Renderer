@@ -3,6 +3,7 @@ import { page } from "vitest/browser";
 import {
   Container,
   ElementObject,
+  Filter,
   Group,
   type Lights,
   Material,
@@ -42,7 +43,9 @@ const scene = (lights: Lights | null = TOP) => {
 
 const shadeOf = (polygon: Polygon) =>
   Number(
-    getComputedStyle(polygon.contentElement).getPropertyValue("--c3r-shade"),
+    getComputedStyle(polygon.contentElement, "::before").getPropertyValue(
+      "--c3r-shade",
+    ),
   );
 
 const normalOf = (vertices: readonly Vertex[]) => {
@@ -139,7 +142,22 @@ it("ignores the camera and follows the root", async () => {
   ];
   expect(shadeOf(polygon)).toBeCloseTo(1, 4);
   s.root.transform = Transform.rotateX(1);
-  expect(shadeOf(polygon)).toBeCloseTo(Math.cos(1), 4);
+  expect(shadeOf(polygon)).toBeCloseTo(Math.cos(1), 3);
+});
+
+it("doesn't change the light under a group for a rotation too small to see", async () => {
+  using s = scene();
+  const group = new Group();
+  s.root.addChild(group);
+  group.addPolygon(SQUARE);
+  await s.container.bake();
+  const light = () =>
+    getComputedStyle(group.domElement).getPropertyValue("--c3r-to-light-1");
+  const before = light();
+  group.transform = Transform.rotateX(1e-5);
+  expect(light()).toBe(before);
+  group.transform = Transform.rotateX(0.1);
+  expect(light()).not.toBe(before);
 });
 
 it("follows tweens at their animated values", async () => {
@@ -218,10 +236,10 @@ it("applies at bake, to the polygons a material reaches", async () => {
 
   const chained = (element: Element) =>
     /c3r-accumulator-/.test(element.className);
-  const image = (polygon: Polygon) =>
-    getComputedStyle(polygon.contentElement).backgroundImage;
-  expect(image(shaded)).toContain("gradient");
-  expect(image(plain)).not.toContain("gradient");
+  const overlaid = (polygon: Polygon) =>
+    getComputedStyle(polygon.contentElement, "::before").content !== "none";
+  expect(overlaid(shaded)).toBe(true);
+  expect(overlaid(plain)).toBe(false);
   expect(chained(plainBranch.domElement)).toBe(false);
 
   const inner = new Container();
@@ -229,11 +247,11 @@ it("applies at bake, to the polygons a material reaches", async () => {
   const { contentElement } = flat.addPolygon(SQUARE);
   contentElement.append(inner.domElement);
   await s.container.bake();
-  expect(image(nested)).not.toContain("gradient");
+  expect(overlaid(nested)).toBe(false);
 
   flat.material.shading = null;
   await s.container.bake();
-  expect(image(shaded)).not.toContain("gradient");
+  expect(overlaid(shaded)).toBe(false);
   expect(chained(flat.domElement)).toBe(false);
 });
 
@@ -343,6 +361,47 @@ it("multiplies a color or an opaque image by the linear light", async () => {
 it("leaves transparent texels transparent", async () => {
   using s = await paint(await imageOf(null));
   expect(await centerColor(s.container.domElement)).toEqual([255, 255, 255]);
+});
+
+it("shades a stylesheet's background on a custom content element", async () => {
+  const sheet = document.createElement("style");
+  sheet.textContent =
+    ".c3r-polygon .custom-card { background-color: rgb(0 0 255); }";
+  document.head.append(sheet);
+  using s = scene({ ambient: { intensity: 0.5 } });
+  s.container.camera = new OrthographicCamera(0, 1, 1, 0);
+  const contentElement = document.createElement("div");
+  contentElement.className = "custom-card";
+  s.root.addPolygon(SQUARE, { contentElement });
+  await s.container.bake();
+  await flush();
+  const color = await centerColor(s.container.domElement);
+  sheet.remove();
+  expect(Math.abs(color[2] - 255 * ENCODED_HALF)).toBeLessThanOrEqual(2);
+  expect(color[0]).toBeLessThanOrEqual(2);
+});
+
+it("masks a partly transparent texel once, tinted or not", async () => {
+  const image = await imageOf("rgb(255 0 0 / 0.5)");
+  // On black, a white page hides what the overlay's own alpha adds
+  const through = (c: number) => 255 * ENCODED_HALF * c * 0.5;
+  for (const [filter, expected] of [
+    [null, [1, 0.5, 0.5]],
+    [Filter.tint([0.5, 0.5, 0.5]), [0.5, 0.25, 0.25]],
+  ] as const) {
+    using s = scene({ ambient: { intensity: 0.5 } });
+    s.container.camera = new OrthographicCamera(0, 1, 1, 0);
+    s.root.material!.background = image;
+    s.root.material!.filter = filter;
+    s.container.domElement.style.background = "black";
+    s.root.addPolygon(SQUARE);
+    await s.container.bake();
+    await flush();
+    const color = await centerColor(s.container.domElement);
+    expected.forEach((c, i) =>
+      expect(Math.abs(color[i] - through(c))).toBeLessThanOrEqual(3),
+    );
+  }
 });
 
 const encode = (s: number) =>
