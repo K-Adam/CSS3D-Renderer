@@ -40,6 +40,26 @@ const animatedSteps = new WeakMap<Tween, AnimatedStep[]>();
 export const transformSteps = (tween: Tween): readonly AnimatedStep[] =>
   animatedSteps.get(tween) ?? [];
 
+// Keeps the tweens, and their rules, alive while their element is
+const elementTweens = new WeakMap<Element, readonly Tween[]>();
+
+// Returns the ones it replaced
+export const setTweenClasses = (
+  element: Element,
+  tweens: readonly Tween[],
+): readonly Tween[] => {
+  const previous = elementTweens.get(element) ?? [];
+  for (const { className } of previous) element.classList.remove(className);
+  for (const { className } of tweens) element.classList.add(className);
+  elementTweens.set(element, tweens);
+  return previous;
+};
+
+export const hasFilter = (tween: Tween): boolean => {
+  const part = styles.get(tween);
+  return !!(part?.filter || part?.layers);
+};
+
 // Throws before writing anything
 export function setTweens(
   style: CSSStyleDeclaration | undefined,

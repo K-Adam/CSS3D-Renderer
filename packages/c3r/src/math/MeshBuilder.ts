@@ -3,6 +3,7 @@ import type { ReadonlyVec3 } from "gl-matrix";
 
 import {
   collinear,
+  COPLANAR,
   convexHull,
   minRect,
   toPlane,
@@ -17,6 +18,8 @@ export type TriangleList = readonly (readonly Vertex[])[];
 export interface MeshFace {
   vertices: Vertex[];
   edges: EdgeNeighbour[];
+  // False when smooth edges lead to another plane or normal
+  planar?: boolean;
 }
 
 // cos 45°
@@ -29,8 +32,6 @@ const WELD = 1e-3;
 const MIN_WELD = 1e-9;
 
 const SLIVER = 1e-6;
-
-const COPLANAR = 1 - 1e-6;
 
 const UV_TOLERANCE = 1e-3;
 
@@ -51,6 +52,7 @@ interface Face {
   seed: Tri;
   tris: Tri[];
   ids: number[];
+  planar?: boolean;
 }
 
 const key = (a: number, b: number) => `${a},${b}`;
@@ -87,7 +89,7 @@ export class MeshBuilder {
 
   constructor(
     groups: readonly TriangleList[],
-    { uvTolerance = UV_TOLERANCE } = {},
+    { uvTolerance = UV_TOLERANCE, splitCurved = false } = {},
   ) {
     const tris = this.#weld(groups);
     const ownersOf = () =>
@@ -101,12 +103,40 @@ export class MeshBuilder {
       (a, b) => b.triangle.calculateArea() - a.triangle.calculateArea(),
     );
     for (const seed of tris)
-      if (!seed.face) this.#merge(seed, owners, uvTolerance);
+      if (!seed.face) this.#merge(seed, owners, uvTolerance, splitCurved);
 
     for (const face of this.#faces)
       face.ids.forEach((a, i) =>
         this.#borders.set(key(a, at(face.ids, i + 1)), { face, i }),
       );
+    for (const face of this.#faces)
+      if (face.planar === undefined) this.#markRegion(face);
+  }
+
+  // A point light is exact on a plane and interpolated on a curve, which differ
+  // along an edge, so polygons joined by smooth edges all take one or the other
+  #markRegion(start: Face): void {
+    const normal = start.seed.triangle.norm;
+    const region = new Set([start]);
+    for (const face of region)
+      for (const [a, b] of edgesOf(face.ids)) {
+        const hit = this.#borders.get(key(b, a));
+        if (
+          hit &&
+          vec3.dot(hit.face.seed.triangle.norm, face.seed.triangle.norm) >=
+            SMOOTH_FOLD
+        )
+          region.add(hit.face);
+      }
+    const planar = [...region].every(
+      (face) =>
+        vec3.dot(face.seed.triangle.norm, normal) > COPLANAR &&
+        face.ids.every((id) => {
+          const n = this.#normalAt(face, id);
+          return !n || vec3.dot(n, normal) > COPLANAR;
+        }),
+    );
+    for (const face of region) face.planar = planar;
   }
 
   faces(group: number): MeshFace[] {
@@ -161,13 +191,25 @@ export class MeshBuilder {
       });
   }
 
-  #merge(seed: Tri, owners: Map<string, Tri>, uvTolerance: number): void {
+  #merge(
+    seed: Tri,
+    owners: Map<string, Tri>,
+    uvTolerance: number,
+    splitCurved: boolean,
+  ): void {
     const plane = toPlane(seed.triangle.norm);
     const toUV = uvMap(seed);
     const rect = (ids: number[]) =>
       minRect(convexHull(ids.map((id) => plane(this.#positions[id])))).area;
+    const first = seed.corners[0].normal;
+    const sameNormal = ({ corners }: Tri) =>
+      corners.every(
+        ({ normal }) =>
+          normal === first || (normal && first && vec3.equals(normal, first)),
+      );
     const fits = (t: Tri) =>
       t.group === seed.group &&
+      (!splitCurved || (sameNormal(seed) && sameNormal(t))) &&
       vec3.dot(t.triangle.norm, seed.triangle.norm) > COPLANAR &&
       t.corners.every((v) => vec2.dist(toUV(v.position), v.uv) <= uvTolerance);
 
@@ -230,6 +272,7 @@ export class MeshBuilder {
           ...(normal && { normal }),
         };
       }),
+      planar: face.planar!,
       edges: corners.map((i, k): EdgeNeighbour => {
         const j = at(corners, k + 1);
         return [

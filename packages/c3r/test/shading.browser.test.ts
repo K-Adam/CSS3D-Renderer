@@ -1,7 +1,8 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { page } from "vitest/browser";
 import {
   Container,
+  CssValue,
   ElementObject,
   Filter,
   Group,
@@ -16,7 +17,7 @@ import {
   type Vertex,
 } from "c3r";
 import { mat3, type ReadonlyMat4, vec3, type ReadonlyVec3 } from "gl-matrix";
-import { cube, icosphere } from "primitive-geometry";
+import { cube, cylinder, icosphere } from "primitive-geometry";
 import { composeTransforms } from "../src/css/Transform.js";
 
 const SQUARE: Vertex[] = [
@@ -284,6 +285,11 @@ it("refuses invalid lights and shading", () => {
     { directional: { direction: [0, 0, 0], intensity: 1 } },
     { directional: { direction: [0, NaN, 0], intensity: 1 } },
     { directional: { direction: [0, 1, 0], intensity: Infinity } },
+    { point: { position: [0, 0, 1], intensity: -1 } },
+    {
+      directional: { direction: [0, 0, -1], intensity: 1 },
+      point: { position: [0, 0, 1], intensity: 1 },
+    },
   ])
     expect(() => (s.container.lights = bad)).toThrow(RangeError);
   expect(s.container.domElement.style.cssText).toBe(before);
@@ -895,4 +901,634 @@ it("doesn't take a parent's map, and takes an empty one as none", async () => {
     child.addPolygon(SQUARE);
     near(await shown(s, across(0.75)), [PEAK]);
   }
+});
+
+const POINT: Lights = {
+  ambient: { intensity: 0.1 },
+  point: { position: [0.4, 0.5, 0.2], intensity: 0.1 },
+};
+
+// Over a white plane at z = 0
+const onFloor = (points: number[][], { ambient, point } = POINT) =>
+  points.map(([x, y]) => {
+    const [px, py, pz] = point!.position;
+    const d = Math.hypot(x - px, y - py, pz);
+    return encode(
+      Math.min(1, ambient!.intensity + (point!.intensity * pz) / d ** 3),
+    );
+  });
+
+const whiteFloor = (lights = POINT) => {
+  const s = smoothScene(lights);
+  s.root.material!.background = [1, 1, 1, 1];
+  return s;
+};
+
+const GRID = [0.1, 0.3, 0.5, 0.7, 0.9].flatMap((x) =>
+  [0.1, 0.3, 0.5, 0.7, 0.9].map((y) => [x, y]),
+);
+
+const rect = (x0: number, x1: number, y0 = 0, y1 = 1): Vertex[] =>
+  [
+    [x0, y0],
+    [x1, y0],
+    [x1, y1],
+    [x0, y1],
+  ].map(([x, y]) => ({ position: [x, y, 0], uv: [x, y] }));
+
+// Each lays out at its own scale, the one at y = 0.5 at the largest
+const SPLIT_PLANE = [
+  rect(0, 0.45),
+  rect(0.45, 0.47, 0, 0.45),
+  rect(0.45, 0.47, 0.45, 0.55),
+  rect(0.45, 0.47, 0.55, 1),
+  rect(0.47, 1),
+];
+
+const pauseAt = (element: Element, time: number) => {
+  for (const animation of element.getAnimations()) {
+    animation.pause();
+    animation.currentTime = time;
+  }
+};
+
+const biggestStep = (shades: number[]) =>
+  Math.max(...shades.slice(1).map((shade, i) => Math.abs(shade - shades[i])));
+
+it("draws a point light's falloff across a plane", async () => {
+  using s = whiteFloor();
+  s.root.addPolygon(SQUARE);
+  near(await shown(s, GRID), onFloor(GRID), 5);
+});
+
+it("has no seam across a plane split into unequal polygons", async () => {
+  const lights: Lights = {
+    ambient: { intensity: 0.1 },
+    point: { position: [0.4, 0.5, 0.2], intensity: 0.02 },
+  };
+  using s = whiteFloor(lights);
+  for (const polygon of SPLIT_PLANE) s.root.addPolygon(polygon);
+  const row = Array.from({ length: 40 }, (_, i) => [0.3 + i / 200, 0.5]);
+  const shades = await shown(s, row);
+  near(shades, onFloor(row, lights), 5);
+  expect(biggestStep(shades)).toBeLessThanOrEqual(5);
+});
+
+it("stays accurate on a small polygon under a grazing light", async () => {
+  const lights: Lights = {
+    ambient: { intensity: 0.1 },
+    point: { position: [0.5, 0.5, 0.01], intensity: 0.002 },
+  };
+  using s = whiteFloor(lights);
+  s.root.addPolygon(rect(0.8, 0.9, 0.8, 0.9));
+  s.root.addPolygon(rect(0.2, 0.7));
+  const points = [
+    [0.85, 0.85],
+    [0.65, 0.5],
+    [0.3, 0.5],
+  ];
+  near(await shown(s, points), onFloor(points, lights), 6);
+});
+
+it("shows ambient alone with the light below a plane", async () => {
+  const lights: Lights = {
+    ambient: { intensity: 0.1 },
+    point: { position: [0.5, 0.5, -0.2], intensity: 1 },
+  };
+  for (const shading of ["flat", "smooth"] as const) {
+    using s = whiteFloor(lights);
+    s.root.material!.shading = shading;
+    s.root.addPolygon(SQUARE);
+    near(await shown(s, across(0.2, 0.5, 0.8)), Array(3).fill(encode(0.1)));
+  }
+});
+
+const DIM: Lights = {
+  ambient: { intensity: 0.1 },
+  point: { position: [0.4, 0.5, 0.2], intensity: 0.01 },
+};
+
+const DIM_AT_CENTER = (0.01 * 0.2) / Math.hypot(0.1, 0.2) ** 3;
+
+it("gives a flat polygon the light at its center", async () => {
+  using s = whiteFloor(DIM);
+  s.root.material!.shading = "flat";
+  const polygon = s.root.addPolygon(SQUARE);
+  await s.container.bake();
+  expect(shadeOf(polygon)).toBeCloseTo(0.1 + DIM_AT_CENTER, 3);
+});
+
+it("finds a point light through scales, rotations and tweens", async () => {
+  const position: ReadonlyVec3 = [1, 2, 3];
+  using s = scene({
+    ambient: { intensity: 0.1 },
+    point: { position, intensity: 2 },
+  });
+  const outer = new Group();
+  s.root.addChild(outer);
+  outer.transform = [
+    Transform.translate([0.3, -0.2, 0.5]),
+    Transform.rotateY(0.7),
+    Transform.scale(2),
+  ];
+  const inner = new Group();
+  outer.addChild(inner);
+  inner.transform = Transform.translate([0.1, 0.2, 0.3]);
+  inner.tween = new Tween({
+    from: [
+      Transform.rotateX(0),
+      Transform.translate([0, 0, 0]),
+      Transform.scale(1),
+    ],
+    keyframes: [
+      [
+        Transform.rotateX(1.2),
+        Transform.translate([0.1, 0.2, 0.3]),
+        Transform.scale(1.5),
+      ],
+    ],
+    duration: 10,
+    loop: true,
+  });
+  const polygon = inner.addPolygon(SQUARE);
+  await s.container.bake();
+  pauseAt(inner.domElement, 3700);
+  await flush();
+  const toWorld = new DOMMatrix(
+    getComputedStyle(outer.domElement).transform,
+  ).multiply(new DOMMatrix(getComputedStyle(inner.domElement).transform));
+  const center = toWorld.transformPoint(new DOMPoint(0.5, 0.5, 0, 1));
+  const axis = toWorld.transformPoint(new DOMPoint(0, 0, 1, 0));
+  const l: ReadonlyVec3 = [
+    position[0] - center.x,
+    position[1] - center.y,
+    position[2] - center.z,
+  ];
+  const normal = vec3.normalize(vec3.create(), [axis.x, axis.y, axis.z]);
+  expect(shadeOf(polygon)).toBeCloseTo(
+    0.1 + Math.max(0, (2 * vec3.dot(normal, l)) / vec3.length(l) ** 3),
+    2,
+  );
+});
+
+it("scales only the light by a group's gain, down the tree", async () => {
+  using s = whiteFloor(DIM);
+  s.root.material!.shading = "flat";
+  const outer = new Group();
+  const inner = new Group();
+  s.root.addChild(outer);
+  outer.addChild(inner);
+  const polygon = inner.addPolygon(SQUARE);
+  outer.lightGain = 0.5;
+  inner.lightGain = CssValue.mul(0.25, 2);
+  await s.container.bake();
+  expect(shadeOf(polygon)).toBeCloseTo(0.1 + DIM_AT_CENTER / 4, 3);
+  outer.lightGain = 1;
+  await flush();
+  expect(shadeOf(polygon)).toBeCloseTo(0.1 + DIM_AT_CENTER / 2, 3);
+  outer.lightGain = 0;
+  await flush();
+  expect(shadeOf(polygon)).toBeCloseTo(0.1, 3);
+  expect(() => (outer.lightGain = -1)).toThrow(RangeError);
+});
+
+it("animates a gain on a group's clock", async () => {
+  using s = whiteFloor(DIM);
+  s.root.material!.shading = "flat";
+  const group = new Group();
+  s.root.addChild(group);
+  const polygon = group.addPolygon(SQUARE);
+  group.clock = true;
+  group.lightGain = CssValue.add(
+    1,
+    CssValue.mul(0.5, CssValue.fn("sin", CssValue.mul(Group.time, 10))),
+  );
+  await s.container.bake();
+  const shades = new Set<number>();
+  for (let i = 0; i < 4; i++) {
+    await flush();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    shades.add(shadeOf(polygon));
+  }
+  expect(shades.size).toBeGreaterThan(1);
+});
+
+const LIT_AT_09: Lights[] = [
+  {
+    ambient: { intensity: 0.1 },
+    directional: { direction: [0, 0, -1], intensity: 0.8 },
+  },
+  // Far enough to be even, its shade 0.1 + 0.8
+  {
+    ambient: { intensity: 0.1 },
+    point: { position: [0.5, 0.5, 10], intensity: 80 },
+  },
+];
+
+it("scales the light by a diffuse map, on any shading and light", async () => {
+  for (const lights of LIT_AT_09)
+    for (const [shading, planar] of [
+      ["flat", true],
+      ["smooth", true],
+      ["smooth", false],
+    ] as const) {
+      using s = whiteFloor(lights);
+      s.root.material!.shading = shading;
+      s.root.material!.diffuse = { map: splitImage("white", "black") };
+      s.root.addPolygon(SQUARE, { planar });
+      near(await shown(s, across(0.25, 0.75)), [encode(0.9), encode(0.1)], 5);
+    }
+});
+
+it("matches no map under a white diffuse map, even near the terminator", async () => {
+  const row = across(0.52, 0.55, 0.6, 0.65, 0.7, 0.8, 0.95);
+  const lit = async (map?: string) => {
+    using s = whiteFloor({
+      directional: { direction: [-1, 0, 0], intensity: 1 },
+    });
+    if (map) s.root.material!.diffuse = { map };
+    s.root.addPolygon(
+      rect(0, 1).map((v) => ({
+        ...v,
+        normal: leaning(v.position[0] * 2 - 1, 0),
+      })),
+      { planar: false },
+    );
+    return await shown(s, row);
+  };
+  near(await lit(splitImage("white", "white")), await lit(), 8);
+});
+
+it("doesn't take a diffuse map from around a nested container", async () => {
+  using outer = scene();
+  outer.root.material!.diffuse = { map: splitImage("black", "black") };
+  outer.container.camera = new OrthographicCamera(0, 1, 1, 0);
+  const holder = new ElementObject(document.createElement("div"));
+  outer.root.addChild(holder);
+  using inner = whiteFloor(LIT_AT_09[1]);
+  holder.element.append(inner.container.domElement);
+  inner.root.addPolygon(SQUARE);
+  await outer.container.bake();
+  await inner.container.bake();
+  await flush();
+  const style = getComputedStyle(
+    inner.root.children[0].domElement.querySelector(".c3r-polygon-content")!,
+    "::before",
+  );
+  expect(style.backgroundImage).not.toContain("url(");
+});
+
+it("maps a diffuse map by uvs, blends gray, and a child drops it", async () => {
+  using s = whiteFloor(LIT_AT_09[1]);
+  s.root.material!.diffuse = { map: splitImage("#808080", "black") };
+  const polygon = s.root.addPolygon(SQUARE);
+  near(await shown(s, across(0.25)), [(encode(0.1) + encode(0.9)) / 2], 6);
+  polygon.domElement.remove();
+  s.root.material!.shading = "flat";
+  const inBlack = s.root.addPolygon(
+    SQUARE.map(({ position, uv }) => ({
+      position,
+      uv: [0.55 + uv[0] * 0.4, uv[1]],
+    })),
+  );
+  near(await shown(s, across(0.1, 0.9)), Array(2).fill(encode(0.1)), 5);
+  inBlack.domElement.remove();
+  s.root.material!.shading = "smooth";
+  const child = new Group();
+  s.root.addChild(child);
+  child.material = new Material();
+  child.material.diffuse = {};
+  child.addPolygon(SQUARE);
+  near(await shown(s, across(0.75)), [encode(0.9)], 5);
+});
+
+// Bends up past x = 0.5, its normals turning with it
+const bentStrip = () => {
+  const corner = (x: number, y: number): Vertex => {
+    const rise = Math.max(0, x - 0.5);
+    return {
+      position: [x, y, rise ** 2],
+      uv: [0, 0],
+      normal: vec3.normalize(vec3.create(), [-2 * rise, 0, 1]),
+    };
+  };
+  const xs = [0, 0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+  return xs.slice(1).flatMap((x, i) => [
+    [corner(xs[i], 0), corner(x, 0), corner(x, 1)],
+    [corner(xs[i], 0), corner(x, 1), corner(xs[i], 1)],
+  ]);
+};
+
+it("lights a curve continuously, with a plane joining it", async () => {
+  using s = whiteFloor({
+    ambient: { intensity: 0.05 },
+    point: { position: [0.7, 0.5, 0.25], intensity: 0.06 },
+  });
+  s.root.addTriangles(bentStrip());
+  const row = Array.from({ length: 100 }, (_, i) => [0.005 + i / 100, 0.37]);
+  expect(biggestStep(await shown(s, row))).toBeLessThanOrEqual(6);
+});
+
+it("splits a cylinder for a point light, which then has no seams", async () => {
+  using s = whiteFloor({
+    ambient: { intensity: 0.05 },
+    point: { position: [0.1, 0.15, 0.8], intensity: 0.3 },
+  });
+  const group = new Group();
+  s.root.addChild(group);
+  group.transform = [
+    Transform.translate([0.5, 0.5, 0]),
+    Transform.rotateX(0.4),
+  ];
+  group.addMesh(
+    cylinder({
+      height: 1,
+      radiusBase: 0.4,
+      radiusApex: 0.4,
+      nx: 8,
+      capBase: false,
+      capApex: false,
+    }),
+    { splitCurved: true },
+  );
+  const row = Array.from({ length: 100 }, (_, i) => [0.2 + i / 166, 0.5]);
+  expect(biggestStep(await shown(s, row))).toBeLessThanOrEqual(8);
+});
+
+it("spreads a curved polygon's three vertices around it", async () => {
+  using s = whiteFloor({
+    ambient: { intensity: 0.1 },
+    point: { position: [0.77, 0.545, 0.675], intensity: 0.4 },
+  });
+  const sides = 32;
+  s.root.addPolygon(
+    Array.from({ length: sides }, (_, i) => {
+      const [x, y] = [
+        Math.cos((i / sides) * 2 * Math.PI),
+        Math.sin((i / sides) * 2 * Math.PI),
+      ];
+      return {
+        position: [0.5 + 0.45 * x, 0.5 + 0.45 * y, 0],
+        uv: [0, 0],
+        normal: vec3.normalize(vec3.create(), [0.3 * x, 0.3 * y, 1]),
+      };
+    }),
+  );
+  // Clamped to black on the far side when they sit next to each other
+  const shades = await shown(s, across(0.1, 0.5, 0.9));
+  for (const shade of shades) expect(shade).toBeGreaterThan(encode(0.15));
+});
+
+it("picks a curved polygon's three vertices off a line", async () => {
+  using s = whiteFloor();
+  const polygon = s.root.addPolygon(
+    [
+      [0, 0],
+      [0.5, 0],
+      [0.5, 0.5],
+      [1, 0],
+      [1, 1],
+    ].map(([x, y]) => ({ position: [x, y, 0], uv: [0, 0] })),
+    { planar: false },
+  );
+  await s.container.bake();
+  const { style } = polygon.domElement;
+  const across = [3, 4, 5].map((k) =>
+    Number(style.getPropertyValue(`--c3r-weight-${k}`)),
+  );
+  expect(Math.max(...across.map(Math.abs))).toBeGreaterThan(0);
+});
+
+it("leaves the element's own animation when a light has no tween", () => {
+  using s = scene();
+  const { style } = s.container.domElement;
+  style.transition = "opacity 1s";
+  s.container.lights = { ambient: { intensity: 0.5 } };
+  expect(style.transition).toBe("opacity 1s");
+});
+
+it("honors planar: false through addTriangles", async () => {
+  using s = whiteFloor();
+  const [polygon] = s.root.addTriangles(
+    [
+      [SQUARE[0], SQUARE[1], SQUARE[2]],
+      [SQUARE[0], SQUARE[2], SQUARE[3]],
+    ],
+    { planar: false },
+  );
+  await s.container.bake();
+  expect(polygon.domElement.classList.contains("c3r-planar")).toBe(false);
+});
+
+const glossyFloor = (lights: Lights, intensity = 1) => {
+  const s = smoothScene(lights);
+  s.root.material!.background = [0, 0, 0, 1];
+  s.root.material!.specular = { intensity, shininess: 32 };
+  return s;
+};
+
+// Under an orthographic camera turned by the view angle around y, x foreshortens
+const highlightOn = (x: number, y: number, { point }: Lights, view: number) => {
+  const [px, py, h] = point!.position;
+  const l = [px - x, py - y, h];
+  const d = Math.hypot(...l);
+  const lit = (point!.intensity * h) / d ** 3;
+  const v = [Math.sin(view), 0, Math.cos(view)];
+  const sum = l.map((c, i) => c / d + v[i]);
+  return encode(Math.min(1, lit * (sum[2] / Math.hypot(...sum)) ** 32));
+};
+
+it("peaks a plane's highlight where and as bright as the formula, head on", async () => {
+  const lights: Lights = {
+    point: { position: [0.4, 0.5, 0.3], intensity: 0.05 },
+  };
+  using s = glossyFloor(lights);
+  s.root.addPolygon(SQUARE);
+  const points = [
+    [0.4, 0.5],
+    [0.5, 0.5],
+    [0.4, 0.35],
+    [0.8, 0.5],
+  ];
+  near(
+    await shown(s, points),
+    points.map(([x, y]) => highlightOn(x, y, lights, 0)),
+    8,
+  );
+});
+
+it("moves a plane's highlight toward the viewer under a turned camera", async () => {
+  const view = 0.7;
+  const lights: Lights = {
+    point: { position: [0.3, 0.5, 0.25], intensity: 0.04 },
+  };
+  using s = glossyFloor(lights);
+  s.root.addPolygon(rect(-1, 3, -1, 3));
+  s.container.camera.transform = Transform.rotateY(view);
+  const xs = Array.from({ length: 79 }, (_, i) => 0.01 + i / 80);
+  const shades = await shown(s, across(...xs));
+  const exact = xs.map((x) =>
+    highlightOn(x / Math.cos(view), 0.5, lights, view),
+  );
+  const peakOf = (row: number[]) => xs[row.indexOf(Math.max(...row))];
+  expect(Math.abs(peakOf(shades) - peakOf(exact))).toBeLessThanOrEqual(0.04);
+  expect(
+    Math.abs(Math.max(...shades) - Math.max(...exact)),
+  ).toBeLessThanOrEqual(12);
+});
+
+it("draws a highlight the same across a split plane", async () => {
+  // Off the strip of small polygons, so they show its slope
+  const lights: Lights = {
+    point: { position: [0.36, 0.5, 0.3], intensity: 0.05 },
+  };
+  const row = Array.from({ length: 40 }, (_, i) => [0.36 + i / 200, 0.5]);
+  using whole = glossyFloor(lights);
+  whole.root.addPolygon(SQUARE);
+  const unsplit = await shown(whole, row);
+  using s = glossyFloor(lights);
+  for (const polygon of SPLIT_PLANE) s.root.addPolygon(polygon);
+  near(await shown(s, row), unsplit, 3);
+});
+
+it("draws a highlight across curved triangles near the light", async () => {
+  using s = glossyFloor({
+    point: { position: [0.75, 0.05, 0.2], intensity: 0.02 },
+  });
+  s.root.addTriangles(bentStrip());
+  const row = Array.from({ length: 50 }, (_, i) => [0.52 + i / 105, 0.05]);
+  const shades = await shown(s, row);
+  expect(Math.max(...shades)).toBeGreaterThan(encode(0.1));
+  expect(biggestStep(shades)).toBeLessThanOrEqual(10);
+});
+
+it("draws no highlight from below, without intensity or from behind", async () => {
+  for (const [z, intensity, turn] of [
+    [-0.3, 1, 0],
+    [0.3, 0, 0],
+    [0.3, 1, 2.2],
+  ]) {
+    using s = glossyFloor(
+      { point: { position: [0.5, 0.5, z], intensity: 0.05 } },
+      intensity,
+    );
+    s.root.material!.doubleSided = true;
+    s.root.addPolygon(rect(-1, 3, -1, 3));
+    s.container.camera.transform = Transform.rotateY(turn);
+    near(await shown(s, across(0.1, 0.3, 0.5)), [0, 0, 0], 1);
+  }
+});
+
+it("lights a flat polygon's highlight from its center", async () => {
+  const lights: Lights = {
+    point: { position: [0.4, 0.5, 0.3], intensity: 0.05 },
+  };
+  using s = glossyFloor(lights);
+  s.root.material!.shading = "flat";
+  s.root.addPolygon(SQUARE);
+  near(
+    await shown(s, across(0.1, 0.9)),
+    Array(2).fill(highlightOn(0.5, 0.5, lights, 0)),
+    3,
+  );
+});
+
+it("moves a light with a tween, a group with the same stays on it", async () => {
+  const orbit = new Tween({
+    from: [Transform.rotateY(0), Transform.translate([0, 0, 0])],
+    keyframes: [[Transform.rotateY(2), Transform.translate([1, 0, 0.5])]],
+    duration: 10,
+    loop: true,
+  });
+  using s = scene({
+    point: { position: [3, 2, 0], intensity: 1, tween: [orbit, orbit] },
+  });
+  const carrier = new Group();
+  s.root.addChild(carrier);
+  carrier.tween = [orbit, orbit];
+  const polygon = s.root.addPolygon(SQUARE);
+  await s.container.bake();
+  pauseAt(s.container.domElement, 3000);
+  pauseAt(carrier.domElement, 3000);
+  await flush();
+  const at = new DOMMatrix(
+    getComputedStyle(carrier.domElement).transform,
+  ).transformPoint(new DOMPoint(3, 2, 0, 1));
+  const style = getComputedStyle(polygon.domElement);
+  [at.x, at.y, at.z].forEach((c, k) =>
+    expect(Number(style.getPropertyValue(`--c3r-to-point-${k}`))).toBeCloseTo(
+      c,
+      2,
+    ),
+  );
+});
+
+it("refuses a light's tween it can't follow", () => {
+  using s = scene();
+  const { lights } = s.container;
+  const before = s.container.domElement.style.cssText;
+  for (const tween of [
+    new Tween({ keyframes: [Filter.opacity(0.5)] }),
+    new Tween({
+      keyframes: [
+        Transform.matrix([0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1]),
+      ],
+    }),
+    {} as Tween,
+  ])
+    expect(
+      () =>
+        (s.container.lights = {
+          point: { position: [0, 0, 1], intensity: 1, tween },
+        }),
+    ).toThrow();
+  expect(s.container.lights).toBe(lights);
+  expect(s.container.domElement.style.cssText).toBe(before);
+});
+
+it("follows a specular map on a plane under a point light", async () => {
+  const lights: Lights = {
+    point: { position: [0.5, 0.5, 0.3], intensity: 0.05 },
+  };
+  using s = glossyFloor(lights);
+  s.root.material!.specular = {
+    intensity: 1,
+    shininess: 32,
+    map: splitImage("white", "black"),
+  };
+  s.root.addPolygon(SQUARE);
+  const [left, right] = await shown(s, across(0.4, 0.6));
+  expect(Math.abs(left - highlightOn(0.4, 0.5, lights, 0))).toBeLessThan(8);
+  expect(right).toBeLessThanOrEqual(1);
+});
+
+it("removes a plane's highlight with its specular", async () => {
+  using s = glossyFloor({
+    point: { position: [0.5, 0.5, 0.3], intensity: 0.05 },
+  });
+  const polygon = s.root.addPolygon(SQUARE);
+  await s.container.bake();
+  const [glint] = polygon.contentElement.children;
+  await s.container.bake();
+  expect([...polygon.contentElement.children]).toEqual([glint]);
+  const added = vi.fn();
+  new MutationObserver(added).observe(polygon.contentElement, {
+    childList: true,
+  });
+  await s.container.bake();
+  await flush();
+  expect(added).not.toHaveBeenCalled();
+  s.root.material!.specular = null;
+  await s.container.bake();
+  expect(polygon.contentElement.childElementCount).toBe(0);
+});
+
+it("leaves a highlight alone under a diffuse map", async () => {
+  const lights: Lights = {
+    point: { position: [0.5, 0.5, 0.3], intensity: 0.05 },
+  };
+  using s = glossyFloor(lights);
+  s.root.material!.diffuse = { map: splitImage("black", "black") };
+  s.root.addPolygon(SQUARE);
+  near(await shown(s, across(0.4)), [highlightOn(0.4, 0.5, lights, 0)], 8);
 });

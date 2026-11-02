@@ -9,6 +9,9 @@ import {
 
 import type { Vertex } from "./Vertex.js";
 
+// Normals this close count as one
+export const COPLANAR = 1 - 1e-6;
+
 export type Fold = "smooth" | "concave" | "convex";
 
 export interface NeighbourSide {

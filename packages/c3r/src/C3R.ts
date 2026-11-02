@@ -1,4 +1,5 @@
 export {
+  type Diffuse,
   type Flipbook,
   Material,
   type Shading,
@@ -11,7 +12,7 @@ export { type Keyframe, Tween, type TweenOptions } from "./css/Tween.js";
 export { cssText, styleHTML } from "./css/styles.js";
 
 export { Object3D } from "./dom/Object3D.js";
-export { Group, type IndexedMesh } from "./dom/Group.js";
+export { Group, type IndexedMesh, type MeshOptions } from "./dom/Group.js";
 export { Container, type Lights } from "./dom/Container.js";
 export { Polygon, type PolygonOptions } from "./dom/Polygon.js";
 export { ElementObject } from "./dom/ElementObject.js";

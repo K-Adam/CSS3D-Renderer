@@ -1,10 +1,10 @@
-import { type CssValue, cssVar } from "../css/CssValue.js";
+import { type CssValue, cssVar, typeOf } from "../css/CssValue.js";
 import {
   composeTransforms,
   ownTransform,
   type Transform,
 } from "../css/Transform.js";
-import { setTweens, type Tween } from "../css/Tween.js";
+import { setTweenClasses, setTweens, type Tween } from "../css/Tween.js";
 import {
   MeshBuilder,
   type MeshFace,
@@ -16,9 +16,6 @@ import { moveTargets, refreshInput } from "./Accumulator.js";
 import { Object3D, parents } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
 
-// Keeps the tweens, and their rules, alive while their element is
-const elementTweens = new WeakMap<Element, readonly Tween[]>();
-
 export interface IndexedMesh {
   positions: ArrayLike<number>;
   uvs: ArrayLike<number>;
@@ -26,11 +23,17 @@ export interface IndexedMesh {
   normals?: ArrayLike<number>;
 }
 
+export interface MeshOptions extends PolygonOptions {
+  // A point light has no seams between triangles kept apart, at twice the polygons
+  splitCurved?: boolean;
+}
+
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
   #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
   #clock = false;
+  #lightGain: number | CssValue = 1;
 
   constructor() {
     super();
@@ -53,17 +56,14 @@ export class Group extends Object3D {
   }
 
   set tween(tween: Tween | readonly Tween[] | null) {
-    const { classList, style } = this.domElement;
+    const { style } = this.domElement;
     const tweens = setTweens(
       style,
       tween,
       false,
       this.#clock ? "c3r-time 3600s linear infinite" : "",
     );
-    for (const old of elementTweens.get(this.domElement) ?? [])
-      classList.remove(old.className);
-    for (const { className } of tweens) classList.add(className);
-    elementTweens.set(this.domElement, tweens);
+    setTweenClasses(this.domElement, tweens);
     this.#tween = Array.isArray(tween) ? tweens : tween;
     refreshInput(this);
   }
@@ -80,6 +80,20 @@ export class Group extends Object3D {
     if (clock === this.#clock) return;
     this.#clock = clock;
     this.tween = this.#tween;
+  }
+
+  get lightGain(): number | CssValue {
+    return this.#lightGain;
+  }
+
+  set lightGain(gain: number | CssValue) {
+    const valid =
+      typeof gain === "number"
+        ? gain >= 0 && Number.isFinite(gain)
+        : typeOf(gain) === "<number>";
+    if (!valid) throw new RangeError(`Invalid light gain ${gain}`);
+    this.#lightGain = gain;
+    refreshInput(this);
   }
 
   get children(): readonly Object3D[] {
@@ -117,19 +131,29 @@ export class Group extends Object3D {
   }
 
   addFaces(faces: readonly MeshFace[], options?: PolygonOptions): Polygon[] {
-    return faces.map(({ vertices, edges }) =>
-      this.addPolygon(vertices, { ...options, edges }),
+    return faces.map(({ vertices, edges, planar }) =>
+      this.addPolygon(vertices, {
+        ...options,
+        edges,
+        planar: (planar ?? true) && options?.planar !== false,
+      }),
     );
   }
 
   // Merges coplanar neighbours, e.g. two triangles into a quad
-  addTriangles(triangles: TriangleList, options?: PolygonOptions): Polygon[] {
-    return this.addFaces(new MeshBuilder([triangles]).faces(0), options);
+  addTriangles(
+    triangles: TriangleList,
+    { splitCurved, ...options }: MeshOptions = {},
+  ): Polygon[] {
+    return this.addFaces(
+      new MeshBuilder([triangles], { splitCurved }).faces(0),
+      options,
+    );
   }
 
   addMesh(
     { positions, uvs, cells, normals }: IndexedMesh,
-    options?: PolygonOptions,
+    options?: MeshOptions,
   ): Polygon[] {
     const vertex = (i: number): Vertex => ({
       position: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]],

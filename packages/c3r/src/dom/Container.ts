@@ -6,12 +6,13 @@ import type { Shading, Specular } from "../css/Material.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
 import { vector } from "../css/Transform.js";
+import { setTweenClasses, setTweens, type Tween } from "../css/Tween.js";
 
 import { ElementObject } from "./ElementObject.js";
 import { Group } from "./Group.js";
 import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
-import { setShaded } from "./Shading.js";
+import { movedPosition, setShaded } from "./Shading.js";
 
 export interface Lights {
   ambient?: { readonly intensity: number };
@@ -19,6 +20,13 @@ export interface Lights {
   directional?: {
     readonly direction: ReadonlyVec3;
     readonly intensity: number;
+  };
+  // In world space, instead of directional. Falls off with the squared distance
+  point?: {
+    readonly position: ReadonlyVec3;
+    readonly intensity: number;
+    // Moves it after position, like a group's. Each frame restyles the scene
+    readonly tween?: Tween | readonly Tween[] | null;
   };
 }
 
@@ -88,9 +96,15 @@ export class Container {
   }
 
   set lights(lights: Lights | null) {
-    const { ambient, directional } = lights ?? {};
+    const { ambient, directional, point } = lights ?? {};
+    if (directional && point)
+      throw new RangeError("A container takes one directional or point light");
     const level = ambient ? intensityOf(ambient.intensity) : 0;
     const diffuse = directional ? intensityOf(directional.intensity) : 0;
+    const intensity = point ? intensityOf(point.intensity) : 0;
+    const position = point ? vector(point.position) : [0, 0, 0];
+    const tweens = setTweens(undefined, point?.tween ?? null);
+    const moved = movedPosition(position, tweens);
     const direction = directional && vector(directional.direction);
     const toLight = vec3.create();
     if (direction) {
@@ -108,15 +122,33 @@ export class Container {
             intensity: diffuse,
           }),
         }),
+        ...(point && {
+          point: Object.freeze({
+            position: Object.freeze(position),
+            intensity,
+            ...(point.tween && {
+              tween: Array.isArray(point.tween) ? tweens : point.tween,
+            }),
+          }),
+        }),
       });
     const [x, y, z] = toLight;
     const { style } = this.domElement;
+    const previous = setTweenClasses(this.domElement, tweens);
+    // It would clear an animation or transition set on the element itself
+    if (tweens.length || previous.length) setTweens(style, tweens);
+    const [px, py, pz] = moved.components;
     for (const [name, value] of Object.entries({
       ambient: level,
-      diffuse,
+      // Smooth polygons paint by this, a point light's values carry its intensity
+      diffuse: point ? 1 : diffuse,
       x,
       y,
       z,
+      "point-x": px,
+      "point-y": py,
+      "point-z": pz,
+      intensity,
     }))
       style.setProperty(`--c3r-light-${name}`, String(value));
   }
@@ -164,6 +196,7 @@ export class Container {
       cells: readonly [number, number],
       shading: Shading | null,
       specular: Specular | null,
+      diffuseMap: string | null,
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
@@ -177,8 +210,16 @@ export class Container {
         cells = [material.flipbook.columns, material.flipbook.rows];
       shading = material?.shading ?? shading;
       specular = material?.specular ?? specular;
+      if (material?.diffuse) diffuseMap = material.diffuse.map || null;
       if (node instanceof Polygon) {
-        setShaded(node, shading, specular, image !== null);
+        setShaded(
+          node,
+          shading,
+          specular,
+          image !== null,
+          !!this.#lights?.point,
+          !!diffuseMap,
+        );
         const info = image === null ? null : imageInfo(image);
         // Keeps the old size while a new image loads
         if (info === undefined) loading.push(loadImage(image!));
@@ -198,10 +239,18 @@ export class Container {
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
         for (const child of node.children)
-          visit(child, m, image, cells, shading, specular);
+          visit(child, m, image, cells, shading, specular, diffuseMap);
       }
     };
-    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1], null, null);
+    visit(
+      this.#root,
+      viewMatrixOf(this.#camera),
+      null,
+      [1, 1],
+      null,
+      null,
+      null,
+    );
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;

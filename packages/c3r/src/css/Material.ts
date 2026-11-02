@@ -26,6 +26,10 @@ export interface Specular {
   readonly map?: string;
 }
 
+export interface Diffuse {
+  readonly map?: string;
+}
+
 // A newline only has a hex escape
 const cssUrl = (url: string) =>
   `url("${url.replace(/["\\\n\r\f]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `)}")`;
@@ -42,6 +46,7 @@ export class Material {
   #flipbook: Required<Flipbook> | null = null;
   #shading: Shading | null = null;
   #specular: Specular | null = null;
+  #diffuse: Diffuse | null = null;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -185,6 +190,27 @@ export class Material {
     this.#set(
       "--c3r-specular-map",
       specular && (specular.map ? cssUrl(specular.map) : "none"),
+    );
+    // As one layer of several, none would be transparent and hide the rest
+    this.#set(
+      "--c3r-specular-layer",
+      specular &&
+        (specular.map ? cssUrl(specular.map) : "linear-gradient(white, white)"),
+    );
+  }
+
+  get diffuse(): Diffuse | null {
+    return this.#diffuse;
+  }
+
+  set diffuse(diffuse: Diffuse | null) {
+    const unchanged =
+      !diffuse === !this.#diffuse && diffuse?.map === this.#diffuse?.map;
+    if (unchanged) return;
+    this.#diffuse = diffuse && Object.freeze({ ...diffuse });
+    this.#set(
+      "--c3r-diffuse-map",
+      diffuse && (diffuse.map ? cssUrl(diffuse.map) : "none"),
     );
   }
 

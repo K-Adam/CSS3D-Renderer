@@ -419,6 +419,35 @@ describe("Group.addTriangles", () => {
 });
 
 describe("MeshBuilder", () => {
+  it("marks a plane that runs into a curve as part of the curve", () => {
+    const corner = (x: number, y: number, z: number, nx = 0): Vertex => ({
+      position: [x, y, z],
+      uv: [x * 9, y],
+      normal: [nx, 0, 1],
+    });
+    const strip = (x0: number, x1: number, z1 = 0, nx = 0) => [
+      [corner(x0, 0, 0), corner(x1, 0, z1, nx), corner(x1, 1, z1, nx)],
+      [corner(x0, 0, 0), corner(x1, 1, z1, nx), corner(x0, 1, 0)],
+    ];
+    const { positions, cells } = cube();
+    const curved = new MeshBuilder([
+      // Merging is limited by the area, so these stay two polygons of one plane
+      [...strip(0, 0.5), ...strip(0.5, 1), ...strip(1, 1.5, 0.2, -0.4)],
+    ]).faces(0);
+    expect(curved.length).toBeGreaterThan(1);
+    expect(curved.every((face) => face.planar === false)).toBe(true);
+    const vertex = (i: number): Vertex => ({
+      position: [...positions.slice(i * 3, i * 3 + 3)],
+      uv: [0, 0],
+    });
+    const box = new MeshBuilder([
+      Array.from({ length: cells.length / 3 }, (_, i) =>
+        [0, 1, 2].map((k) => vertex(cells[i * 3 + k])),
+      ),
+    ]).faces(0);
+    expect(box.every((face) => face.planar)).toBe(true);
+  });
+
   // Unit squares at the given corners, uv mapped by position
   const squares = (...corners: [number, number][]) =>
     corners.flatMap(([x, y]) => {
