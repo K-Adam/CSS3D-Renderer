@@ -9,6 +9,8 @@ import {
   Material,
   OrthographicCamera,
   type Polygon,
+  type Shading,
+  type Specular,
   Transform,
   Tween,
   type Vertex,
@@ -477,15 +479,19 @@ it("leaks no unshaded color along the edges of a sphere", async () => {
   expect(Math.max(...colors)).toBeGreaterThan(25);
 });
 
-it("doesn't wrap the image's far edge into a polygon in one tile", async () => {
+const splitImage = (left: string, right: string) => {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 8;
   const context = canvas.getContext("2d")!;
-  context.fillStyle = "#f00";
+  context.fillStyle = left;
   context.fillRect(0, 0, 4, 8);
-  context.fillStyle = "#00f";
+  context.fillStyle = right;
   context.fillRect(4, 0, 4, 8);
-  const image = canvas.toDataURL();
+  return canvas.toDataURL();
+};
+
+it("doesn't wrap the image's far edge into a polygon in one tile", async () => {
+  const image = splitImage("#f00", "#00f");
   for (const tile of [0, 1]) {
     using s = smoothScene({ ambient: { intensity: 1 } });
     s.root.material!.background = image;
@@ -589,4 +595,304 @@ it("follows the fold in a smooth gradient, and goes back to flat", async () => {
   await s.container.bake();
   expect(shadeOf(polygon)).toBeCloseTo(Math.cos(1), 3);
   expect(clip.clipPath).toBe("");
+});
+
+const SHINY = { intensity: 1, shininess: 8 };
+
+const specularOf = (polygon: Polygon) =>
+  Number(
+    getComputedStyle(polygon.contentElement, "::after").getPropertyValue(
+      "--c3r-specular",
+    ),
+  );
+
+const blinn = (n: ReadonlyVec3, l: ReadonlyVec3, v: ReadonlyVec3) => {
+  const half = vec3.normalize(vec3.create(), vec3.add(vec3.create(), l, v));
+  return Math.max(0, vec3.dot(n, l)) * Math.max(0, vec3.dot(n, half)) ** 8;
+};
+
+const turned = (pose: Transform | Transform[]) =>
+  vec3.transformMat3(
+    vec3.create(),
+    [0, 0, 1],
+    mat3.normalFromMat4(mat3.create(), composeTransforms(pose))!,
+  );
+
+const SLANTED: Lights = {
+  directional: { direction: [-0.3, -0.2, -1], intensity: 1 },
+};
+const TO_SLANTED = vec3.normalize(vec3.create(), [0.3, 0.2, 1]);
+
+const glossy = (lights: Lights = SLANTED) => {
+  const s = scene(lights);
+  s.root.material!.specular = SHINY;
+  return s;
+};
+
+it("lights a highlight from the light, the groups and the camera", async () => {
+  using s = glossy();
+  const pose = [Transform.rotateX(0.2), Transform.rotateY(-0.1)];
+  const look = [Transform.rotateY(0.3), Transform.rotateX(-0.1)];
+  const group = new Group();
+  s.root.addChild(group);
+  group.transform = pose;
+  s.container.camera.transform = look;
+  const polygon = group.addPolygon(SQUARE);
+  await s.container.bake();
+  expect(specularOf(polygon)).toBeCloseTo(
+    blinn(turned(pose), TO_SLANTED, turned(look)),
+    2,
+  );
+
+  const ahead = specularOf(polygon);
+  s.container.camera.transform = [...look, Transform.translate([3, 4, 5])];
+  expect(specularOf(polygon)).toBe(ahead);
+});
+
+it("follows the tweens of a camera and of a group", async () => {
+  using s = glossy();
+  const group = new Group();
+  s.root.addChild(group);
+  const polygon = group.addPolygon(SQUARE);
+  await s.container.bake();
+  const at = (step: Transform) =>
+    new Tween({ from: step, keyframes: [step], paused: true });
+  using camera = at(Transform.rotateY(0.7));
+  using tween = at(Transform.rotateX(0.3));
+  s.container.camera.tween = camera;
+  group.tween = tween;
+  expect(specularOf(polygon)).toBeCloseTo(
+    blinn(
+      turned(Transform.rotateX(0.3)),
+      TO_SLANTED,
+      turned(Transform.rotateY(0.7)),
+    ),
+    2,
+  );
+});
+
+it("has no highlight on a face turned from the light", async () => {
+  for (const direction of [
+    [0, 0, 1],
+    [1, 0, 0.01],
+  ]) {
+    using s = glossy({ directional: { direction, intensity: 1 } });
+    const polygon = s.root.addPolygon(SQUARE);
+    await s.container.bake();
+    expect(specularOf(polygon)).toBe(0);
+  }
+});
+
+it("inherits, turns off and stays off the fold of other polygons", async () => {
+  using s = scene();
+  const shiny = new Group();
+  s.root.addChild(shiny);
+  shiny.material = new Material();
+  shiny.material.specular = SHINY;
+  const lit = shiny.addPolygon(SQUARE);
+  const off = new Group();
+  shiny.addChild(off);
+  off.material = new Material();
+  off.material.specular = { intensity: 0, shininess: 8 };
+  const dull = off.addPolygon(SQUARE);
+  const other = new Group();
+  s.root.addChild(other);
+  const plain = other.addPolygon(SQUARE);
+  s.container.camera.transform = Transform.rotateY(0.5);
+  await s.container.bake();
+
+  const toHalf = (polygon: Polygon) =>
+    Number(
+      getComputedStyle(polygon.domElement).getPropertyValue("--c3r-to-half-2"),
+    );
+  const glows = (polygon: Polygon) =>
+    getComputedStyle(polygon.contentElement, "::after").content !== "none";
+  expect(toHalf(lit)).toBeCloseTo(Math.cos(0.25), 2);
+  expect(glows(lit)).toBe(true);
+  for (const polygon of [dull, plain]) {
+    expect(toHalf(polygon)).toBe(0);
+    expect(glows(polygon)).toBe(false);
+  }
+
+  shiny.material.specular = null;
+  await s.container.bake();
+  expect(glows(lit)).toBe(false);
+});
+
+it("refuses an invalid specular", () => {
+  const material = new Material();
+  for (const bad of [
+    { intensity: -1, shininess: 8 },
+    { intensity: 1, shininess: 0 },
+  ])
+    expect(() => (material.specular = bad)).toThrow(RangeError);
+  expect(material.specular).toBe(null);
+});
+
+// Lit and seen head on, so it peaks at the intensity
+const glint = async ({
+  background = [0, 0, 0, 1],
+  map,
+  shading = "flat",
+  uv = (x) => x,
+}: {
+  background?: Material["background"];
+  map?: string;
+  shading?: Shading;
+  uv?: (x: number) => number;
+} = {}) => {
+  const s = scene();
+  s.container.camera = new OrthographicCamera(0, 1, 1, 0);
+  s.root.material!.shading = shading;
+  s.root.material!.background = background;
+  s.root.material!.specular = { intensity: 0.25, shininess: 8, map };
+  s.root.addPolygon(SQUARE.map((v) => ({ ...v, uv: [uv(v.uv[0]), v.uv[1]] })));
+  await s.container.bake();
+  if (map) {
+    const image = new Image();
+    image.src = map;
+    await image.decode();
+  }
+  await flush();
+  await flush();
+  return s;
+};
+
+const PEAK = encode(0.25);
+
+const near = (color: number[], expected: number[], within = 2) =>
+  color.forEach((c, i) =>
+    expect(Math.abs(c - expected[i])).toBeLessThanOrEqual(within),
+  );
+
+it("adds a highlight over black, white under a tint, not on a hole", async () => {
+  {
+    using s = await glint();
+    near(await centerColor(s.container.domElement), [PEAK, PEAK, PEAK]);
+  }
+  {
+    using s = await glint({ background: [1, 1, 1, 1] });
+    s.root.material!.filter = Filter.tint([1, 0, 0]);
+    await flush();
+    near(await centerColor(s.container.domElement), [255, PEAK, PEAK]);
+  }
+  {
+    using s = await glint({ background: await imageOf(null) });
+    s.container.domElement.style.background = "black";
+    expect(await centerColor(s.container.domElement)).toEqual([0, 0, 0]);
+  }
+});
+
+const FAN = [[0, 0, 1], leaning(1, 0), leaning(0, 1)].map((normal, i) => ({
+  position: [i === 1 ? 1 : 0, i === 2 ? 1 : 0, 0],
+  uv: [0, 0],
+  normal,
+}));
+
+const fanned = (specular: Specular) => {
+  const s = smoothScene();
+  s.root.material!.background = [0, 0, 0, 1];
+  s.root.material!.specular = specular;
+  s.root.addPolygon(FAN);
+  return s;
+};
+
+it("draws the power curve of n·h across a smooth polygon", async () => {
+  using s = fanned(SHINY);
+  const weights = [
+    [0.9, 0.05, 0.05],
+    [0.5, 0.25, 0.25],
+    [0.05, 0.9, 0.05],
+  ];
+  const colors = await shown(
+    s,
+    weights.map(([, x, y]) => [x, y]),
+  );
+  weights.forEach((b, i) => {
+    const z = b[0] + (b[1] + b[2]) * leaning(1, 0)[2];
+    expect(Math.abs(colors[i] - encode(z ** 9))).toBeLessThanOrEqual(5);
+  });
+});
+
+it("fades out below the lobe at any intensity", async () => {
+  using s = fanned({ intensity: 12.75, shininess: 100 });
+  const [far] = await shown(s, [[0.9, 0.05]]);
+  expect(far).toBeLessThanOrEqual(1);
+});
+
+it("keeps a highlight in range under a scale that isn't uniform", async () => {
+  for (const shading of ["flat", "smooth"] as const) {
+    using s = await glint({ shading });
+    s.root.transform = Transform.scale([1, 3, 1]);
+    near(await shown(s, across(0.5)), [PEAK]);
+  }
+});
+
+it("turns a tight highlight without visible steps", async () => {
+  using s = glossy(TOP);
+  s.root.material!.specular = { intensity: 1, shininess: 500 };
+  const polygon = s.root.addPolygon(SQUARE);
+  await s.container.bake();
+  s.container.camera.transform = Transform.rotateY(0.07);
+  expect(
+    Math.abs(specularOf(polygon) - Math.cos(0.035) ** 500),
+  ).toBeLessThanOrEqual(0.06);
+});
+
+it("has no seam between smooth polygons near the terminator", async () => {
+  const strip = (x0: number, x1: number, n0: vec3, n1: vec3) =>
+    [
+      { x: x0, y: 0, normal: n0 },
+      { x: x1, y: 0, normal: n1 },
+      { x: x1, y: 1, normal: n1 },
+      { x: x0, y: 1, normal: n0 },
+    ].map(({ x, y, normal }) => ({
+      position: [x, y, 0],
+      uv: [0, 0],
+      normal,
+    }));
+  using s = smoothScene({
+    directional: { direction: [-1, 0, -0.5], intensity: 1 },
+  });
+  s.root.material!.background = [0, 0, 0, 1];
+  s.root.material!.specular = SHINY;
+  s.root.addPolygon(strip(0, 0.5, leaning(-0.5, 0), leaning(0, 0)));
+  s.root.addPolygon(strip(0.5, 1, leaning(0, 0), leaning(0.5, 0)));
+  const [left, right] = await shown(s, [
+    [0.47, 0.5],
+    [0.53, 0.5],
+  ]);
+  // The true change between these two points
+  expect(Math.abs(right - left - 17)).toBeLessThanOrEqual(3);
+});
+
+const LEFT_WHITE = splitImage("white", "black");
+
+const across = (...xs: number[]) => xs.map((x) => [x, 0.5]);
+
+it("scales a highlight by the map's texels, on either shading", async () => {
+  for (const shading of ["flat", "smooth"] as const) {
+    using s = await glint({ map: LEFT_WHITE, shading });
+    near(await shown(s, across(0.01, 0.25, 0.75, 0.99)), [PEAK, PEAK, 0, 0]);
+  }
+  using gray = await glint({ map: await imageOf("rgb(128 128 128)") });
+  near(await shown(gray, across(0.5)), [(PEAK * 128) / 255], 3);
+});
+
+it("maps a specular map by the polygon's uvs", async () => {
+  using s = await glint({ map: LEFT_WHITE, uv: (x) => 0.55 + x * 0.4 });
+  near(await shown(s, across(0.1, 0.5, 0.9)), [0, 0, 0]);
+});
+
+it("doesn't take a parent's map, and takes an empty one as none", async () => {
+  for (const map of [undefined, ""]) {
+    using s = await glint({ map: LEFT_WHITE });
+    s.root.children[0].domElement.style.display = "none";
+    const child = new Group();
+    s.root.addChild(child);
+    child.material = new Material();
+    child.material.specular = { intensity: 0.25, shininess: 8, map };
+    child.addPolygon(SQUARE);
+    near(await shown(s, across(0.75)), [PEAK]);
+  }
 });

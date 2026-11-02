@@ -1,4 +1,9 @@
-export { type Flipbook, Material, type Shading } from "./css/Material.js";
+export {
+  type Flipbook,
+  Material,
+  type Shading,
+  type Specular,
+} from "./css/Material.js";
 export { Filter } from "./css/Filter.js";
 export { Transform } from "./css/Transform.js";
 export { type CssFunction, CssValue } from "./css/CssValue.js";

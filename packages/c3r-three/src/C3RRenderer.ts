@@ -77,19 +77,31 @@ const shadingOf = (material: Material): C3R.Shading | null =>
       : "smooth"
     : null;
 
+const luminance = ({ r, g, b }: Color) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
 // Divided by π like three.js' diffuse, so a scene is as bright as under WebGL
 const lightLevel = ({ color, intensity }: AmbientLight | DirectionalLight) =>
-  (intensity * (0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b)) /
-  Math.PI;
+  (intensity * luminance(color)) / Math.PI;
+
+// three.js' BRDF_BlinnPhong without Fresnel, relative to the level above
+const specularOf = (material: Material): C3R.Specular | null => {
+  if (!(material instanceof MeshPhongMaterial)) return null;
+  const { shininess } = material;
+  const intensity = (luminance(material.specular) * (shininess / 2 + 1)) / 4;
+  return intensity > 0 && shininess > 0 ? { intensity, shininess } : null;
+};
 
 export interface C3RRendererOptions {
   shading?: boolean;
+  // Needs shading
+  specular?: boolean;
 }
 
 export class C3RRenderer {
   readonly domElement: HTMLDivElement = document.createElement("div");
 
   #shading: boolean;
+  #specular: boolean;
   #lights = new WeakMap<C3R.Container, string>();
   #width = 0;
   #height = 0;
@@ -99,8 +111,9 @@ export class C3RRenderer {
   #materials = new WeakMap<Material, MaterialState>();
   #poses = new WeakMap<C3R.Group | C3R.Camera, number[]>();
 
-  constructor({ shading = false }: C3RRendererOptions = {}) {
+  constructor({ shading = false, specular = false }: C3RRendererOptions = {}) {
     this.#shading = shading;
+    this.#specular = shading && specular;
   }
 
   getSize(): { width: number; height: number } {
@@ -399,6 +412,7 @@ export class C3RRenderer {
     const target = state.material;
     node.material = target;
     target.shading = this.#shading ? shadingOf(material) : null;
+    target.specular = this.#specular ? specularOf(material) : null;
 
     const { map } = material;
     const image: unknown = map?.image;

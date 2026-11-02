@@ -9,6 +9,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshPhongMaterial,
+  MeshStandardMaterial,
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
@@ -423,6 +424,30 @@ it("shades by the three.js material and lights only when asked", () => {
   expect(value("ambient")).toBeCloseTo(0.5 / Math.PI, 5);
   expect(value("diffuse")).toBeCloseTo(2 / Math.PI, 5);
   expect(value("y")).toBeCloseTo(1, 5);
+});
+
+it("maps a Phong material's specular, only when asked", () => {
+  const count = () => styleHTML().split("--c3r-shininess:").length - 1;
+  const before = count();
+  const scene = new Scene();
+  const box = new BoxGeometry();
+  for (const material of [
+    new MeshPhongMaterial({ specular: 0xffffff, shininess: 30 }),
+    new MeshPhongMaterial({ specular: 0x000000 }),
+    new MeshStandardMaterial(),
+  ])
+    scene.add(new Mesh(box, material));
+  scene.updateMatrixWorld();
+  const camera = new PerspectiveCamera();
+  new C3RRenderer({ specular: true }).render(scene, camera);
+  new C3RRenderer({ shading: true }).render(scene, camera);
+  expect(count()).toBe(before);
+  new C3RRenderer({ shading: true, specular: true }).render(scene, camera);
+  expect(count()).toBe(before + 1);
+  const intensities = [
+    ...styleHTML().matchAll(/--c3r-specular-intensity:\s*([\d.]+)/g),
+  ];
+  expect(Number(intensities.at(-1)![1])).toBeCloseTo((30 / 2 + 1) / 4, 5);
 });
 
 it("leaves out lights that give no light", () => {

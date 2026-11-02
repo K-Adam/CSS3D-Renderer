@@ -29,6 +29,24 @@
   initial-value: 1;
 }
 
+@property --c3r-specular {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-specular-lit {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-specular-slope {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 /* Not inherited, so a container inside a flat polygon keeps its own */
 @property --c3r-flat-backdrop {
   syntax: "*";
@@ -234,9 +252,9 @@
 
 /* Off the layers above, which tile and move with the texture. Both stops stay
    on the gradient line and in range: Firefox misplaces a stop off the box,
-   WebKit clamps a color before interpolating. From and to are n·l values */
-.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before {
-  mix-blend-mode: multiply;
+   WebKit clamps a color before interpolating */
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before,
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::after {
   --c3r-gradient-length: max(
     hypot(var(--c3r-gradient-x), var(--c3r-gradient-y)),
     1e-6
@@ -248,6 +266,11 @@
       ) /
       2
   );
+}
+
+/* From and to are n·l values */
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before {
+  mix-blend-mode: multiply;
   --c3r-shade-low: min(var(--c3r-light-ambient), 1);
   --c3r-shade-high: min(var(--c3r-light-ambient) + var(--c3r-light-diffuse), 1);
   --c3r-gradient-from: clamp(

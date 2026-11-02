@@ -26,7 +26,7 @@ Until `setSize()` the scenes fill the window and follow it, like a C3R `Containe
 
 Perspective and orthographic cameras are supported, including `zoom`. Material `color`, `map` (image or canvas, with `repeat` and `offset`, its alpha always; a `color` tints it with `Filter.tint`), `opacity` (when `transparent`) and `side` (`BackSide` shows both sides) are applied, and a material's style is removed on its `dispose()`. `renderer.dispose()` removes every rendered scene, and `renderer.toHTML()` (async) exports them.
 
-`new C3RRenderer({ shading: true })` shades Lambert, Phong and Standard materials by the scene's visible `AmbientLight`s and first `DirectionalLight`, in grayscale: smooth from the geometry's normals, or flat with `flatShading`. `MeshBasicMaterial` stays unlit. Specular highlights and shadows are left out.
+`new C3RRenderer({ shading: true })` shades Lambert, Phong and Standard materials by the scene's visible `AmbientLight`s and first `DirectionalLight`, in grayscale: smooth from the geometry's normals, or flat with `flatShading`. `MeshBasicMaterial` stays unlit. `specular: true` adds Phong materials' highlights, without `specularMap`, and each camera turn then restyles every polygon with one. Shadows are left out.
 
 Not supported yet: `ImageBitmap` maps such as GLTFLoader's, `flipY: false`, and map `rotation` and `center`.
 

@@ -20,6 +20,16 @@ export interface Flipbook {
 
 export type Shading = "flat" | "smooth";
 
+export interface Specular {
+  readonly intensity: number;
+  readonly shininess: number;
+  readonly map?: string;
+}
+
+// A newline only has a hex escape
+const cssUrl = (url: string) =>
+  `url("${url.replace(/["\\\n\r\f]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `)}")`;
+
 let nextId = 0;
 
 export class Material {
@@ -31,6 +41,7 @@ export class Material {
   #doubleSided = false;
   #flipbook: Required<Flipbook> | null = null;
   #shading: Shading | null = null;
+  #specular: Specular | null = null;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -57,9 +68,7 @@ export class Material {
     let alpha: string | null = null;
     let backdrop: string | null = null;
     if (typeof background === "string") {
-      // A newline only has a hex escape
-      const escape = (c: string) => `\\${c.charCodeAt(0).toString(16)} `;
-      image = `url("${background.replace(/["\\\n\r\f]/g, escape)}")`;
+      image = cssUrl(background);
       color = opaque = "transparent";
       alpha = "1";
       backdrop = "white";
@@ -144,6 +153,39 @@ export class Material {
     if (shading !== null && shading !== "flat" && shading !== "smooth")
       throw new RangeError(`Invalid shading ${shading}`);
     this.#shading = shading;
+  }
+
+  get specular(): Specular | null {
+    return this.#specular;
+  }
+
+  set specular(specular: Specular | null) {
+    if (specular) {
+      const { intensity, shininess } = specular;
+      if (!(intensity >= 0 && Number.isFinite(intensity)))
+        throw new RangeError(`Invalid specular intensity ${intensity}`);
+      if (!(shininess > 0 && Number.isFinite(shininess)))
+        throw new RangeError(`Invalid shininess ${shininess}`);
+    }
+    const old = this.#specular;
+    // Rewriting an unchanged rule would still restyle what uses it
+    if (
+      specular?.intensity === old?.intensity &&
+      specular?.shininess === old?.shininess &&
+      specular?.map === old?.map
+    )
+      return;
+    this.#specular = specular && Object.freeze({ ...specular });
+    this.#set(
+      "--c3r-specular-intensity",
+      specular && String(specular.intensity),
+    );
+    this.#set("--c3r-shininess", specular && String(specular.shininess));
+    // Explicit, so a child's specular doesn't take its parent's map
+    this.#set(
+      "--c3r-specular-map",
+      specular && (specular.map ? cssUrl(specular.map) : "none"),
+    );
   }
 
   #applyFlipbook(): void {
