@@ -1,3 +1,5 @@
+import type { mat4 } from "gl-matrix";
+
 import type { CssMatrix } from "./CssMatrix.js";
 import { type CssFunction, CssValue, cssRaw } from "./CssValue.js";
 
@@ -19,6 +21,7 @@ export interface Step {
   rotates?: boolean;
   // Set by the factories of steps that only move
   moves?: boolean;
+  matrix?: (values: number[]) => mat4;
 }
 
 // Only factory-made steps, a forged one would inject raw CSS

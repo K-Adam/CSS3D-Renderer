@@ -21,6 +21,9 @@
 <h2>Exact falloff on a plane</h2>
 <p>A smooth polygon draws a <code>radial-gradient</code> centred where the lamp stands over its plane. Its size and colour stops follow the same falloff, so the pool of light is exact across the whole surface, and it slides as the lamp moves.</p>
 
+<h2>Shadows worked out in advance</h2>
+<p>CSS can't ask what stands between a surface and the light, so c3r works shadows out when it bakes the scene. Spheres, cylinders and boxes stand in for the casters, and each is projected through the light onto the surfaces that take shadows. When something moves, the shadow follows it: as a keyframed <code>clip-path</code> on the same timeline, or blended along a hover transition, so it pauses and plays with the motion.</p>
+
 <h2>The page stays a page</h2>
 <p>The lighting is a pseudo-element over the content and ignores the pointer. Underneath, this text is still text: you can select it, scroll it and find it with the browser's search, all while the light passes over.</p>
 </main>

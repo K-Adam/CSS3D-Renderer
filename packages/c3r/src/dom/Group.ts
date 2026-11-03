@@ -1,10 +1,17 @@
 import { type CssValue, cssVar, typeOf } from "../css/CssValue.js";
+import { touchFollower } from "../css/Timeline.js";
 import {
   composeTransforms,
   ownTransform,
   type Transform,
+  vector,
 } from "../css/Transform.js";
-import { setTweenClasses, setTweens, type Tween } from "../css/Tween.js";
+import {
+  setTweenClasses,
+  setTweens,
+  touchTweens,
+  type Tween,
+} from "../css/Tween.js";
 import {
   MeshBuilder,
   type MeshFace,
@@ -15,6 +22,7 @@ import type { Vertex } from "../math/Vertex.js";
 import { moveTargets, refreshInput } from "./Accumulator.js";
 import { Object3D, parents } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
+import type { ShadowCaster } from "./Shadows.js";
 
 export interface IndexedMesh {
   positions: ArrayLike<number>;
@@ -28,12 +36,22 @@ export interface MeshOptions extends PolygonOptions {
   splitCurved?: boolean;
 }
 
+// An element put in the document starts its animations over, so the next
+// bake brings their timelines in step
+export const touchSubtree = (obj: Object3D): void => {
+  touchFollower(obj);
+  if (!(obj instanceof Group)) return;
+  touchTweens(obj.tween);
+  obj.children.forEach(touchSubtree);
+};
+
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
   #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
   #clock = false;
   #lightGain: number | CssValue = 1;
+  #shadowCaster: ShadowCaster | null = null;
 
   constructor() {
     super();
@@ -96,6 +114,33 @@ export class Group extends Object3D {
     refreshInput(this);
   }
 
+  // Takes effect at the next bake, like shading
+  get shadowCaster(): ShadowCaster | null {
+    return this.#shadowCaster;
+  }
+
+  set shadowCaster(caster: ShadowCaster | null) {
+    if (!caster) {
+      this.#shadowCaster = null;
+      return;
+    }
+    const sizes =
+      caster.shape === "box"
+        ? vector(caster.size)
+        : caster.shape === "cylinder"
+          ? [caster.radius, caster.height]
+          : caster.shape === "sphere"
+            ? [caster.radius]
+            : [NaN];
+    if (!sizes.every((n) => n > 0 && Number.isFinite(n)))
+      throw new RangeError(`Invalid shadow caster ${JSON.stringify(caster)}`);
+    this.#shadowCaster = Object.freeze(
+      caster.shape === "box"
+        ? { shape: "box", size: Object.freeze(sizes) }
+        : { ...caster },
+    );
+  }
+
   get children(): readonly Object3D[] {
     return this.#children;
   }
@@ -108,6 +153,7 @@ export class Group extends Object3D {
     moveTargets(obj, 1);
     this.#children.push(obj);
     this.domElement.appendChild(obj.domElement);
+    touchSubtree(obj);
   }
 
   removeChild(obj: Object3D): void {

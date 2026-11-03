@@ -26,6 +26,12 @@ export interface Specular {
   readonly map?: string;
 }
 
+// Blur in scene units
+export interface Shadows {
+  readonly opacity: number;
+  readonly blur?: number;
+}
+
 export interface Diffuse {
   readonly map?: string;
 }
@@ -47,6 +53,7 @@ export class Material {
   #shading: Shading | null = null;
   #specular: Specular | null = null;
   #diffuse: Diffuse | null = null;
+  #shadows: Shadows | null = null;
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
@@ -212,6 +219,22 @@ export class Material {
       "--c3r-diffuse-map",
       diffuse && (diffuse.map ? cssUrl(diffuse.map) : "none"),
     );
+  }
+
+  // Darkens where shadow casters block the light, from the next bake
+  get shadows(): Shadows | null {
+    return this.#shadows;
+  }
+
+  set shadows(shadows: Shadows | null) {
+    if (shadows) {
+      const { opacity, blur = 0 } = shadows;
+      if (!(opacity >= 0 && opacity <= 1))
+        throw new RangeError(`Invalid shadow opacity ${opacity}`);
+      if (!(blur >= 0 && Number.isFinite(blur)))
+        throw new RangeError(`Invalid shadow blur ${blur}`);
+    }
+    this.#shadows = shadows && Object.freeze({ ...shadows });
   }
 
   #applyFlipbook(): void {

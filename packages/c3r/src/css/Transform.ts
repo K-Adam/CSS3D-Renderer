@@ -193,6 +193,7 @@ export class Transform {
         values: [radians(angle)],
         rotates: true,
         normal,
+        matrix: ([a]) => from(mat4.create(), a),
       },
     ]);
   }
@@ -207,6 +208,7 @@ export class Transform {
         identity: "0px",
         values: values.map((n) => String(CssValue.px(n))),
         moves: true,
+        matrix: (v) => mat4.fromTranslation(mat4.create(), v as vec3),
       },
     ]);
   }
@@ -248,6 +250,7 @@ export class Transform {
         values: values.map(String),
         invert: scaleInverse(values),
         normal: scaleNormal,
+        matrix: (v) => mat4.fromScaling(mat4.create(), v as vec3),
       },
     ]);
   }

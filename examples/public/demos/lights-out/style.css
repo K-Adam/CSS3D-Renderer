@@ -48,17 +48,6 @@ body:not(:has(> header)) * {
   object-fit: cover;
   background: #000;
 }
-.shadow,
-.shadow > div {
-  position: absolute;
-  pointer-events: none;
-}
-.shadow {
-  inset: 0;
-}
-.shadow > div {
-  background: #000;
-}
 header {
   position: fixed;
   left: 16px;

@@ -2,17 +2,24 @@ import { mat4, type ReadonlyMat4, type ReadonlyVec3, vec3 } from "gl-matrix";
 
 import { type Camera, viewMatrixOf } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
-import type { Shading, Specular } from "../css/Material.js";
+import type { Shading, Shadows, Specular } from "../css/Material.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
+import { syncTimelines } from "../css/Timeline.js";
 import { vector } from "../css/Transform.js";
-import { setTweenClasses, setTweens, type Tween } from "../css/Tween.js";
+import {
+  setTweenClasses,
+  setTweens,
+  touchTweens,
+  type Tween,
+} from "../css/Tween.js";
 
 import { ElementObject } from "./ElementObject.js";
-import { Group } from "./Group.js";
+import { Group, touchSubtree } from "./Group.js";
 import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
 import { movedPosition, setShaded } from "./Shading.js";
+import { castShadows, type Receiver } from "./Shadows.js";
 
 export interface Lights {
   ambient?: { readonly intensity: number };
@@ -51,6 +58,7 @@ export class Container {
   #unitScale = 1;
   #refit: Promise<void> | null = null;
   #lights: Readonly<Lights> | null = null;
+  #connected = false;
 
   // A camera given here spares a default whose rules would wait for GC
   constructor(camera: Camera = new PerspectiveCamera()) {
@@ -76,6 +84,7 @@ export class Container {
     parents.get(root)?.removeChild(root);
     // The old root may have moved into another group
     this.viewElement.replaceChildren(root.domElement);
+    touchSubtree(root);
     this.#root = root;
   }
 
@@ -91,6 +100,8 @@ export class Container {
     classList.add(camera.projectionClass, camera.className);
     elementCameras.set(this.domElement, camera);
     this.#camera = camera;
+    // Its view's animations start over under the new class
+    touchTweens(camera.tween);
   }
 
   get lights(): Readonly<Lights> | null {
@@ -191,6 +202,8 @@ export class Container {
   #fit(): Promise<unknown>[] {
     let density = 0;
     const loading: Promise<unknown>[] = [];
+    const polygons: Receiver[] = [];
+    const casters: Group[] = [];
     const visit = (
       node: Object3D,
       parent: ReadonlyMat4,
@@ -199,6 +212,7 @@ export class Container {
       shading: Shading | null,
       specular: Specular | null,
       diffuseMap: string | null,
+      shadows: Shadows | null,
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
@@ -213,7 +227,10 @@ export class Container {
       shading = material?.shading ?? shading;
       specular = material?.specular ?? specular;
       if (material?.diffuse) diffuseMap = material.diffuse.map || null;
+      shadows = material?.shadows ?? shadows;
+      if (node instanceof Group && node.shadowCaster) casters.push(node);
       if (node instanceof Polygon) {
+        polygons.push({ polygon: node, shadows });
         setShaded(
           node,
           shading,
@@ -241,7 +258,7 @@ export class Container {
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
         for (const child of node.children)
-          visit(child, m, image, cells, shading, specular, diffuseMap);
+          visit(child, m, image, cells, shading, specular, diffuseMap, shadows);
       }
     };
     visit(
@@ -252,7 +269,25 @@ export class Container {
       null,
       null,
       null,
+      null,
     );
+    // Sizes and matrices are final once every image is in
+    if (!loading.length) {
+      castShadows(
+        polygons,
+        casters,
+        this.#lights?.point ?? this.#lights?.directional ?? null,
+      );
+      // Put in the document, every animation in it has started over
+      const { isConnected } = this.domElement;
+      if (isConnected && !this.#connected) {
+        touchSubtree(this.#root);
+        touchTweens(this.#lights?.point?.tween ?? null);
+        touchTweens(this.#camera.tween);
+      }
+      this.#connected = isConnected;
+      syncTimelines();
+    }
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;

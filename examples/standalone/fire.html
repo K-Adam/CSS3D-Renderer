@@ -60,8 +60,8 @@
         Filter.tint([1, 0.66, 0.42]),
       );
       ground.material.shading = "smooth";
-      // The logs' shadows, cast by points spread through the flames
-      ground.material.diffuse = { map: "../textures/firelight_shadows.png" };
+      // Blurred far, the flames are about as wide as the logs
+      ground.material.shadows = { opacity: 0.6, blur: 20 };
       container.lights = {
         ambient: { intensity: 0.17 },
         point: { position: [0, 60, 0], intensity: 6000 },
@@ -114,6 +114,7 @@
           }),
         );
         body.material = bark;
+        body.shadowCaster = { shape: "cylinder", radius, height: 100 };
         // Own caps would share the bark material
         for (const facing of [1, -1]) {
           const end = new Group();

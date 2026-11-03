@@ -1,4 +1,3 @@
-import { mat4 } from "gl-matrix";
 import {
   happyC3R,
   dot,
@@ -13,7 +12,7 @@ const HERE = import.meta.dirname;
 
 // The page on the wall, before the scene loads it
 writePage(HERE, {}, "frame");
-const { Container, Group, Material, Transform, Tween, Billboard } =
+const { Container, Group, Material, Timeline, Transform, Tween, Billboard } =
   await happyC3R(HERE);
 
 // The room spans x from -HALF_WIDTH to HALF_WIDTH, y from 0 to HEIGHT, z from BACK to FRONT
@@ -84,11 +83,14 @@ const addTiled = (group, faces) => {
 
 const container = new Container();
 document.body.append(container.domElement);
+// The lamp and the pillar move as one, which the shadows follow
+const motion = new Timeline();
 const orbit = new Tween({
   keyframes: ORBIT.slice(1).map((t) => Transform.translate(t)),
   duration: LEG,
   easing: "ease-in-out",
   loop: true,
+  timeline: motion,
 });
 container.lights = {
   ambient: { intensity: 0.05 },
@@ -99,36 +101,39 @@ container.camera.transform = Transform.translate(EYE);
 const room = new Group();
 container.root.addChild(room);
 
-// Each surface in its own group, for the transform that sets it on a wall
+const SHADOWS = { opacity: 0.8, blur: 8 };
+// Each surface in its own group, for the transform that sets it on a wall. The pillar's shadow
+// falls on all of them
 const addSurface = (background, pts, [u, v], options, transform) => {
   const g = new Group();
   room.addChild(g);
   if (transform) g.transform = transform;
   g.material = material(background, "smooth");
+  g.material.shadows = SHADOWS;
   return g.addPolygon(withUv(pts, u, v), options);
 };
 const WALLPAPER = "assets/wall.jpg";
-const backWall = addSurface(
+addSurface(
   WALLPAPER,
   rect("+z", [-HALF_WIDTH, 0, BACK], [HALF_WIDTH, HEIGHT, BACK]),
   [2, 1],
 );
-const floor = addSurface(
+addSurface(
   "assets/floor.jpg",
   rect("+y", [-HALF_WIDTH, 0, BACK], [HALF_WIDTH, 0, FRONT]),
   [2, 2],
 );
-const ceiling = addSurface(
+addSurface(
   WALLPAPER,
   rect("-y", [-HALF_WIDTH, HEIGHT, BACK], [HALF_WIDTH, HEIGHT, FRONT]),
   [2, 2],
 );
-const leftWall = addSurface(
+addSurface(
   WALLPAPER,
   rect("+x", [-HALF_WIDTH, 0, BACK], [-HALF_WIDTH, HEIGHT, FRONT]),
   [2, 1],
 );
-const rightWall = addSurface(
+addSurface(
   WALLPAPER,
   rect("-x", [HALF_WIDTH, 0, BACK], [HALF_WIDTH, HEIGHT, FRONT]),
   [2, 1],
@@ -151,7 +156,7 @@ const video = (id, src) =>
 // A video centred on the origin, turned onto a side wall by its transform
 const videoRect = ([y0, y1]) =>
   rect("+z", [-VIDEO_HALF, y0, 0], [VIDEO_HALF, y1, 0]);
-const articlePanel = addPanel(
+addPanel(
   `<iframe id="wallpage" src="frame.html" title="An article on the wall about live lighting without JavaScript"></iframe>`,
   rect(
     "+z",
@@ -160,28 +165,19 @@ const articlePanel = addPanel(
   ),
   700,
 );
-const filmPanel = addPanel(
-  video("film", "assets/candle.webm"),
-  videoRect(FILM_YS),
-  520,
-  [
-    Transform.translate([HALF_WIDTH - 1, 0, SIDE_Z]),
-    Transform.rotateY(-Math.PI / 2),
-  ],
-);
-const tankPanel = addPanel(
-  video("tank", "assets/aquarium.webm"),
-  videoRect(TANK_YS),
-  520,
-  [
-    Transform.translate([-HALF_WIDTH + 1, 0, SIDE_Z]),
-    Transform.rotateY(Math.PI / 2),
-  ],
-);
+addPanel(video("film", "assets/candle.webm"), videoRect(FILM_YS), 520, [
+  Transform.translate([HALF_WIDTH - 1, 0, SIDE_Z]),
+  Transform.rotateY(-Math.PI / 2),
+]);
+addPanel(video("tank", "assets/aquarium.webm"), videoRect(TANK_YS), 520, [
+  Transform.translate([-HALF_WIDTH + 1, 0, SIDE_Z]),
+  Transform.rotateY(Math.PI / 2),
+]);
 
 const frames = new Group();
 room.addChild(frames);
 frames.material = material("assets/pillar.jpg", "flat");
+frames.material.shadows = SHADOWS;
 // Flat shades a polygon at its center, which would set the mitred pieces of one plane apart
 const frameFronts = new Group();
 frames.addChild(frameFronts);
@@ -321,9 +317,17 @@ const addPillar = () => {
     delay: PILLAR_LAG - PERIOD,
     easing: "ease-in-out",
     loop: true,
+    timeline: motion,
     alternate: true,
   });
   pillar.material = material("assets/pillar.jpg", "smooth");
+  const shaft = new Group();
+  pillar.addChild(shaft);
+  shaft.transform = Transform.translate([PILLAR_X, HEIGHT / 2, PILLAR_Z]);
+  shaft.shadowCaster = {
+    shape: "box",
+    size: [2 * PILLAR_HALF, HEIGHT, 2 * PILLAR_HALF],
+  };
   const COLLAR_HALF = PILLAR_HALF + 5;
   const COLLAR_H = 22;
   const shaftLo = [PILLAR_X - PILLAR_HALF, 0, PILLAR_Z - PILLAR_HALF];
@@ -365,183 +369,8 @@ sprite.transform = Transform.translate(LAMP);
 sprite.addPolygon(withUv(rect("+z", [-30, -30, 0], [30, 30, 0])));
 sprite.material = material("assets/lamp.png");
 
-// The shadows are keyframed clip-paths, sampled from the motion the tweens play.
-// CSS ease-in-out, solved for its x
-const ease = (x) => {
-  let lo = 0;
-  let hi = 1;
-  for (let i = 0; i < 30; i++) {
-    const t = (lo + hi) / 2;
-    const bx =
-      3 * (1 - t) ** 2 * t * 0.42 + 3 * (1 - t) * t * t * 0.58 + t ** 3;
-    if (bx < x) lo = t;
-    else hi = t;
-  }
-  const t = (lo + hi) / 2;
-  return 3 * (1 - t) * t * t + t ** 3;
-};
-const lampAt = (t) => {
-  const u = t % PERIOD;
-  const i = Math.floor(u / LEG);
-  const k = ease((u - i * LEG) / LEG);
-  return LAMP.map(
-    (l, n) => l + ORBIT[i][n] + (ORBIT[i + 1][n] - ORBIT[i][n]) * k,
-  );
-};
-const pillarAt = (t) => {
-  const u = ((t + PERIOD - PILLAR_LAG) % PERIOD) / (PERIOD / 2);
-  const k = ease(u <= 1 ? u : 2 - u);
-  return PILLAR_X + PILLAR_TRAVEL * k;
-};
-const SHADOW_STEPS = 72;
-const timeAt = (step) => (step / SHADOW_STEPS) * PERIOD;
-
-// Seen from above as [x, z]. The pillar spans floor to ceiling, so this view is the whole shadow.
-// Positive when p lies left of the line from o through a
-const side = (o, a, p) =>
-  (a[0] - o[0]) * (p[1] - o[1]) - (a[1] - o[1]) * (p[0] - o[0]);
-// Behind the pillar from lamp L, between the rays through the corners P and Q it sees outermost.
-// Each test is positive on the shadow's side of one of its three edges
-const wedgeAt = (t) => {
-  const [lx, , lz] = lampAt(t);
-  const L = [lx, lz];
-  const px = pillarAt(t);
-  if (
-    Math.abs(lx - px) <= PILLAR_HALF &&
-    Math.abs(lz - PILLAR_Z) <= PILLAR_HALF
-  )
-    throw new Error(`The lamp passes through the pillar at ${t}s`);
-  const corners = [
-    [px - PILLAR_HALF, PILLAR_Z - PILLAR_HALF],
-    [px + PILLAR_HALF, PILLAR_Z - PILLAR_HALF],
-    [px + PILLAR_HALF, PILLAR_Z + PILLAR_HALF],
-    [px - PILLAR_HALF, PILLAR_Z + PILLAR_HALF],
-  ];
-  const P = corners.find((k) => corners.every((o) => side(L, k, o) >= -1e-9));
-  const Q = corners.find((k) => corners.every((o) => side(L, k, o) <= 1e-9));
-  return {
-    L,
-    P,
-    Q,
-    tests: [(p) => side(L, P, p), (p) => side(L, p, Q), (p) => side(Q, P, p)],
-  };
-};
-const wedges = Array.from({ length: SHADOW_STEPS + 1 }, (_, i) =>
-  wedgeAt(timeAt(i)),
-);
-
-// Every shape reaches past the walls, the surface's own clip cuts it to the exact polygon.
-// Four corners correspond between keyframes, which clipping first would break
-const FAR = 1600;
-const beyond = (L, p) => {
-  const d = Math.hypot(p[0] - L[0], p[1] - L[1]);
-  return [p[0] + ((p[0] - L[0]) / d) * FAR, p[1] + ((p[1] - L[1]) / d) * FAR];
-};
-const quads = wedges.map((w) => [w.P, w.Q, beyond(w.L, w.Q), beyond(w.L, w.P)]);
-const atHeight = (y) => quads.map((pts) => pts.map(([x, z]) => [x, y, z]));
-
-// The part of the line a..b inside the wedge, as [from, to] in 0..1
-const clipLine = (w, a, b) => {
-  let [t0, t1] = [0, 1];
-  for (const test of w.tests) {
-    const [ta, tb] = [test(a), test(b)];
-    if (ta < 0 && tb < 0) return null;
-    if (ta < 0) t0 = Math.max(t0, ta / (ta - tb));
-    if (tb < 0) t1 = Math.min(t1, ta / (ta - tb));
-  }
-  return t0 < t1 ? [t0, t1] : null;
-};
-// A wall from a to b seen from above gets a band per step, as tall as the room can need.
-// A step without one takes the middle of the nearest band, so the band shrinks away where it was
-const wallShadow = (a, b) => {
-  const bands = wedges.map((w) => clipLine(w, a, b));
-  const hit = bands.flatMap((band, i) => (band ? [i] : []));
-  const gap = (i, j) =>
-    Math.min(Math.abs(j - i), SHADOW_STEPS - Math.abs(j - i));
-  const at = (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-  return bands.map((band, i) => {
-    if (!band) {
-      const n = hit.reduce((best, j) => (gap(i, j) < gap(i, best) ? j : best));
-      const mid = (bands[n][0] + bands[n][1]) / 2;
-      band = [mid, mid];
-    }
-    const [[x0, z0], [x1, z1]] = band.map(at);
-    return [
-      [x0, -FAR, z0],
-      [x1, -FAR, z1],
-      [x1, FAR, z1],
-      [x0, FAR, z0],
-    ];
-  });
-};
-const backShadow = wallShadow([-HALF_WIDTH, BACK], [HALF_WIDTH, BACK]);
-const leftShadow = wallShadow([-HALF_WIDTH, BACK], [-HALF_WIDTH, FRONT]);
-const rightShadow = wallShadow([HALF_WIDTH, BACK], [HALF_WIDTH, FRONT]);
-
-// Sizes and matrices are final after a bake
-await container.bake();
-const BLUR = 8;
-const shadowCss = [];
-const matrixOf = (el) =>
-  el.style
-    .getPropertyValue("--c3r-matrix")
-    .replace(/^matrix3d\(|\)$/g, "")
-    .split(",")
-    .map(Number);
-// The polygon's x and y axes and origin in room space, through its matrix, which holds whatever
-// flips the fit chose
-const basisOf = (poly) => {
-  const m = matrixOf(poly.domElement);
-  const g = matrixOf(poly.domElement.parentElement);
-  const r = g.length === 16 ? mat4.multiply([], g, m) : m;
-  return { ex: r.slice(0, 3), ey: r.slice(4, 7), o: r.slice(12, 15) };
-};
-// A dark layer on the polygon, its clip-path stepping through one shape per step. The blur is on
-// a parent, its own clip-path would cut it off
-const paintShadow = (poly, id, opacity, shapes) => {
-  const { style } = poly.domElement;
-  const [w, h] = ["--c3r-width", "--c3r-height"].map((n) =>
-    parseFloat(style.getPropertyValue(n)),
-  );
-  const { ex, ey, o } = basisOf(poly);
-  const blur = BLUR / Math.hypot(...ex);
-  const pad = Math.ceil(blur * 3);
-  // A room point as a clip-path position in the padded box
-  const toBox = (p) => {
-    const d = sub(p, o);
-    const u = dot(d, ex) / dot(ex, ex);
-    const v = dot(d, ey) / dot(ey, ey);
-    return `${(((u + pad) / (w + 2 * pad)) * 100).toFixed(2)}% ${(((v + pad) / (h + 2 * pad)) * 100).toFixed(2)}%`;
-  };
-  const stops = shapes
-    .map(
-      (pts, i) =>
-        `${+((i / SHADOW_STEPS) * 100).toFixed(3)}%{clip-path:polygon(${pts.map(toBox).join()})}`,
-    )
-    .join("");
-  shadowCss.push(
-    `@keyframes ${id}{${stops}}`,
-    `#${id}{animation:${id} ${PERIOD}s linear infinite;inset:${-pad}px}`,
-  );
-  const outer = document.createElement("div");
-  outer.className = "shadow";
-  outer.setAttribute(
-    "style",
-    `opacity:${opacity};filter:blur(${+blur.toFixed(1)}px)`,
-  );
-  const inner = document.createElement("div");
-  inner.id = id;
-  outer.append(inner);
-  poly.contentElement.parentElement.append(outer);
-};
-paintShadow(floor, "s-floor", 0.8, atHeight(0));
-paintShadow(ceiling, "s-ceiling", 0.7, atHeight(HEIGHT));
-paintShadow(backWall, "s-back", 0.8, backShadow);
-paintShadow(leftWall, "s-left", 0.8, leftShadow);
-paintShadow(rightWall, "s-right", 0.8, rightShadow);
-paintShadow(articlePanel, "s-frame", 0.8, backShadow);
-paintShadow(tankPanel, "s-tank", 0.8, leftShadow);
-paintShadow(filmPanel, "s-film", 0.8, rightShadow);
-
-const css = [`:root{--dolly:${DOLLY * container.unitScale}px}`, ...shadowCss];
-writePage(HERE, { css: css.join("\n"), scene: await container.toHTML() });
+const scene = await container.toHTML();
+writePage(HERE, {
+  css: `:root{--dolly:${DOLLY * container.unitScale}px}`,
+  scene,
+});

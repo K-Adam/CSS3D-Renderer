@@ -221,6 +221,20 @@
   height: 100%;
 }
 
+.c3r-shadow,
+.c3r-shadow > div {
+  position: absolute;
+  pointer-events: none;
+}
+
+.c3r-shadow {
+  inset: 0;
+}
+
+.c3r-shadow > div {
+  background: #000;
+}
+
 .c3r-polygon-content {
   width: 100%;
   height: 100%;
