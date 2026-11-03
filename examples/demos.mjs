@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -225,12 +226,22 @@ const demoOfSource = (file) => {
 };
 
 export function demos() {
+  let built;
   return {
     name: "demos",
     // Before the build starts, its timings would count the wait on the generators
     async configResolved(config) {
-      if (config.command === "build")
-        await Promise.all(demoNames().map(generate));
+      if (config.command !== "build") return;
+      built = resolve(config.root, config.build.outDir, "demos");
+      await Promise.all(demoNames().map(generate));
+    },
+    // Public files are copied whole, the generator sources don't belong online
+    closeBundle() {
+      if (!built || !existsSync(built)) return;
+      for (const name of demoNames())
+        for (const file of readdirSync(join(built, name)))
+          if (demoOfSource(join(DEMOS, name, file)))
+            rmSync(join(built, name, file));
     },
     configureServer(server) {
       const running = new Map();

@@ -114,7 +114,7 @@ export class Group extends Object3D {
     refreshInput(this);
   }
 
-  // Takes effect at the next bake, like shading
+  // Takes effect at the next shadow bake
   get shadowCaster(): ShadowCaster | null {
     return this.#shadowCaster;
   }

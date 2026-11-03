@@ -1482,6 +1482,7 @@ describe("shadows", () => {
     [...clipPath.matchAll(/(-?[\d.e+]+)px (-?[\d.e+]+)px/g)].map(([, x, y]) =>
       vec3.transformMat4(vec3.create(), [+x, +y, 0], m),
     );
+  const cast = { shadows: true };
   const layerOf = (floor: Polygon) =>
     floor.domElement.querySelector<HTMLElement>(".c3r-shadow > div")!;
 
@@ -1490,7 +1491,7 @@ describe("shadows", () => {
       { shape: "box", size: [10, 10, 10] },
       [0, 50, 0],
     );
-    await container.bake();
+    await container.bake(cast);
     const points = corners(floor, layerOf(floor).style.clipPath);
     expect(points).toHaveLength(4);
     // The top at 55 casts 100 / 45 times its size
@@ -1500,13 +1501,29 @@ describe("shadows", () => {
     }
   });
 
+  it("keeps shadows as cast until a bake casts them again", async () => {
+    const { container, floor, group } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    await container.bake();
+    expect(floor.domElement.querySelector(".c3r-shadow")).toBeNull();
+    await container.bake(cast);
+    const clipPath = layerOf(floor).style.clipPath;
+    group.transform = Transform.translate([20, 50, 0]);
+    await container.bake();
+    expect(layerOf(floor).style.clipPath).toBe(clipPath);
+    await container.bake(cast);
+    expect(layerOf(floor).style.clipPath).not.toBe(clipPath);
+  });
+
   it("casts a box along a directional light as its outline", async () => {
     const { container, floor } = scene(
       { shape: "box", size: [10, 10, 10] },
       [0, 50, 0],
     );
     container.lights = { directional: { direction: [1, -1, 0], intensity: 1 } };
-    await container.bake();
+    await container.bake(cast);
     const points = corners(floor, layerOf(floor).style.clipPath);
     const xs = points.map((p) => p[0]);
     const zs = points.map((p) => p[2]);
@@ -1527,7 +1544,7 @@ describe("shadows", () => {
     wall.transform = Transform.rotateX(Math.PI / 2);
     wall.addChild(floor);
     container.lights = { directional: { direction: [0, -1, 0], intensity: 1 } };
-    await container.bake();
+    await container.bake(cast);
     expect(floor.domElement.querySelector(".c3r-shadow")).toBeNull();
   });
 
@@ -1536,7 +1553,7 @@ describe("shadows", () => {
       { shape: "sphere", radius: 10 },
       [0, 50, 0],
     );
-    await container.bake();
+    await container.bake(cast);
     const points = corners(floor, layerOf(floor).style.clipPath);
     expect(points.length).toBeGreaterThan(12);
     // Tangent from the light at 50 to a radius of 10, out to the floor at 100
@@ -1564,7 +1581,7 @@ describe("shadows", () => {
     container.lights = {
       point: { position: [0, 100, 0], intensity: 1, tween },
     };
-    await container.bake();
+    await container.bake(cast);
     const layer = layerOf(floor);
     const timeline = timelineOf(tween)!;
     expect(layer.classList).toContain(timeline.className);
@@ -1599,17 +1616,17 @@ describe("shadows", () => {
       },
     };
     group.tween = swing({ duration: 1, timeline: motion });
-    await container.bake();
+    await container.bake(cast);
     for (const [tween, error] of [
       [swing({ duration: 1 }), "one timeline"],
       [swing({ timeline: motion, easing: "steps(4)" }), "easing"],
     ] as const) {
       group.tween = tween;
-      expect(() => container.bake()).toThrow(error);
+      expect(() => container.bake(cast)).toThrow(error);
     }
     container.lights = { point: { position: [0, 100, 0], intensity: 1 } };
     group.tween = swing({ hover: true });
-    expect(() => container.bake()).toThrow("own hover");
+    expect(() => container.bake(cast)).toThrow("own hover");
   });
 
   it("transitions with a caster that moves on hover", async () => {
@@ -1624,7 +1641,7 @@ describe("shadows", () => {
       hover: true,
     });
     group.tween = lift;
-    await container.bake();
+    await container.bake(cast);
     const layer = layerOf(floor);
     const className = `c3r-shadow-on-${lift.className}`;
     expect(layer.classList).toContain(className);
@@ -1650,7 +1667,7 @@ describe("shadows", () => {
     ]);
     top.material = new Material();
     top.material.shadows = { opacity: 0.5 };
-    await container.bake();
+    await container.bake(cast);
     expect(top.domElement.querySelector(".c3r-shadow")).toBeNull();
   });
 
@@ -1666,7 +1683,7 @@ describe("shadows", () => {
     stretched.addChild(turned);
     turned.transform = Transform.rotateY(0.6);
     turned.addChild(floor);
-    await container.bake();
+    await container.bake(cast);
     const world = mat4.mul(
       mat4.create(),
       mat4.mul(mat4.create(), matrixOf(stretched), matrixOf(turned)),
@@ -1685,23 +1702,23 @@ describe("shadows", () => {
       { shape: "sphere", radius: 10 },
       [0, 50, 0],
     );
-    await container.bake();
+    await container.bake(cast);
     const layer = () => floor.domElement.querySelector(".c3r-shadow");
     expect(layer()).not.toBeNull();
     floor.material!.shadows = null;
-    await container.bake();
+    await container.bake(cast);
     expect(layer()).toBeNull();
     floor.material!.shadows = { opacity: 0.5 };
     const billboard = new Billboard();
     container.root.addChild(billboard);
     billboard.addChild(floor);
-    await container.bake();
+    await container.bake(cast);
     expect(layer()).toBeNull();
     // With nothing to cast, a tween it couldn't sample is no concern
     container.root.addChild(floor);
     group.shadowCaster = null;
     container.root.tween = new Tween({ keyframes: [Transform.scale(2)] });
-    await container.bake();
+    await container.bake(cast);
     expect(layer()).toBeNull();
   });
 });

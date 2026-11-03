@@ -15,7 +15,7 @@ export { cssText, styleHTML } from "./css/styles.js";
 
 export { Object3D } from "./dom/Object3D.js";
 export { Group, type IndexedMesh, type MeshOptions } from "./dom/Group.js";
-export { Container, type Lights } from "./dom/Container.js";
+export { type BakeOptions, Container, type Lights } from "./dom/Container.js";
 export { Polygon, type PolygonOptions } from "./dom/Polygon.js";
 export { ElementObject } from "./dom/ElementObject.js";
 export { Billboard } from "./dom/Billboard.js";

@@ -37,6 +37,11 @@ export interface Lights {
   };
 }
 
+export interface BakeOptions {
+  // Costly, other bakes keep them as cast
+  shadows?: boolean;
+}
+
 const intensityOf = (n: number): number => {
   if (!(n >= 0 && Number.isFinite(n)))
     throw new RangeError(`Invalid light intensity ${n}`);
@@ -59,6 +64,7 @@ export class Container {
   #refit: Promise<void> | null = null;
   #lights: Readonly<Lights> | null = null;
   #connected = false;
+  #castShadows = false;
 
   // A camera given here spares a default whose rules would wait for GC
   constructor(camera: Camera = new PerspectiveCamera()) {
@@ -187,7 +193,8 @@ export class Container {
     this.domElement.style.setProperty("--c3r-unit-scale", String(scale));
   }
 
-  bake(): Promise<void> {
+  bake({ shadows = false }: BakeOptions = {}): Promise<void> {
+    this.#castShadows ||= shadows;
     const loading = this.#fit();
     if (!loading.length) return Promise.resolve();
     // One refit at a time, c3r-three bakes every frame
@@ -273,11 +280,15 @@ export class Container {
     );
     // Sizes and matrices are final once every image is in
     if (!loading.length) {
-      castShadows(
-        polygons,
-        casters,
-        this.#lights?.point ?? this.#lights?.directional ?? null,
-      );
+      const cast = this.#castShadows;
+      // First, so plain bakes don't retry a cast that threw
+      this.#castShadows = false;
+      if (cast)
+        castShadows(
+          polygons,
+          casters,
+          this.#lights?.point ?? this.#lights?.directional ?? null,
+        );
       // Put in the document, every animation in it has started over
       const { isConnected } = this.domElement;
       if (isConnected && !this.#connected) {
@@ -293,8 +304,8 @@ export class Container {
     return loading;
   }
 
-  async toHTML(): Promise<string> {
-    await this.bake();
+  async toHTML(options?: BakeOptions): Promise<string> {
+    await this.bake(options);
     return styleHTML() + this.domElement.outerHTML;
   }
 

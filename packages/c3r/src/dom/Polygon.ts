@@ -39,6 +39,13 @@ const newellNormal = (vertices: readonly Vertex[]): vec3 => {
   return vec3.normalize(n, n);
 };
 
+// A zero or NaN normal takes the face's
+const vertexNormals = (vertices: readonly Vertex[], face: vec3): vec3[] =>
+  vertices.map(({ normal }) => {
+    const n = normal && vec3.normalize(vec3.create(), normal);
+    return n && vec3.length(n) ? n : face;
+  });
+
 export const setVector = (
   style: CSSStyleDeclaration,
   name: string,
@@ -229,10 +236,8 @@ export class Polygon extends Object3D {
     const face = newellNormal(this.vertices);
     this.#planar =
       planar &&
-      this.vertices.every(
-        ({ normal }) =>
-          !normal ||
-          vec3.dot(face, vec3.normalize(vec3.create(), normal)) > COPLANAR,
+      vertexNormals(this.vertices, face).every(
+        (n) => n === face || vec3.dot(face, n) > COPLANAR,
       );
 
     this.domElement.classList.add("c3r-polygon");
@@ -357,10 +362,7 @@ export class Polygon extends Object3D {
     const { style } = this.domElement;
     style.setProperty("--c3r-normal-width", String(this.#blockWidth));
     style.setProperty("--c3r-normal-height", String(this.#blockHeight));
-    const normals = this.vertices.map(({ normal }) => {
-      const n = normal && vec3.normalize(vec3.create(), normal);
-      return n && vec3.length(n) ? n : face;
-    });
+    const normals = vertexNormals(this.vertices, face);
     const field = normalField(points, normals);
     FIELD.forEach((name, i) => style.setProperty(name, String(field[i])));
     if (this.#lit === "radial") this.#writePlane(points);

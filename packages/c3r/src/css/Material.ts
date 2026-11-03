@@ -187,6 +187,7 @@ export class Material {
       specular?.map === old?.map
     )
       return;
+    const map = specular?.map ? cssUrl(specular.map) : null;
     this.#specular = specular && Object.freeze({ ...specular });
     this.#set(
       "--c3r-specular-intensity",
@@ -194,15 +195,11 @@ export class Material {
     );
     this.#set("--c3r-shininess", specular && String(specular.shininess));
     // Explicit, so a child's specular doesn't take its parent's map
-    this.#set(
-      "--c3r-specular-map",
-      specular && (specular.map ? cssUrl(specular.map) : "none"),
-    );
+    this.#set("--c3r-specular-map", specular && (map ?? "none"));
     // As one layer of several, none would be transparent and hide the rest
     this.#set(
       "--c3r-specular-layer",
-      specular &&
-        (specular.map ? cssUrl(specular.map) : "linear-gradient(white, white)"),
+      specular && (map ?? "linear-gradient(white, white)"),
     );
   }
 
@@ -214,14 +211,12 @@ export class Material {
     const unchanged =
       !diffuse === !this.#diffuse && diffuse?.map === this.#diffuse?.map;
     if (unchanged) return;
+    const map = diffuse && (diffuse.map ? cssUrl(diffuse.map) : "none");
     this.#diffuse = diffuse && Object.freeze({ ...diffuse });
-    this.#set(
-      "--c3r-diffuse-map",
-      diffuse && (diffuse.map ? cssUrl(diffuse.map) : "none"),
-    );
+    this.#set("--c3r-diffuse-map", map);
   }
 
-  // Darkens where shadow casters block the light, from the next bake
+  // Darkens where shadow casters block the light, from the next shadow bake
   get shadows(): Shadows | null {
     return this.#shadows;
   }

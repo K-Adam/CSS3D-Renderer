@@ -369,7 +369,7 @@ sprite.transform = Transform.translate(LAMP);
 sprite.addPolygon(withUv(rect("+z", [-30, -30, 0], [30, 30, 0])));
 sprite.material = material("assets/lamp.png");
 
-const scene = await container.toHTML();
+const scene = await container.toHTML({ shadows: true });
 writePage(HERE, {
   css: `:root{--dolly:${DOLLY * container.unitScale}px}`,
   scene,

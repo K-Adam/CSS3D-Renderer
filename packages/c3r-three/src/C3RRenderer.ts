@@ -63,6 +63,7 @@ const flatDomSize = (size: number) => Math.max(128, Math.min(size, 1200));
 const _matrix = new Matrix4();
 const _parent = new Matrix4();
 const _position = new Vector3();
+const _direction = new Vector3();
 const _quaternion = new Quaternion();
 const _scale = new Vector3();
 const _rgb = { r: 0, g: 0, b: 0 };
@@ -166,15 +167,13 @@ export class C3RRenderer {
     scene.traverseVisible((object) => {
       if (object instanceof AmbientLight) ambient += lightLevel(object);
       if (!(object instanceof DirectionalLight) || directional) return;
-      if (lightLevel(object) <= 0) return;
-      const direction = new Vector3()
+      const intensity = lightLevel(object);
+      if (intensity <= 0) return;
+      _direction
         .setFromMatrixPosition(object.target.matrixWorld)
         .sub(_position.setFromMatrixPosition(object.matrixWorld));
-      if (direction.lengthSq())
-        directional = {
-          direction: direction.toArray(),
-          intensity: lightLevel(object),
-        };
+      if (_direction.lengthSq())
+        directional = { direction: _direction.toArray(), intensity };
     });
     const lights = {
       ambient: { intensity: Math.max(0, ambient) },

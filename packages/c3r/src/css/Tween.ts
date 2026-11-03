@@ -241,7 +241,7 @@ export function setTweens(
     if (value) style?.setProperty(name, value);
     else style?.removeProperty(name);
   }
-  touchTweens(tweens);
+  if (style) touchTweens(tweens);
   return tweens;
 }
 

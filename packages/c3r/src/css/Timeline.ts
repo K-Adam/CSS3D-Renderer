@@ -92,11 +92,15 @@ export const touchTimeline = (timeline: Timeline): void => {
 // The one running longest sets the time, so ones added later play in step
 export function syncTimelines(): void {
   if (!dirty.size || typeof document.getAnimations !== "function") return;
-  const animations = document.getAnimations();
+  const byName = new Map<string, Animation[]>();
+  for (const a of document.getAnimations()) {
+    const name = (a as CSSAnimation).animationName;
+    if (byName.has(name)) byName.get(name)!.push(a);
+    else byName.set(name, [a]);
+  }
   for (const timeline of dirty) {
-    const names = members.get(timeline)!;
-    const following = animations.filter((a) =>
-      names.has((a as CSSAnimation).animationName),
+    const following = [...members.get(timeline)!].flatMap(
+      (name) => byName.get(name) ?? [],
     );
     const times = following.flatMap((a) =>
       typeof a.currentTime === "number" ? [a.currentTime] : [],

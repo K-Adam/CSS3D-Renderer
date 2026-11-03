@@ -50,7 +50,7 @@ it("starts tweens on one timeline together at a bake, and pauses them and their 
   await wait(300);
   // Joins a timeline that has been running for a while
   caster.tween = slide();
-  await container.bake();
+  await container.bake({ shadows: true });
 
   const layer = ground.domElement.querySelector(".c3r-shadow > div")!;
   const times = () =>
@@ -176,7 +176,7 @@ it("keeps a shadow in step when its receiver moves in the scene", async () => {
   const ground = holder.addPolygon(floor(200));
   ground.material = new Material();
   ground.material.shadows = { opacity: 0.5 };
-  await container.bake();
+  await container.bake({ shadows: true });
   const layer = ground.domElement.querySelector(".c3r-shadow > div")!;
   const apart = () => Math.abs(timeOf(layer) - timeOf(container.domElement));
   await wait(300);
