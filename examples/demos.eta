@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="<%= it.viewport ?? "width=device-width,initial-scale=1" %>">
+<meta http-equiv="Content-Security-Policy" content="script-src 'none'">
+<title><%= it.title %></title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<style><%~ it.css %></style>
+</head>
+<body>
+<%~ it.body %>
+</body>
+</html>

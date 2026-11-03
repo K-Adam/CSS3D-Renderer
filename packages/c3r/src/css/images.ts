@@ -25,12 +25,22 @@ async function decode(url: string, cors: boolean): Promise<HTMLImageElement> {
   return image;
 }
 
+// A JPEG has no alpha channel
+async function isJpeg(url: string): Promise<boolean> {
+  const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+  return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
 // Full size, a downscale can skip thin transparent areas
-function isOpaque(image: HTMLImageElement): boolean {
+async function isOpaque(
+  image: HTMLImageElement,
+  url: string,
+): Promise<boolean> {
   const { naturalWidth: width, naturalHeight: height } = image;
   if (width * height > MAX_SCAN) return false;
   const context = document.createElement("canvas").getContext("2d");
-  if (!context) return false;
+  // A server-side DOM has no canvas
+  if (!context) return isJpeg(url);
   context.canvas.width = width;
   context.canvas.height = height;
   context.drawImage(image, 0, 0);
@@ -57,7 +67,7 @@ async function read(url: string): Promise<ImageInfo | null> {
   if (!naturalWidth || !naturalHeight) return null;
   let opaque = false;
   try {
-    opaque = readable && isOpaque(image);
+    opaque = readable && (await isOpaque(image, url));
   } catch {}
   return { size: [naturalWidth, naturalHeight], opaque };
 }

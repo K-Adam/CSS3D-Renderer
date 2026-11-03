@@ -1,0 +1,8 @@
+<% layout("@layout", { title: "Find Library", viewport: "width=device-width,initial-scale=1,viewport-fit=cover" }) %>
+<%~ it.scene %>
+<div id="dim"></div>
+<% /* Names no word to try: Firefox's Find matches generated content, the hint would be the first hit */ %>
+<div id="hint" data-hint="Search any word with your browser's Find (Ctrl+F or ⌘F), or click a spine."><b>Find Library</b></div>
+<details id="cat" name="library"><summary aria-label="Catalogue">Catalogue</summary><div class="list">
+<% for (const { t, i } of it.items) { %><a href="#t<%= i %>" aria-label="<%= t %>" data-t="<%= t %>"></a><% } %>
+</div></details>

@@ -75,11 +75,11 @@
         // model
 
         const texture = new THREE.TextureLoader().load(
-          "textures/UV_Grid_Sm.jpg",
+          "../textures/UV_Grid_Sm.jpg",
         );
 
         new OBJLoader().load(
-          "models/obj/suzanne/suzanne.obj",
+          "../models/obj/suzanne/suzanne.obj",
           function (object) {
             object.traverse(function (child) {
               if (child instanceof THREE.Mesh) {

@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { CssValue } from "c3r";
+import { CssMatrix, CssVector } from "../src/css/CssMatrix.js";
 import {
   cssRaw,
   cssVar,
@@ -50,6 +51,61 @@ it("types values by what they compute to", () => {
     fn("asin", rad(1)),
   ])
     expect(typeOf(invalid)).toBeNull();
+});
+
+it("builds matrices column-major from numbers or expressions", () => {
+  const m = new CssMatrix(new Float32Array([1, 2, 3, 4]));
+  expect(m.size).toBe(2);
+  expect(m.transpose().components.map(String)).toEqual(["1", "3", "2", "4"]);
+  expect(CssMatrix.identity(2).components.map(String)).toEqual([
+    "1",
+    "0",
+    "0",
+    "1",
+  ]);
+  const [first, second] = m.mul(new CssMatrix([x, 0, 0, 1])).components;
+  expect(String(first)).toBe("calc(1 * var(--x))");
+  expect(String(second)).toBe("calc(2 * var(--x))");
+  expect(String(m.mul(new CssMatrix([0, 0, 0, 0])).components[0])).toBe("0");
+  expect(m.transform(new CssVector([x, 1])).components.map(String)).toEqual([
+    "calc((1 * var(--x)) + (3 * 1))",
+    "calc((2 * var(--x)) + (4 * 1))",
+  ]);
+});
+
+it("does vector algebra through CSS math", () => {
+  const v = new CssVector([x, 2]);
+  const w = new CssVector([3, 4]);
+  expect(String(v.dot(w))).toBe("calc((var(--x) * 3) + (2 * 4))");
+  expect(String(v.length())).toBe("hypot(var(--x),2)");
+  expect(String(v.add(w).components[0])).toBe("calc(var(--x) + 3)");
+  expect(String(v.sub(w).components[1])).toBe("calc(2 - 4)");
+  expect(String(v.scale(2).components[1])).toBe("calc(2 * 2)");
+  expect(String(v.normalize().components[1])).toBe(
+    "calc(2 / hypot(var(--x),2))",
+  );
+});
+
+it("refuses components and sizes that can't work", () => {
+  const { px, fn } = CssValue;
+  for (const bad of [px(1), fn("rotate", CssValue.rad(1))]) {
+    expect(() => new CssVector([bad])).toThrow(TypeError);
+    expect(() => new CssMatrix([bad])).toThrow(TypeError);
+  }
+  const fake = Object.create(CssValue.prototype) as CssValue;
+  expect(() => new CssVector([fake])).toThrow(TypeError);
+  expect(() => new CssVector([NaN])).toThrow(RangeError);
+  expect(() => new CssVector([])).toThrow(RangeError);
+  expect(() => new CssMatrix([])).toThrow(RangeError);
+  expect(() => new CssMatrix([1, 2, 3])).toThrow(RangeError);
+  const m2 = CssMatrix.identity(2);
+  const m3 = CssMatrix.identity(3);
+  const v2 = new CssVector([1, 2]);
+  const v3 = new CssVector([1, 2, 3]);
+  expect(() => m2.mul(m3)).toThrow(RangeError);
+  expect(() => m2.transform(v3)).toThrow(RangeError);
+  expect(() => v2.dot(v3)).toThrow(RangeError);
+  expect(() => v2.add(v3)).toThrow(RangeError);
 });
 
 it("refuses values that could leave the declaration", () => {

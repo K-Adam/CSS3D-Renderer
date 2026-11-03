@@ -23,6 +23,89 @@
   initial-value: 0;
 }
 
+@property --c3r-shade {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --c3r-specular {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-specular-lit {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-specular-slope {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* Not inherited, so a container inside a flat polygon keeps its own */
+@property --c3r-flat-backdrop {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --c3r-shaded {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --c3r-gradient-x {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-y {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-center {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-from {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-to {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-shade-from {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-shade-to {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --c3r-gradient-reach {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 /* Firefox animates a var() keyframe discretely, so this one is a plain number */
 @keyframes c3r-flipbook {
   to {
@@ -50,8 +133,9 @@
   }
 }
 
+/* Not hidden, focus or scrollIntoView would scroll a scroll container */
 .c3r-container {
-  overflow: hidden;
+  overflow: clip;
   position: relative;
   contain: strict;
   --c3r-viewport-width: 100vw;
@@ -71,7 +155,6 @@
   transform-origin: 0 0;
   -webkit-user-select: none;
   user-select: none;
-  backface-visibility: inherit;
 }
 
 .c3r-group {
@@ -86,7 +169,6 @@
   top: 50%;
   left: 50%;
   pointer-events: none;
-  backface-visibility: hidden;
 }
 
 .c3r-perspective {
@@ -129,7 +211,9 @@
   width: var(--c3r-width, 0px);
   height: var(--c3r-height, 0px);
   transform-style: flat;
-  overflow: hidden;
+  overflow: clip;
+  /* Only here, Chrome's hit test skips the subtree of a hidden group turned away */
+  backface-visibility: var(--c3r-backface, hidden);
 }
 
 .c3r-polygon-clip {
@@ -137,10 +221,27 @@
   height: 100%;
 }
 
+.c3r-shadow,
+.c3r-shadow > div {
+  position: absolute;
+  pointer-events: none;
+}
+
+.c3r-shadow {
+  inset: 0;
+}
+
+.c3r-shadow > div {
+  background: #000;
+}
+
 .c3r-polygon-content {
   width: 100%;
   height: 100%;
-  background-color: var(--c3r-background-opaque, white);
+  background-color: var(
+    --c3r-flat-backdrop,
+    var(--c3r-background-opaque, white)
+  );
   /* Layers end in a comma and multiply what is below */
   background-image: var(--c3r-tween-layers,) var(--c3r-layers,)
     var(--c3r-background-image, none);
@@ -148,8 +249,8 @@
   background-blend-mode: multiply;
   opacity: var(--c3r-background-alpha, 1);
   /* Invalid without layers, else the image's alpha cuts them out */
-  mask: var(--c3r-tween-layered, var(--c3r-layered)) var(--c3r-alpha-mask, none)
-    0 0 / 100% 100%;
+  mask: var(--c3r-shaded, var(--c3r-tween-layered, var(--c3r-layered)))
+    var(--c3r-alpha-mask, none) 0 0 / 100% 100%;
   /* Painted with the content, off the composited 3D layer */
   filter: var(--c3r-filter,) var(--c3r-tween-filter,);
   transform: matrix(1, 0, 0, 1, 0, 0);
@@ -164,8 +265,82 @@
   --c3r-row: round(down, var(--c3r-frame) / var(--c3r-columns), 1);
 }
 
+/* Off the layers above, which tile and move with the texture. Both stops stay
+   on the gradient line and in range: Firefox misplaces a stop off the box,
+   WebKit clamps a color before interpolating */
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before,
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::after {
+  --c3r-gradient-length: max(
+    hypot(var(--c3r-gradient-x), var(--c3r-gradient-y)),
+    1e-6
+  );
+  --c3r-gradient-reach: calc(
+    (
+        abs(var(--c3r-gradient-x)) * var(--c3r-normal-width) +
+          abs(var(--c3r-gradient-y)) * var(--c3r-normal-height)
+      ) /
+      2
+  );
+}
+
+/* From and to are n·l values */
+.c3r-polygon.c3r-smooth > .c3r-polygon-clip > .c3r-polygon-content::before {
+  mix-blend-mode: multiply;
+  --c3r-shade-low: min(var(--c3r-light-ambient), 1);
+  --c3r-shade-high: min(var(--c3r-light-ambient) + var(--c3r-light-diffuse), 1);
+  --c3r-gradient-from: clamp(
+    var(--c3r-gradient-center) - var(--c3r-gradient-reach),
+    0,
+    var(--c3r-gradient-center) + var(--c3r-gradient-reach)
+  );
+  --c3r-gradient-to: clamp(
+    var(--c3r-gradient-center) - var(--c3r-gradient-reach),
+    (var(--c3r-shade-high) - var(--c3r-shade-low)) /
+      max(var(--c3r-light-diffuse), 1e-6),
+    var(--c3r-gradient-center) + var(--c3r-gradient-reach)
+  );
+  --c3r-shade-from: clamp(
+    var(--c3r-shade-low),
+    var(--c3r-shade-low) + var(--c3r-light-diffuse) * var(--c3r-gradient-from),
+    var(--c3r-shade-high)
+  );
+  --c3r-shade-to: clamp(
+    var(--c3r-shade-low),
+    var(--c3r-shade-low) + var(--c3r-light-diffuse) * var(--c3r-gradient-to),
+    var(--c3r-shade-high)
+  );
+  background-image: linear-gradient(
+    atan2(var(--c3r-gradient-x), calc(-1 * var(--c3r-gradient-y))) in
+      srgb-linear,
+    color(
+        srgb-linear var(--c3r-shade-from) var(--c3r-shade-from)
+          var(--c3r-shade-from)
+      )
+      calc(
+        (
+            var(--c3r-gradient-from) - var(--c3r-gradient-center) +
+              var(--c3r-gradient-reach)
+          ) /
+          var(--c3r-gradient-length) * 1px
+      ),
+    color(
+        srgb-linear var(--c3r-shade-to) var(--c3r-shade-to) var(--c3r-shade-to)
+      )
+      calc(
+        (
+            var(--c3r-gradient-to) - var(--c3r-gradient-center) +
+              var(--c3r-gradient-reach)
+          ) /
+          var(--c3r-gradient-length) * 1px
+      )
+  );
+}
+
 /* No specificity, so the user's own styles win */
 :where(.c3r-element) {
+  /* A parent's texture has uvs for polygons, here it would cover the whole box */
+  --c3r-background-color: initial;
+  --c3r-background-image: initial;
   background-color: var(--c3r-background-color, transparent);
   background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;

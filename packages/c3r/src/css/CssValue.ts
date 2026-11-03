@@ -3,7 +3,7 @@ import { plainValue } from "./styles.js";
 // Typed OM unit names, so a later move onto the platform keeps them
 type Unit = "number" | "px" | "rad";
 
-type Arg = CssValue | number;
+export type Arg = CssValue | number;
 
 type CssNode =
   | { readonly kind: "unit"; readonly value: number; readonly unit: Unit }

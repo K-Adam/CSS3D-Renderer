@@ -2,7 +2,7 @@ import "../polyfill.js";
 
 import { mat4, type ReadonlyMat4 } from "gl-matrix";
 
-import { refreshCamera } from "../dom/Accumulator.js";
+import { forgetCamera, refreshCamera } from "../dom/Accumulator.js";
 
 import { deleteRule, insertRule } from "./styles.js";
 import {
@@ -89,6 +89,7 @@ export abstract class Camera {
   }
 
   [Symbol.dispose](): void {
+    forgetCamera(this);
     deleteRule(this.#paramsRule);
     deleteRule(this.#viewRule);
     this.#paramsRule = this.#viewRule = null;

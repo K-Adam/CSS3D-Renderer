@@ -1,0 +1,230 @@
+:root {
+  --s: min(100vh, 100vw);
+}
+html {
+  background: #000;
+  color: #d8d6d0;
+  font:
+    18px/1.55 Georgia,
+    "Iowan Old Style",
+    serif;
+}
+body {
+  margin: 0;
+}
+.stage,
+.labels {
+  pointer-events: none;
+  position: fixed;
+  left: calc(var(--s) / 2 - var(--r));
+  top: calc(50vh - var(--r));
+  width: calc(2 * var(--r));
+  height: calc(2 * var(--r));
+}
+.stage {
+  overflow: hidden;
+  border-radius: 50%;
+}
+.labels {
+  z-index: 1;
+}
+.stage .c3r-container,
+.labels .c3r-container {
+  --c3r-viewport-width: var(--s);
+  --c3r-viewport-height: var(--s);
+  position: absolute;
+  left: calc(var(--r) - var(--s) / 2);
+  top: calc(var(--r) - var(--s) / 2);
+}
+.labels .c3r-container {
+  overflow: visible;
+  contain: none;
+}
+.tilt-n,
+.tilt-s {
+  position: fixed;
+  left: calc(var(--s) / 2 - var(--r));
+  width: calc(2 * var(--r));
+  height: calc(0.7 * var(--r));
+}
+.tilt-n {
+  top: calc(50vh - var(--r));
+}
+.tilt-s {
+  top: calc(50vh + 0.3 * var(--r));
+}
+.site {
+  display: block;
+  width: max-content;
+  max-width: 440px;
+  color: #fff;
+  text-decoration: none;
+  font:
+    30px/1.25 system-ui,
+    sans-serif;
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  text-shadow:
+    0 0 6px #000,
+    0 0 6px #000;
+}
+.site i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  vertical-align: 2px;
+}
+.site b {
+  font-weight: 500;
+}
+.west {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+}
+.west i {
+  margin: 0 0 0 8px;
+}
+.site span {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 330px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  color: #e6e4dd;
+  background: rgb(0 0 0 / 0.78);
+  text-shadow: none;
+}
+.site:hover span {
+  display: block;
+}
+.site:hover b {
+  text-decoration: underline;
+}
+main {
+  position: absolute;
+  left: min(100vh, 55vw);
+  width: min(42ch, 40vw);
+}
+section {
+  position: absolute;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+h1,
+h2 {
+  font-weight: 400;
+  color: #fff;
+  line-height: 1.15;
+  margin: 0 0 0.5em;
+}
+h1 {
+  font-size: 2.6rem;
+}
+h2 {
+  font-size: 1.5rem;
+}
+p {
+  margin: 0 0 1em;
+}
+.try {
+  color: #fff;
+}
+main a {
+  color: #cfd7e6;
+}
+small {
+  display: block;
+  color: #8d8b85;
+  font-size: 0.78rem;
+}
+@keyframes spin {
+  from {
+    transform: rotateX(0.12rad) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(0.12rad) rotateY(-360deg);
+  }
+}
+@keyframes face {
+  from {
+    transform: rotateY(0deg) rotateX(-0.12rad);
+  }
+  to {
+    transform: rotateY(360deg) rotateX(-0.12rad);
+  }
+}
+.c3r-group.spin {
+  animation-name: spin;
+}
+.c3r-group.face {
+  animation-name: face;
+}
+.c3r-group.spin,
+.c3r-group.face,
+.site {
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@supports (animation-timeline: scroll()) {
+  .c3r-group.spin,
+  .c3r-group.face,
+  .site {
+    animation-timeline: scroll(root);
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .c3r-group.spin,
+  .c3r-group.face,
+  .site {
+    animation-duration: 90s;
+    animation-iteration-count: infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c3r-group.spin,
+  .c3r-group.face,
+  .site {
+    animation-play-state: paused;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .c3r-group.tilt {
+    transform: rotateX(0deg);
+    transition: transform 0.9s ease-out;
+  }
+  html:has(.tilt-n:hover) .c3r-group.tilt {
+    transform: rotateX(12deg);
+  }
+  html:has(.tilt-s:hover) .c3r-group.tilt {
+    transform: rotateX(-12deg);
+  }
+  /* A label covers the band under it, so a very slow transition holds the pose under the pointer. A target of 0deg would not restart when the label is left, the running transition would go on */
+  html:has(.site:hover) .c3r-group.tilt {
+    transform: rotateX(0.001deg);
+    transition-duration: 100000s;
+  }
+}
+@media (max-aspect-ratio: 1/1) {
+  main {
+    left: 6vw;
+    width: 88vw;
+  }
+  section {
+    justify-content: flex-end;
+    text-shadow:
+      0 0 6px #000,
+      0 0 6px #000;
+  }
+  .site {
+    font-size: 42px;
+  }
+}

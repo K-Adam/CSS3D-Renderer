@@ -1,3 +1,6 @@
 **/dist/
 package-lock.json
-examples/public/
+examples/public/**/*.*
+!examples/public/demos/*/*.mjs
+!examples/public/demos/*/*.css
+!examples/public/demos/find-library/corpus.json

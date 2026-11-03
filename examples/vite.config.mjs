@@ -1,11 +1,13 @@
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import { demos } from "./demos.mjs";
 
 const here = (path) => resolve(import.meta.dirname, path);
 
 export default defineConfig({
   base: "./",
+  plugins: [demos()],
   resolve: {
     alias: {
       c3r: here("../packages/c3r/src/C3R.ts"),
@@ -14,9 +16,14 @@ export default defineConfig({
   },
   build: {
     rolldownOptions: {
-      input: readdirSync(import.meta.dirname)
-        .filter((file) => file.endsWith(".html"))
-        .map(here),
+      input: [
+        "index.html",
+        ...["standalone", "threejs"].flatMap((dir) =>
+          readdirSync(here(dir))
+            .filter((file) => file.endsWith(".html"))
+            .map((file) => `${dir}/${file}`),
+        ),
+      ].map(here),
     },
   },
 });

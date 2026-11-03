@@ -1,10 +1,17 @@
-import { type CssValue, cssVar } from "../css/CssValue.js";
+import { type CssValue, cssVar, typeOf } from "../css/CssValue.js";
+import { touchFollower } from "../css/Timeline.js";
 import {
   composeTransforms,
   ownTransform,
   type Transform,
+  vector,
 } from "../css/Transform.js";
-import { setTweens, type Tween } from "../css/Tween.js";
+import {
+  setTweenClasses,
+  setTweens,
+  touchTweens,
+  type Tween,
+} from "../css/Tween.js";
 import {
   MeshBuilder,
   type MeshFace,
@@ -15,21 +22,36 @@ import type { Vertex } from "../math/Vertex.js";
 import { moveTargets, refreshInput } from "./Accumulator.js";
 import { Object3D, parents } from "./Object3D.js";
 import { Polygon, type PolygonOptions } from "./Polygon.js";
-
-// Keeps the tweens, and their rules, alive while their element is
-const elementTweens = new WeakMap<Element, readonly Tween[]>();
+import type { ShadowCaster } from "./Shadows.js";
 
 export interface IndexedMesh {
   positions: ArrayLike<number>;
   uvs: ArrayLike<number>;
   cells: ArrayLike<number>;
+  normals?: ArrayLike<number>;
 }
+
+export interface MeshOptions extends PolygonOptions {
+  // A point light has no seams between triangles kept apart, at twice the polygons
+  splitCurved?: boolean;
+}
+
+// An element put in the document starts its animations over, so the next
+// bake brings their timelines in step
+export const touchSubtree = (obj: Object3D): void => {
+  touchFollower(obj);
+  if (!(obj instanceof Group)) return;
+  touchTweens(obj.tween);
+  obj.children.forEach(touchSubtree);
+};
 
 export class Group extends Object3D {
   readonly #children: Object3D[] = [];
   #transform: Transform | readonly Transform[] = [];
   #tween: Tween | readonly Tween[] | null = null;
   #clock = false;
+  #lightGain: number | CssValue = 1;
+  #shadowCaster: ShadowCaster | null = null;
 
   constructor() {
     super();
@@ -52,17 +74,14 @@ export class Group extends Object3D {
   }
 
   set tween(tween: Tween | readonly Tween[] | null) {
-    const { classList, style } = this.domElement;
+    const { style } = this.domElement;
     const tweens = setTweens(
       style,
       tween,
       false,
       this.#clock ? "c3r-time 3600s linear infinite" : "",
     );
-    for (const old of elementTweens.get(this.domElement) ?? [])
-      classList.remove(old.className);
-    for (const { className } of tweens) classList.add(className);
-    elementTweens.set(this.domElement, tweens);
+    setTweenClasses(this.domElement, tweens);
     this.#tween = Array.isArray(tween) ? tweens : tween;
     refreshInput(this);
   }
@@ -81,6 +100,47 @@ export class Group extends Object3D {
     this.tween = this.#tween;
   }
 
+  get lightGain(): number | CssValue {
+    return this.#lightGain;
+  }
+
+  set lightGain(gain: number | CssValue) {
+    const valid =
+      typeof gain === "number"
+        ? gain >= 0 && Number.isFinite(gain)
+        : typeOf(gain) === "<number>";
+    if (!valid) throw new RangeError(`Invalid light gain ${gain}`);
+    this.#lightGain = gain;
+    refreshInput(this);
+  }
+
+  // Takes effect at the next shadow bake
+  get shadowCaster(): ShadowCaster | null {
+    return this.#shadowCaster;
+  }
+
+  set shadowCaster(caster: ShadowCaster | null) {
+    if (!caster) {
+      this.#shadowCaster = null;
+      return;
+    }
+    const sizes =
+      caster.shape === "box"
+        ? vector(caster.size)
+        : caster.shape === "cylinder"
+          ? [caster.radius, caster.height]
+          : caster.shape === "sphere"
+            ? [caster.radius]
+            : [NaN];
+    if (!sizes.every((n) => n > 0 && Number.isFinite(n)))
+      throw new RangeError(`Invalid shadow caster ${JSON.stringify(caster)}`);
+    this.#shadowCaster = Object.freeze(
+      caster.shape === "box"
+        ? { shape: "box", size: Object.freeze(sizes) }
+        : { ...caster },
+    );
+  }
+
   get children(): readonly Object3D[] {
     return this.#children;
   }
@@ -93,6 +153,7 @@ export class Group extends Object3D {
     moveTargets(obj, 1);
     this.#children.push(obj);
     this.domElement.appendChild(obj.domElement);
+    touchSubtree(obj);
   }
 
   removeChild(obj: Object3D): void {
@@ -116,23 +177,36 @@ export class Group extends Object3D {
   }
 
   addFaces(faces: readonly MeshFace[], options?: PolygonOptions): Polygon[] {
-    return faces.map(({ vertices, edges }) =>
-      this.addPolygon(vertices, { ...options, edges }),
+    return faces.map(({ vertices, edges, planar }) =>
+      this.addPolygon(vertices, {
+        ...options,
+        edges,
+        planar: (planar ?? true) && options?.planar !== false,
+      }),
     );
   }
 
   // Merges coplanar neighbours, e.g. two triangles into a quad
-  addTriangles(triangles: TriangleList, options?: PolygonOptions): Polygon[] {
-    return this.addFaces(new MeshBuilder([triangles]).faces(0), options);
+  addTriangles(
+    triangles: TriangleList,
+    { splitCurved, ...options }: MeshOptions = {},
+  ): Polygon[] {
+    return this.addFaces(
+      new MeshBuilder([triangles], { splitCurved }).faces(0),
+      options,
+    );
   }
 
   addMesh(
-    { positions, uvs, cells }: IndexedMesh,
-    options?: PolygonOptions,
+    { positions, uvs, cells, normals }: IndexedMesh,
+    options?: MeshOptions,
   ): Polygon[] {
     const vertex = (i: number): Vertex => ({
       position: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]],
       uv: [uvs[i * 2], uvs[i * 2 + 1]],
+      ...(normals && {
+        normal: [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]],
+      }),
     });
     const triangles: Vertex[][] = [];
     for (let i = 0; i + 2 < cells.length; i += 3) {

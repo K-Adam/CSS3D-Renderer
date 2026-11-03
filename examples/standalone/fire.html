@@ -48,44 +48,38 @@
       const container = new Container();
       document.body.appendChild(container.domElement);
 
-      const textured = (url, filter) =>
+      const textured = (url, filter = null) =>
         Object.assign(new Material(), { background: url, filter });
 
       const ground = new Group();
       container.root.addChild(ground);
       ground.transform = Transform.rotateX(-Math.PI / 2);
       ground.addMesh(quad({ scale: 600 }));
-      ground.material = textured("textures/dirt.jpg", [
-        Filter.tint([1, 0.75, 0.55]),
-        Filter.brightness(0.45),
-      ]);
-
-      const glow = new Group();
-      container.root.addChild(glow);
-      glow.transform = [
-        Transform.translate([0, 1, 0]),
-        Transform.rotateX(-Math.PI / 2),
-      ];
-      glow.addMesh(quad({ scale: 340 }));
+      ground.material = textured(
+        "../textures/dirt.jpg",
+        Filter.tint([1, 0.66, 0.42]),
+      );
+      ground.material.shading = "smooth";
+      // Blurred far, the flames are about as wide as the logs
+      ground.material.shadows = { opacity: 0.6, blur: 20 };
+      container.lights = {
+        ambient: { intensity: 0.17 },
+        point: { position: [0, 60, 0], intensity: 6000 },
+      };
       // Whole cycles per hour, so the clock's wrap has no seam
       const wave = (hz, amplitude, phase) =>
         mul(fn("sin", add(mul(Group.time, hz * turn), phase)), amplitude);
-      glow.clock = true;
-      glow.material = textured(
-        "textures/firelight.svg",
-        Filter.opacity(
-          add(
-            add(add(0.45, wave(1.75, 0.05, 0)), wave(3.25, 0.03, 1)),
-            wave(5.75, 0.02, 2),
-          ),
-        ),
+      ground.clock = true;
+      ground.lightGain = add(
+        add(add(1, wave(1.75, 0.11, 0)), wave(3.25, 0.066, 1)),
+        wave(5.75, 0.044, 2),
       );
 
-      const bark = textured("textures/bark.jpg", [
+      const bark = textured("../textures/bark.jpg", [
         Filter.tint([1, 0.72, 0.5]),
         Filter.brightness(0.6),
       ]);
-      const endGrain = textured("textures/log_end.png", [
+      const endGrain = textured("../textures/log_end.png", [
         Filter.tint([1, 0.7, 0.5]),
         Filter.brightness(0.45),
       ]);
@@ -120,6 +114,7 @@
           }),
         );
         body.material = bark;
+        body.shadowCaster = { shape: "cylinder", radius, height: 100 };
         // Own caps would share the bark material
         for (const facing of [1, -1]) {
           const end = new Group();
@@ -159,7 +154,7 @@
         container.root.addChild(fire);
         fire.transform = Transform.translate(offset);
         fire.addMesh(fireQuad(width, mirrored));
-        fire.material = textured(`textures/bonfire_${sheet}.png`);
+        fire.material = textured(`../textures/bonfire_${sheet}.png`);
         fire.material.flipbook = { columns: 8, rows: 8, fps };
       }
 
@@ -206,7 +201,7 @@
         },
       });
       container.root.addChild(smoke);
-      smoke.material = textured("textures/smoke_puff.png");
+      smoke.material = textured("../textures/smoke_puff.png");
 
       const embers = new ParticleSystem({
         count: 14,
@@ -250,7 +245,7 @@
         },
       });
       container.root.addChild(embers);
-      embers.material = textured("textures/lensflare/lensflare0_alpha.png");
+      embers.material = textured("../textures/lensflare/lensflare0_alpha.png");
 
       container.camera.transform = Transform.translate([0, 80, 0]);
       container.camera.tween = new Tween({
@@ -264,7 +259,7 @@
         loop: true,
       });
 
-      container.bake();
+      container.bake({ shadows: true });
     </script>
   </body>
 </html>

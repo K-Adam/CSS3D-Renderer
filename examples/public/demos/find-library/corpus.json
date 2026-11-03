@@ -1,0 +1,1121 @@
+{
+  "books": [
+    {
+      "title": "Dracula",
+      "vol": "IV",
+      "pg": 345,
+      "paras": [
+        "“My opinion is this: that ’ere wolf is a-’idin’ of, somewheres. The gard’ner wot didn’t remember said he was a-gallopin’ northward faster than a horse could go; but I don’t believe him, for, yer see, sir, wolves don’t gallop no more nor dogs does, they not bein’ built that way. Wolves is fine things in a storybook, and I dessay when they gets in packs and does be chivyin’ somethin’ that’s more afeared than they is they can make a devil of a noise and chop it up, whatever it is. But, Lor’ bless you, in real life a wolf is only a low creature, not half so clever or bold as a good dog; and not half a quarter so much fight in ’im. This one ain’t been used to fightin’ or even to providin’ for hisself, and more like he’s somewhere round the Park a-’idin’ an’ a-shiverin’ of, and, if he thinks at all, wonderin’ where he is to get his breakfast from; or maybe he’s got down some area and is in a coal-cellar. My eye, won’t some cook get a rum start when she sees his green eyes a-shining at her..."
+      ],
+      "uv": [2, 2, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "VI",
+      "pg": 84,
+      "paras": [
+        "“‘Do not despair. To be friendless is indeed to be unfortunate, but the hearts of men, when unprejudiced by any obvious self-interest, are full of brotherly love and charity. Rely, therefore, on your hopes; and if these friends are good and amiable, do not despair.’",
+        "“‘They are kind—they are the most excellent creatures in the world; but, unfortunately, they are prejudiced against me. I have good dispositions; my life has been hitherto harmless and in some degree beneficial; but a fatal prejudice clouds their eyes, and where they ought to see a feeling and kind friend, they behold only a detestable monster.’",
+        "“‘I am about to undertake that task; and it is on that account that I feel so many overwhelming terrors. I tenderly love these friends; I have, unknown to them, been for many months in the habits of daily kindness towards them; but they believe that I wish to injure them, and it is that prejudice which I wish to overcome.’"
+      ],
+      "uv": [34, 2, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "X",
+      "pg": 174,
+      "paras": [
+        "In less than a quarter of an hour, Dorian Gray was galloping down the long avenue as hard as he could go. The trees seemed to sweep past him in spectral procession, and wild shadows to fling themselves across his path. Once the mare swerved at a white gate-post and nearly threw him. He lashed her across the neck with his crop. She cleft the dusky air like an arrow. The stones flew from her hoofs.",
+        "At last he reached the Home Farm. Two men were loitering in the yard. He leaped from the saddle and threw the reins to one of them. In the farthest stable a light was glimmering. Something seemed to tell him that the body was there, and he hurried to the door and put his hand upon the latch.",
+        "There he paused for a moment, feeling that he was on the brink of a discovery that would either make or mar his life. Then he thrust the door open and entered."
+      ],
+      "uv": [66, 2, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "V",
+      "pg": 36,
+      "paras": [
+        "They were described as “vast spiderlike machines, nearly a hundred feet high, capable of the speed of an express train, and able to shoot out a beam of intense heat.” Masked batteries, chiefly of field guns, had been planted in the country about Horsell Common, and especially between the Woking district and London. Five of the machines had been seen moving towards the Thames, and one, by a happy chance, had been destroyed. In the other cases the shells had missed, and the batteries had been at once annihilated by the Heat-Rays. Heavy losses of soldiers were mentioned, but the tone of the dispatch was optimistic."
+      ],
+      "uv": [98, 2, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "IX",
+      "pg": 35,
+      "paras": [
+        "“I awoke a little before sunsetting. I now felt safe against being caught napping by the Morlocks, and, stretching myself, I came on down the hill towards the White Sphinx. I had my crowbar in one hand, and the other hand played with the matches in my pocket.",
+        "“And now came a most unexpected thing. As I approached the pedestal of the sphinx I found the bronze valves were open. They had slid down into grooves.",
+        "“Within was a small apartment, and on a raised place in the corner of this was the Time Machine. I had the small levers in my pocket. So here, after all my elaborate preparations for the siege of the White Sphinx, was a meek surrender. I threw my iron bar away, almost sorry not to use it."
+      ],
+      "uv": [130, 2, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "II",
+      "pg": 36,
+      "paras": [
+        "The news of the massacre probably reached Chobham, Woking, and Ottershaw about the same time. In Woking the shops had closed when the tragedy happened, and a number of people, shop people and so forth, attracted by the stories they had heard, were walking over the Horsell Bridge and along the road between the hedges that runs out at last upon the common. You may imagine the young people brushed up after the labours of the day, and making this novelty, as they would make any novelty, the excuse for walking together and enjoying a trivial flirtation. You may figure to yourself the hum of voices along the road in the gloaming. . . .",
+        "As yet, of course, few people in Woking even knew that the cylinder had opened, though poor Henderson had sent a messenger on a bicycle to the post office with a special wire to an evening paper."
+      ],
+      "uv": [162, 2, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "II",
+      "pg": 84,
+      "paras": [
+        "So saying, he stepped aside and wrote down a list of several books treating of natural philosophy which he desired me to procure, and dismissed me after mentioning that in the beginning of the following week he intended to commence a course of lectures upon natural philosophy in its general relations, and that M. Waldman, a fellow professor, would lecture upon chemistry the alternate days that he omitted."
+      ],
+      "uv": [194, 2, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "IV",
+      "pg": 174,
+      "paras": [
+        "“If you want to make him marry this girl, tell him that, Basil. He is sure to do it, then. Whenever a man does a thoroughly stupid thing, it is always from the noblest motives.”",
+        "“I hope the girl is good, Harry. I don’t want to see Dorian tied to some vile creature, who might degrade his nature and ruin his intellect.”",
+        "“Oh, she is better than good—she is beautiful,” murmured Lord Henry, sipping a glass of vermouth and orange-bitters. “Dorian says she is beautiful, and he is not often wrong about things of that kind. Your portrait of him has quickened his appreciation of the personal appearance of other people. It has had that excellent effect, amongst others. We are to see her to-night, if that boy doesn’t forget his appointment.”",
+        "“Quite serious, Basil. I should be miserable if I thought I should ever be more serious than I am at the present moment.”"
+      ],
+      "uv": [226, 2, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "III",
+      "pg": 36,
+      "paras": [
+        "Even as I beheld this a lurid green glare lit the road about me and showed the distant woods towards Addlestone. I felt a tug at the reins. I saw that the driving clouds had been pierced as it were by a thread of green fire, suddenly lighting their confusion and falling into the field to my left. It was the third falling star!",
+        "Close on its apparition, and blindingly violet by contrast, danced out the first lightning of the gathering storm, and the thunder burst like a rocket overhead. The horse took the bit between his teeth and bolted."
+      ],
+      "uv": [258, 2, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "II",
+      "pg": 2701,
+      "paras": [
+        "“Kill-e,” cried Queequeg, twisting his tattooed face into an unearthly expression of disdain, “ah! him bevy small-e fish-e; Queequeg no kill-e so small-e fish-e; Queequeg kill-e big whale!”",
+        "“Look you,” roared the Captain, “I’ll kill-e _you_, you cannibal, if you try any more of your tricks aboard here; so mind your eye.”"
+      ],
+      "uv": [290, 2, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "III",
+      "pg": 84,
+      "paras": [
+        "“Last Thursday (May 7th), I, my niece, and your two brothers, went to walk in Plainpalais. The evening was warm and serene, and we prolonged our walk farther than usual. It was already dusk before we thought of returning; and then we discovered that William and Ernest, who had gone on before, were not to be found. We accordingly rested on a seat until they should return. Presently Ernest came, and enquired if we had seen his brother; he said, that he had been playing with him, that William had run away to hide himself, and that he vainly sought for him, and afterwards waited for a long time, but that he did not return."
+      ],
+      "uv": [322, 2, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "I",
+      "pg": 2701,
+      "paras": [
+        "“The Cachalot” (Sperm Whale) “is not only better armed than the True Whale” (Greenland or Right Whale) “in possessing a formidable weapon at either extremity of its body, but also more frequently displays a disposition to employ these weapons offensively and in manner at once so artful, bold, and mischievous, as to lead to its being regarded as the most dangerous to attack of all the known species of the whale tribe.” —_Frederick Debell Bennett’s Whaling Voyage Round the Globe_, 1840.",
+        "“The Whale-ship Globe, on board of which vessel occurred the horrid transactions we are about to relate, belonged to the island of Nantucket.” —“_Narrative of the Globe Mutiny_,” _by Lay and Hussey survivors. A.D._ 1828."
+      ],
+      "uv": [354, 2, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "II",
+      "pg": 120,
+      "paras": [
+        "As soon as I was mounted, holding on to Dogger’s belt, the supervisor gave the word, and the party struck out at a bouncing trot on the road to Dr. Livesey’s house.",
+        "Mr. Dance told me to jump down and knock, and Dogger gave me a stirrup to descend by. The door was opened almost at once by the maid.",
+        "No, she said, he had come home in the afternoon but had gone up to the hall to dine and pass the evening with the squire.",
+        "This time, as the distance was short, I did not mount, but ran with Dogger’s stirrup-leather to the lodge gates and up the long, leafless, moonlit avenue to where the white line of the hall buildings looked on either hand on great old gardens. Here Mr. Dance dismounted, and taking me along with him, was admitted at a word into the house.",
+        "The servant led us down a matted passage and showed us at the end into a great library, all lined with bookcases and busts upon the top of them, where the squire and Dr. Livesey sat, pipe in hand, on either side of a bright fire."
+      ],
+      "uv": [386, 2, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "IV",
+      "pg": 35,
+      "paras": [
+        "“Fruit, by the bye, was all their diet. These people of the remote future were strict vegetarians, and while I was with them, in spite of some carnal cravings, I had to be frugivorous also. Indeed, I found afterwards that horses, cattle, sheep, dogs, had followed the Ichthyosaurus into extinction. But the fruits were very delightful; one, in particular, that seemed to be in season all the time I was there—a floury thing in a three-sided husk—was especially good, and I made it my staple. At first I was puzzled by all these strange fruits, and by the strange flowers I saw, but later I began to perceive their import."
+      ],
+      "uv": [418, 2, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "V",
+      "pg": 84,
+      "paras": [
+        "“As the sun became warmer and the light of day longer, the snow vanished, and I beheld the bare trees and the black earth. From this time Felix was more employed, and the heart-moving indications of impending famine disappeared. Their food, as I afterwards found, was coarse, but it was wholesome; and they procured a sufficiency of it. Several new kinds of plants sprang up in the garden, which they dressed; and these signs of comfort increased daily as the season advanced.",
+        "“The old man, leaning on his son, walked each day at noon, when it did not rain, as I found it was called when the heavens poured forth its waters. This frequently took place, but a high wind quickly dried the earth, and the season became far more pleasant than it had been."
+      ],
+      "uv": [450, 2, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "X",
+      "pg": 1661,
+      "paras": [
+        "“‘I am afraid that it is quite essential,’ said he. ‘It is a little fancy of my wife’s, and ladies’ fancies, you know, madam, ladies’ fancies must be consulted. And so you won’t cut your hair?’",
+        "“‘Ah, very well; then that quite settles the matter. It is a pity, because in other respects you would really have done very nicely. In that case, Miss Stoper, I had best inspect a few more of your young ladies.’",
+        "“The manageress had sat all this while busy with her papers without a word to either of us, but she glanced at me now with so much annoyance upon her face that I could not help suspecting that she had lost a handsome commission through my refusal.",
+        "“‘Well, really, it seems rather useless, since you refuse the most excellent offers in this fashion,’ said she sharply. ‘You can hardly expect us to exert ourselves to find another such opening for you. Good-day to you, Miss Hunter.’ She struck a gong upon the table, and I was shown out by the page."
+      ],
+      "uv": [482, 2, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "VII",
+      "pg": 84,
+      "paras": [
+        "“The expression of your sentiments of this subject, my dear Victor, gives me more pleasure than I have for some time experienced. If you feel thus, we shall assuredly be happy, however present events may cast a gloom over us. But it is this gloom which appears to have taken so strong a hold of your mind that I wish to dissipate. Tell me, therefore, whether you object to an immediate solemnisation of the marriage. We have been unfortunate, and recent events have drawn us from that everyday tranquillity befitting my years and infirmities. You are younger; yet I do not suppose, possessed as you are of a competent fortune, that an early marriage would at all interfere with any future plans of honour and utility that you may have formed. Do not suppose, however, that I wish to dictate happiness to you or that a delay on your part would cause me any serious uneasiness. Interpret my words with candour and answer me, I conjure you, with confidence and sincerity.”"
+      ],
+      "uv": [514, 2, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "V",
+      "pg": 1661,
+      "paras": [
+        "“He is a cripple in the sense that he walks with a limp; but in other respects he appears to be a powerful and well-nurtured man. Surely your medical experience would tell you, Watson, that weakness in one limb is often compensated for by exceptional strength in the others.”"
+      ],
+      "uv": [546, 2, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "VII",
+      "pg": 35,
+      "paras": [
+        "“The enemy I dreaded may surprise you. It was the darkness of the new moon. Weena had put this into my head by some at first incomprehensible remarks about the Dark Nights. It was not now such a very difficult problem to guess what the coming Dark Nights might mean. The moon was on the wane: each night there was a longer interval of darkness. And I now understood to some slight degree at least the reason of the fear of the little Upperworld people for the dark. I wondered vaguely what foul villainy it might be that the Morlocks did under the new moon. I felt pretty sure now that my second hypothesis was all wrong. The Upperworld people might once have been the favoured aristocracy, and the Morlocks their mechanical servants: but that had long since passed away. The two species that had resulted from the evolution of man were sliding down towards, or had already arrived at, an altogether new relationship. The Eloi, like the Carlovignan kings, had decayed to a mere beautiful futility...."
+      ],
+      "uv": [578, 2, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "X",
+      "pg": 35,
+      "paras": [
+        "“I know,” he said, after a pause, “that all this will be absolutely incredible to you, but to me the one incredible thing is that I am here tonight in this old familiar room looking into your friendly faces and telling you these strange adventures.” He looked at the Medical Man. “No. I cannot expect you to believe it. Take it as a lie—or a prophecy. Say I dreamed it in the workshop. Consider I have been speculating upon the destinies of our race, until I have hatched this fiction. Treat my assertion of its truth as a mere stroke of art to enhance its interest. And taking it as a story, what do you think of it?”"
+      ],
+      "uv": [610, 2, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "VIII",
+      "pg": 1661,
+      "paras": [
+        "But the inspector was mistaken, for those criminals were not destined to fall into the hands of justice. As we rolled into Eyford Station we saw a gigantic column of smoke which streamed up from behind a small clump of trees in the neighbourhood and hung like an immense ostrich feather over the landscape.",
+        "The station-master laughed heartily. “No, sir, Dr. Becher is an Englishman, and there isn’t a man in the parish who has a better-lined waistcoat. But he has a gentleman staying with him, a patient, as I understand, who is a foreigner, and he looks as if a little good Berkshire beef would do him no harm.”",
+        "The station-master had not finished his speech before we were all hastening in the direction of the fire. The road topped a low hill, and there was a great widespread whitewashed building in front of us, spouting fire at every chink and window, while in the garden in front three fire-engines were vainly striving to keep the flames under."
+      ],
+      "uv": [642, 2, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "III",
+      "pg": 2701,
+      "paras": [
+        "It is well known that at the coronation of kings and queens, even modern ones, a certain curious process of seasoning them for their functions is gone through. There is a saltcellar of state, so called, and there may be a castor of state. How they use the salt, precisely—who knows? Certain I am, however, that a king’s head is solemnly oiled at his coronation, even as a head of salad. Can it be, though, that they anoint it with a view of making its interior run well, as they anoint machinery? Much might be ruminated here, concerning the essential dignity of this regal process, because in common life we esteem but meanly and contemptibly a fellow who anoints his hair, and palpably smells of that anointing. In truth, a mature man who uses hair-oil, unless medicinally, that man has probably got a quoggy spot in him somewhere. As a general rule, he can’t amount to much in his totality."
+      ],
+      "uv": [674, 2, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "II",
+      "pg": 11,
+      "paras": [
+        "The Mouse did not notice this question, but hurriedly went on, “‘—found it advisable to go with Edgar Atheling to meet William and offer him the crown. William’s conduct at first was moderate. But the insolence of his Normans—’ How are you getting on now, my dear?” it continued, turning to Alice as it spoke.",
+        "“In that case,” said the Dodo solemnly, rising to its feet, “I move that the meeting adjourn, for the immediate adoption of more energetic remedies—”",
+        "“Speak English!” said the Eaglet. “I don’t know the meaning of half those long words, and, what’s more, I don’t believe you do either!” And the Eaglet bent down its head to hide a smile: some of the other birds tittered audibly.",
+        "“What I was going to say,” said the Dodo in an offended tone, “was, that the best thing to get us dry would be a Caucus-race.”"
+      ],
+      "uv": [706, 2, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Dracula",
+      "vol": "IX",
+      "pg": 345,
+      "paras": [
+        "Dr. Van Helsing described what steps were taken during the day to discover on what boat and whither bound Count Dracula made his escape:--"
+      ],
+      "uv": [738, 2, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "V",
+      "pg": 1342,
+      "paras": [
+        "At length there was nothing more to be said; the ladies drove on, and the others returned into the house. Mr. Collins no sooner saw the two girls than he began to congratulate them on their good fortune, which Charlotte explained by letting them know that the whole party was asked to dine at Rosings the next day.",
+        "Mr. Collins’s triumph, in consequence of this invitation, was complete. The power of displaying the grandeur of his patroness to his wondering visitors, and of letting them see her civility towards himself and his wife, was exactly what he had wished for; and that an opportunity of doing it should be given so soon was such an instance of Lady Catherine’s condescension as he knew not how to admire enough."
+      ],
+      "uv": [770, 2, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "IX",
+      "pg": 1661,
+      "paras": [
+        "“So much for the servants. My family itself is so small that it will not take me long to describe it. I am a widower and have an only son, Arthur. He has been a disappointment to me, Mr. Holmes—a grievous disappointment. I have no doubt that I am myself to blame. People tell me that I have spoiled him. Very likely I have. When my dear wife died I felt that he was all I had to love. I could not bear to see the smile fade even for a moment from his face. I have never denied him a wish. Perhaps it would have been better for both of us had I been sterner, but I meant it for the best."
+      ],
+      "uv": [802, 2, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "I",
+      "pg": 1342,
+      "paras": [
+        "In a few days Mr. Bingley returned Mr. Bennet’s visit, and sat about ten minutes with him in his library. He had entertained hopes of being admitted to a sight of the young ladies, of whose beauty he had heard much; but he saw only the father. The ladies were somewhat more fortunate, for they had the advantage of ascertaining, from an upper window, that he wore a blue coat and rode a black horse."
+      ],
+      "uv": [834, 2, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Dracula",
+      "vol": "III",
+      "pg": 345,
+      "paras": [
+        "I am weary to-night and low in spirits. I cannot but think of Lucy, and how different things might have been. If I don’t sleep at once, chloral, the modern Morpheus--C_{2}HCl_{3}O. H_{2}O! I must be careful not to let it grow into a habit. No, I shall take none to-night! I have thought of Lucy, and I shall not dishonour her by mixing the two. If need be, to-night shall be sleepless...."
+      ],
+      "uv": [866, 2, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "VII",
+      "pg": 1342,
+      "paras": [
+        "Mrs. Reynolds anticipated Miss Darcy’s delight, when she should enter the room. “And this is always the way with him,” she added. “Whatever can give his sister any pleasure, is sure to be done in a moment. There is nothing he would not do for her.”",
+        "The picture gallery, and two or three of the principal bed-rooms, were all that remained to be shown. In the former were many good paintings: but Elizabeth knew nothing of the art; and from such as had been already visible below, she had willingly turned to look at some drawings of Miss Darcy’s, in crayons, whose subjects were usually more interesting, and also more intelligible."
+      ],
+      "uv": [898, 2, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "V",
+      "pg": 174,
+      "paras": [
+        "Should he move it aside, after all? Why not let it stay there? What was the use of knowing? If the thing was true, it was terrible. If it was not true, why trouble about it? But what if, by some fate or deadlier chance, eyes other than his spied behind and saw the horrible change? What should he do if Basil Hallward came and asked to look at his own picture? Basil would be sure to do that. No; the thing had to be examined, and at once. Anything would be better than this dreadful state of doubt.",
+        "He got up and locked both doors. At least he would be alone when he looked upon the mask of his shame. Then he drew the screen aside and saw himself face to face. It was perfectly true. The portrait had altered."
+      ],
+      "uv": [930, 2, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "VI",
+      "pg": 120,
+      "paras": [
+        "“That’s enough, Cap’n,” shouted Long John cheerily. “A word from you’s enough. I know a gentleman, and you may lay to that.”",
+        "We could see the man who carried the flag of truce attempting to hold Silver back. Nor was that wonderful, seeing how cavalier had been the captain’s answer. But Silver laughed at him aloud and slapped him on the back as if the idea of alarm had been absurd. Then he advanced to the stockade, threw over his crutch, got a leg up, and with great vigour and skill succeeded in surmounting the fence and dropping safely to the other side.",
+        "I will confess that I was far too much taken up with what was going on to be of the slightest use as sentry; indeed, I had already deserted my eastern loophole and crept up behind the captain, who had now seated himself on the threshold, with his elbows on his knees, his head in his hands, and his eyes fixed on the water as it bubbled out of the old iron kettle in the sand. He was whistling “Come, Lasses and Lads.”"
+      ],
+      "uv": [962, 2, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "X",
+      "pg": 120,
+      "paras": [
+        "“Sperrit? Well, maybe,” he said. “But there’s one thing not clear to me. There was an echo. Now, no man ever seen a sperrit with a shadow; well then, what’s he doing with an echo to him, I should like to know? That ain’t in natur’, surely?”",
+        "This argument seemed weak enough to me. But you can never tell what will affect the superstitious, and to my wonder, George Merry was greatly relieved.",
+        "“Well, that’s so,” he said. “You’ve a head upon your shoulders, John, and no mistake. ’Bout ship, mates! This here crew is on a wrong tack, I do believe. And come to think on it, it was like Flint’s voice, I grant you, but not just so clear-away like it, after all. It was liker somebody else’s voice now--it was liker--”"
+      ],
+      "uv": [994, 2, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "III",
+      "pg": 1661,
+      "paras": [
+        "The man who entered was a sturdy, middle-sized fellow, some thirty years of age, clean-shaven, and sallow-skinned, with a bland, insinuating manner, and a pair of wonderfully sharp and penetrating grey eyes. He shot a questioning glance at each of us, placed his shiny top-hat upon the sideboard, and with a slight bow sidled down into the nearest chair.",
+        "“Good-evening, Mr. James Windibank,” said Holmes. “I think that this typewritten letter is from you, in which you made an appointment with me for six o’clock?”"
+      ],
+      "uv": [1026, 2, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "X",
+      "pg": 11,
+      "paras": [
+        "Alice looked at the jury-box, and saw that, in her haste, she had put the Lizard in head downwards, and the poor little thing was waving its tail about in a melancholy way, being quite unable to move. She soon got it out again, and put it right; “not that it signifies much,” she said to herself; “I should think it would be _quite_ as much use in the trial one way up as the other.”",
+        "As soon as the jury had a little recovered from the shock of being upset, and their slates and pencils had been found and handed back to them, they set to work very diligently to write out a history of the accident, all except the Lizard, who seemed too much overcome to do anything but sit with its mouth open, gazing up into the roof of the court."
+      ],
+      "uv": [1058, 2, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "IX",
+      "pg": 36,
+      "paras": [
+        "My first act on coming to this water was, of course, to slake my thirst. I drank a great deal of it and, moved by an impulse, gnawed some fronds of red weed; but they were watery, and had a sickly, metallic taste. I found the water was sufficiently shallow for me to wade securely, although the red weed impeded my feet a little; but the flood evidently got deeper towards the river, and I turned back to Mortlake. I managed to make out the road by means of occasional ruins of its villas and fences and lamps, and so presently I got out of this spate and made my way to the hill going up towards Roehampton and came out on Putney Common."
+      ],
+      "uv": [1090, 2, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "IX",
+      "pg": 174,
+      "paras": [
+        "Two red sparks flashed for a moment in the woman’s sodden eyes, then flickered out and left them dull and glazed. She tossed her head and raked the coins off the counter with greedy fingers. Her companion watched her enviously.",
+        "Dorian walked to the door with a look of pain in his face. As he drew the curtain aside, a hideous laugh broke from the painted lips of the woman who had taken his money. “There goes the devil’s bargain!” she hiccoughed, in a hoarse voice.",
+        "The drowsy sailor leaped to his feet as she spoke, and looked wildly round. The sound of the shutting of the hall door fell on his ear. He rushed out as if in pursuit."
+      ],
+      "uv": [1122, 2, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "VII",
+      "pg": 120,
+      "paras": [
+        "The breeze had but little action on the coracle, and I was almost instantly swept against the bows of the HISPANIOLA. At the same time, the schooner began to turn upon her heel, spinning slowly, end for end, across the current.",
+        "I wrought like a fiend, for I expected every moment to be swamped; and since I found I could not push the coracle directly off, I now shoved straight astern. At length I was clear of my dangerous neighbour, and just as I gave the last impulsion, my hands came across a light cord that was trailing overboard across the stern bulwarks. Instantly I grasped it.",
+        "Why I should have done so I can hardly say. It was at first mere instinct, but once I had it in my hands and found it fast, curiosity began to get the upper hand, and I determined I should have one look through the cabin window."
+      ],
+      "uv": [2, 206, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "II",
+      "pg": 174,
+      "paras": [
+        "“And you know you have been a little silly, Mr. Gray, and that you don’t really object to being reminded that you are extremely young.”",
+        "There came a knock at the door, and the butler entered with a laden tea-tray and set it down upon a small Japanese table. There was a rattle of cups and saucers and the hissing of a fluted Georgian urn. Two globe-shaped china dishes were brought in by a page. Dorian Gray went over and poured out the tea. The two men sauntered languidly to the table and examined what was under the covers.",
+        "“Let us go to the theatre to-night,” said Lord Henry. “There is sure to be something on, somewhere. I have promised to dine at White’s, but it is only with an old friend, so I can send him a wire to say that I am ill, or that I am prevented from coming in consequence of a subsequent engagement. I think that would be a rather nice excuse: it would have all the surprise of candour.”"
+      ],
+      "uv": [34, 206, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "VIII",
+      "pg": 11,
+      "paras": [
+        "“I’ll tell it her,” said the Mock Turtle in a deep, hollow tone: “sit down, both of you, and don’t speak a word till I’ve finished.”",
+        "So they sat down, and nobody spoke for some minutes. Alice thought to herself, “I don’t see how he can _ever_ finish, if he doesn’t begin.” But she waited patiently.",
+        "These words were followed by a very long silence, broken only by an occasional exclamation of “Hjckrrh!” from the Gryphon, and the constant heavy sobbing of the Mock Turtle. Alice was very nearly getting up and saying, “Thank you, sir, for your interesting story,” but she could not help thinking there _must_ be more to come, so she sat still and said nothing.",
+        "“When we were little,” the Mock Turtle went on at last, more calmly, though still sobbing a little now and then, “we went to school in the sea. The master was an old Turtle—we used to call him Tortoise—”"
+      ],
+      "uv": [66, 206, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "X",
+      "pg": 84,
+      "paras": [
+        "In this manner many appalling hours passed; several of my dogs died, and I myself was about to sink under the accumulation of distress when I saw your vessel riding at anchor and holding forth to me hopes of succour and life. I had no conception that vessels ever came so far north and was astounded at the sight. I quickly destroyed part of my sledge to construct oars, and by these means was enabled, with infinite fatigue, to move my ice raft in the direction of your ship. I had determined, if you were going southwards, still to trust myself to the mercy of the seas rather than abandon my purpose. I hoped to induce you to grant me a boat with which I could pursue my enemy. But your direction was northwards. You took me on board when my vigour was exhausted, and I should soon have sunk under my multiplied hardships into a death which I still dread, for my task is unfulfilled."
+      ],
+      "uv": [98, 206, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "I",
+      "pg": 84,
+      "paras": [
+        "But success _shall_ crown my endeavours. Wherefore not? Thus far I have gone, tracing a secure way over the pathless seas, the very stars themselves being witnesses and testimonies of my triumph. Why not still proceed over the untamed yet obedient element? What can stop the determined heart and resolved will of man?",
+        "So strange an accident has happened to us that I cannot forbear recording it, although it is very probable that you will see me before these papers can come into your possession.",
+        "Last Monday (July 31st) we were nearly surrounded by ice, which closed in the ship on all sides, scarcely leaving her the sea-room in which she floated. Our situation was somewhat dangerous, especially as we were compassed round by a very thick fog. We accordingly lay to, hoping that some change would take place in the atmosphere and weather."
+      ],
+      "uv": [130, 206, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "VIII",
+      "pg": 36,
+      "paras": [
+        "In man, in all the higher terrestrial animals, such a method of increase has disappeared; but even on this earth it was certainly the primitive method. Among the lower animals, up even to those first cousins of the vertebrated animals, the Tunicates, the two processes occur side by side, but finally the sexual method superseded its competitor altogether. On Mars, however, just the reverse has apparently been the case."
+      ],
+      "uv": [162, 206, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Dracula",
+      "vol": "V",
+      "pg": 345,
+      "paras": [
+        "_22 September._--It is all over. Arthur has gone back to Ring, and has taken Quincey Morris with him. What a fine fellow is Quincey! I believe in my heart of hearts that he suffered as much about Lucy’s death as any of us; but he bore himself through it like a moral Viking. If America can go on breeding men like that, she will be a power in the world indeed. Van Helsing is lying down, having a rest preparatory to his journey. He goes over to Amsterdam to-night, but says he returns to-morrow night; that he only wants to make some arrangements which can only be made personally. He is to stop with me then, if he can; he says he has work to do in London which may take him some time. Poor old fellow! I fear that the strain of the past week has broken down even his iron strength. All the time of the burial he was, I could see, putting some terrible restraint on himself. When it was all over, we were standing beside Arthur, who, poor fellow, was speaking of his part in the operation where..."
+      ],
+      "uv": [194, 206, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "I",
+      "pg": 120,
+      "paras": [
+        "“Well,” said he, “my mate Bill would be called the captain, as like as not. He has a cut on one cheek and a mighty pleasant way with him, particularly in drink, has my mate Bill. We’ll put it, for argument like, that your captain has a cut on one cheek--and we’ll put it, if you like, that that cheek’s the right one. Ah, well! I told you. Now, is my mate Bill in this here house?”",
+        "And when I had pointed out the rock and told him how the captain was likely to return, and how soon, and answered a few other questions, “Ah,” said he, “this’ll be as good as drink to my mate Bill.”"
+      ],
+      "uv": [226, 206, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Dracula",
+      "vol": "II",
+      "pg": 345,
+      "paras": [
+        "Hark! in the courtyard and down the rocky way the roll of heavy wheels, the crack of whips, and the chorus of the Szgany as they pass into the distance.",
+        "I am alone in the castle with those awful women. Faugh! Mina is a woman, and there is nought in common. They are devils of the Pit!",
+        "I shall not remain alone with them; I shall try to scale the castle wall farther than I have yet attempted. I shall take some of the gold with me, lest I want it later. I may find a way from this dreadful place.",
+        "And then away for home! away to the quickest and nearest train! away from this cursed spot, from this cursed land, where the devil and his children still walk with earthly feet!",
+        "At least God’s mercy is better than that of these monsters, and the precipice is steep and high. At its foot a man may sleep--as a man. Good-bye, all! Mina!"
+      ],
+      "uv": [258, 206, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "IV",
+      "pg": 1342,
+      "paras": [
+        "Elizabeth passed quietly out of the room, Jane and Kitty followed, but Lydia stood her ground, determined to hear all she could; and Charlotte, detained first by the civility of Mr. Collins, whose inquiries after herself and all her family were very minute, and then by a little curiosity, satisfied herself with walking to the window and pretending not to hear. In a doleful voice Mrs. Bennet thus began the projected conversation:--"
+      ],
+      "uv": [290, 206, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "IV",
+      "pg": 120,
+      "paras": [
+        "The HISPANIOLA was rolling scuppers under in the ocean swell. The booms were tearing at the blocks, the rudder was banging to and fro, and the whole ship creaking, groaning, and jumping like a manufactory. I had to cling tight to the backstay, and the world turned giddily before my eyes, for though I was a good enough sailor when there was way on, this standing still and being rolled about like a bottle was a thing I never learned to stand without a qualm or so, above all in the morning, on an empty stomach."
+      ],
+      "uv": [322, 206, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "IV",
+      "pg": 2701,
+      "paras": [
+        "This is much; yet Ahab’s larger, darker, deeper part remains unhinted. But vain to popularize profundities, and all truth is profound. Winding far down from within the very heart of this spiked Hotel de Cluny where we here stand—however grand and wonderful, now quit it;—and take your way, ye nobler, sadder souls, to those vast Roman halls of Thermes; where far beneath the fantastic towers of man’s upper earth, his root of grandeur, his whole awful essence sits in bearded state; an antique buried beneath antiquities, and throned on torsoes! So with a broken throne, the great gods mock that captive king; so like a Caryatid, he patient sits, upholding on his frozen brow the piled entablatures of ages. Wind ye down there, ye prouder, sadder souls! question that proud, sad king! A family likeness! aye, he did beget ye, ye young exiled royalties; and from your grim sire only will the old State-secret come."
+      ],
+      "uv": [354, 206, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "VII",
+      "pg": 11,
+      "paras": [
+        "She was looking about for some way of escape, and wondering whether she could get away without being seen, when she noticed a curious appearance in the air: it puzzled her very much at first, but, after watching it a minute or two, she made it out to be a grin, and she said to herself “It’s the Cheshire Cat: now I shall have somebody to talk to.”",
+        "Alice waited till the eyes appeared, and then nodded. “It’s no use speaking to it,” she thought, “till its ears have come, or at least one of them.” In another minute the whole head appeared, and then Alice put down her flamingo, and began an account of the game, feeling very glad she had someone to listen to her. The Cat seemed to think that there was enough of it now in sight, and no more of it appeared."
+      ],
+      "uv": [386, 206, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "VII",
+      "pg": 36,
+      "paras": [
+        "Some of the passengers were of opinion that this firing came from Shoeburyness, until it was noticed that it was growing louder. At the same time, far away in the southeast the masts and upperworks of three ironclads rose one after the other out of the sea, beneath clouds of black smoke. But my brother’s attention speedily reverted to the distant firing in the south. He fancied he saw a column of smoke rising out of the distant grey haze."
+      ],
+      "uv": [418, 206, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "VI",
+      "pg": 1661,
+      "paras": [
+        "“D’you think you know more about fowls than I, who have handled them ever since I was a nipper? I tell you, all those birds that went to the Alpha were town bred.”",
+        "“It’s merely taking your money, for I know that I am right. But I’ll have a sovereign on with you, just to teach you not to be obstinate.”",
+        "The small boy brought round a small thin volume and a great greasy-backed one, laying them out together beneath the hanging lamp.",
+        "“Now then, Mr. Cocksure,” said the salesman, “I thought that I was out of geese, but before I finish you’ll find that there is still one left in my shop. You see this little book?”",
+        "“That’s the list of the folk from whom I buy. D’you see? Well, then, here on this page are the country folk, and the numbers after their names are where their accounts are in the big ledger. Now, then! You see this other page in red ink? Well, that is a list of my town suppliers. Now, look at that third name. Just read it out to me.”"
+      ],
+      "uv": [450, 206, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "III",
+      "pg": 120,
+      "paras": [
+        "“I don’t, sir. I believe he’s a good seaman, but he’s too free with the crew to be a good officer. A mate should keep himself to himself--shouldn’t drink with the men before the mast!”",
+        "“Very good,” said the captain. “Then, as you’ve heard me very patiently, saying things that I could not prove, hear me a few words more. They are putting the powder and the arms in the fore hold. Now, you have a good place under the cabin; why not put them there?--first point. Then, you are bringing four of your own people with you, and they tell me some of them are to be berthed forward. Why not give them the berths here beside the cabin?--second point.”",
+        "“I’ll tell you what I’ve heard myself,” continued Captain Smollett: “that you have a map of an island, that there’s crosses on the map to show where treasure is, and that the island lies--” And then he named the latitude and longitude exactly."
+      ],
+      "uv": [482, 206, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "IX",
+      "pg": 11,
+      "paras": [
+        "“Beautiful Soup, so rich and green, Waiting in a hot tureen! Who for such dainties would not stoop? Soup of the evening, beautiful Soup! Soup of the evening, beautiful Soup! Beau—ootiful Soo—oop! Beau—ootiful Soo—oop! Soo—oop of the e—e—evening, Beautiful, beautiful Soup!",
+        "“Beautiful Soup! Who cares for fish, Game, or any other dish? Who would not give all else for two p ennyworth only of beautiful Soup? Pennyworth only of beautiful Soup? Beau—ootiful Soo—oop! Beau—ootiful Soo—oop! Soo—oop of the e—e—evening, Beautiful, beauti—FUL SOUP!”",
+        "“Chorus again!” cried the Gryphon, and the Mock Turtle had just begun to repeat it, when a cry of “The trial’s beginning!” was heard in the distance.",
+        "“What trial is it?” Alice panted as she ran; but the Gryphon only answered “Come on!” and ran the faster, while more and more faintly came, carried on the breeze that followed them, the melancholy words:—"
+      ],
+      "uv": [514, 206, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "IV",
+      "pg": 84,
+      "paras": [
+        "Thus the poor sufferer tried to comfort others and herself. She indeed gained the resignation she desired. But I, the true murderer, felt the never-dying worm alive in my bosom, which allowed of no hope or consolation. Elizabeth also wept and was unhappy, but hers also was the misery of innocence, which, like a cloud that passes over the fair moon, for a while hides but cannot tarnish its brightness. Anguish and despair had penetrated into the core of my heart; I bore a hell within me which nothing could extinguish. We stayed several hours with Justine, and it was with great difficulty that Elizabeth could tear herself away. “I wish,” cried she, “that I were to die with you; I cannot live in this world of misery.”"
+      ],
+      "uv": [546, 206, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "III",
+      "pg": 174,
+      "paras": [
+        "“I should not wonder if he was quite right there. But, on the other hand, judging from their appearance, most of them cannot be at all expensive.”",
+        "“Well, he seemed to think they were beyond his means,” laughed Dorian. “By this time, however, the lights were being put out in the theatre, and I had to go. He wanted me to try some cigars that he strongly recommended. I declined. The next night, of course, I arrived at the place again. When he saw me, he made me a low bow and assured me that I was a munificent patron of art. He was a most offensive brute, though he had an extraordinary passion for Shakespeare. He told me once, with an air of pride, that his five bankruptcies were entirely due to ‘The Bard,’ as he insisted on calling him. He seemed to think it a distinction.”"
+      ],
+      "uv": [578, 206, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "I",
+      "pg": 1661,
+      "paras": [
+        "“Kindly look her up in my index, Doctor,” murmured Holmes without opening his eyes. For many years he had adopted a system of docketing all paragraphs concerning men and things, so that it was difficult to name a subject or a person on which he could not at once furnish information. In this case I found her biography sandwiched in between that of a Hebrew rabbi and that of a staff-commander who had written a monograph upon the deep-sea fishes.",
+        "“Let me see!” said Holmes. “Hum! Born in New Jersey in the year 1858. Contralto—hum! La Scala, hum! Prima donna Imperial Opera of Warsaw—yes! Retired from operatic stage—ha! Living in London—quite so! Your Majesty, as I understand, became entangled with this young person, wrote her some compromising letters, and is now desirous of getting those letters back.”",
+        "“Then I fail to follow your Majesty. If this young person should produce her letters for blackmailing or other purposes, how is she to prove their authenticity?”"
+      ],
+      "uv": [610, 206, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Dracula",
+      "vol": "VII",
+      "pg": 345,
+      "paras": [
+        "“Let me entreat you, Dr. Seward, oh, let me implore you, to let me out of this house at once. Send me away how you will and where you will; send keepers with me with whips and chains; let them take me in a strait-waistcoat, manacled and leg-ironed, even to a gaol; but let me go out of this. You don’t know what you do by keeping me here. I am speaking from the depths of my heart--of my very soul. You don’t know whom you wrong, or how; and I may not tell. Woe is me! I may not tell. By all you hold sacred--by all you hold dear--by your love that is lost--by your hope that lives--for the sake of the Almighty, take me out of this and save my soul from guilt! Can’t you hear me, man? Can’t you understand? Will you never learn? Don’t you know that I am sane and earnest now; that I am no lunatic in a mad fit, but a sane man fighting for his soul? Oh, hear me! hear me! Let me go! let me go! let me go!”"
+      ],
+      "uv": [642, 206, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "VIII",
+      "pg": 120,
+      "paras": [
+        "The excitement of these last manoeuvres had somewhat interfered with the watch I had kept hitherto, sharply enough, upon the coxswain. Even then I was still so much interested, waiting for the ship to touch, that I had quite forgot the peril that hung over my head and stood craning over the starboard bulwarks and watching the ripples spreading wide before the bows. I might have fallen without a struggle for my life had not a sudden disquietude seized upon me and made me turn my head. Perhaps I had heard a creak or seen his shadow moving with the tail of my eye; perhaps it was an instinct like a cat’s; but, sure enough, when I looked round, there was Hands, already half-way towards me, with the dirk in his right hand."
+      ],
+      "uv": [674, 206, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "II",
+      "pg": 35,
+      "paras": [
+        "“But,” said I, “If it travelled into the past it would have been visible when we came first into this room; and last Thursday when we were here; and the Thursday before that; and so forth!”",
+        "“Not a bit,” said the Time Traveller, and, to the Psychologist: “You think. _You_ can explain that. It’s presentation below the threshold, you know, diluted presentation.”"
+      ],
+      "uv": [706, 206, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "I",
+      "pg": 36,
+      "paras": [
+        "One night (the first missile then could scarcely have been 10,000,000 miles away) I went for a walk with my wife. It was starlight and I explained the Signs of the Zodiac to her, and pointed out Mars, a bright dot of light creeping zenithward, towards which so many telescopes were pointed. It was a warm night. Coming home, a party of excursionists from Chertsey or Isleworth passed us singing and playing music. There were lights in the upper windows of the houses as the people went to bed. From the railway station in the distance came the sound of shunting trains, ringing and rumbling, softened almost into melody by the distance. My wife pointed out to me the brightness of the red, green, and yellow signal lights hanging in a framework against the sky. It seemed so safe and tranquil."
+      ],
+      "uv": [738, 206, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "IV",
+      "pg": 1661,
+      "paras": [
+        "“When I went down there I found him talking with his son, so I smoked a cigar and waited behind a tree until he should be alone. But as I listened to his talk all that was black and bitter in me seemed to come uppermost. He was urging his son to marry my daughter with as little regard for what she might think as if she were a slut from off the streets. It drove me mad to think that I and all that I held most dear should be in the power of such a man as this. Could I not snap the bond? I was already a dying and a desperate man. Though clear of mind and fairly strong of limb, I knew that my own fate was sealed. But my memory and my girl! Both could be saved if I could but silence that foul tongue. I did it, Mr. Holmes. I would do it again. Deeply as I have sinned, I have led a life of martyrdom to atone for it. But that my girl should be entangled in the same meshes which held me was more than I could suffer. I struck him down with no more compunction than if he had been some foul and..."
+      ],
+      "uv": [770, 206, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "III",
+      "pg": 11,
+      "paras": [
+        "Next came an angry voice—the Rabbit’s—“Pat! Pat! Where are you?” And then a voice she had never heard before, “Sure then I’m here! Digging for apples, yer honour!”",
+        "“Digging for apples, indeed!” said the Rabbit angrily. “Here! Come and help me out of _this!_” (Sounds of more broken glass.)",
+        "There was a long silence after this, and Alice could only hear whispers now and then; such as, “Sure, I don’t like it, yer honour, at all, at all!” “Do as I tell you, you coward!” and at last she spread out her hand again, and made another snatch in the air. This time there were _two_ little shrieks, and more sounds of broken glass. “What a number of cucumber-frames there must be!” thought Alice. “I wonder what they’ll do next! As for pulling me out of the window, I only wish they _could!_ I’m sure _I_ don’t want to stay in here any longer!”"
+      ],
+      "uv": [802, 206, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Dracula",
+      "vol": "VI",
+      "pg": 345,
+      "paras": [
+        "When within a foot or two of the door, however, she stopped, as if arrested by some irresistible force. Then she turned, and her face was shown in the clear burst of moonlight and by the lamp, which had now no quiver from Van Helsing’s iron nerves. Never did I see such baffled malice on a face; and never, I trust, shall such ever be seen again by mortal eyes. The beautiful colour became livid, the eyes seemed to throw out sparks of hell-fire, the brows were wrinkled as though the folds of the flesh were the coils of Medusa’s snakes, and the lovely, blood-stained mouth grew to an open square, as in the passion masks of the Greeks and Japanese. If ever a face meant death--if looks could kill--we saw it at that moment.",
+        "And so for full half a minute, which seemed an eternity, she remained between the lifted crucifix and the sacred closing of her means of entry. Van Helsing broke the silence by asking Arthur:--"
+      ],
+      "uv": [834, 206, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Dracula",
+      "vol": "X",
+      "pg": 345,
+      "paras": [
+        "3. _By Water._--Here is the safest way, in one respect, but with most danger in another. On the water he is powerless except at night; even then he can only summon fog and storm and snow and his wolves. But were he wrecked, the living water would engulf him, helpless; and he would indeed be lost. He could have the vessel drive to land; but if it were unfriendly land, wherein he was not free to move, his position would still be desperate.",
+        "The first thing is to realise exactly what he has done as yet; we may, then, get a light on what his later task is to be.",
+        "_Firstly._--We must differentiate between what he did in London as part of his general plan of action, when he was pressed for moments and had to arrange as best he could."
+      ],
+      "uv": [866, 206, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "VI",
+      "pg": 35,
+      "paras": [
+        "“The old instinctive dread of wild beasts came upon me. I clenched my hands and steadfastly looked into the glaring eyeballs. I was afraid to turn. Then the thought of the absolute security in which humanity appeared to be living came to my mind. And then I remembered that strange terror of the dark. Overcoming my fear to some extent, I advanced a step and spoke. I will admit that my voice was harsh and ill-controlled. I put out my hand and touched something soft. At once the eyes darted sideways, and something white ran past me. I turned with my heart in my mouth, and saw a queer little ape-like figure, its head held down in a peculiar manner, running across the sunlit space behind me. It blundered against a block of granite, staggered aside, and in a moment was hidden in a black shadow beneath another pile of ruined masonry."
+      ],
+      "uv": [898, 206, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "IX",
+      "pg": 1342,
+      "paras": [
+        "Her daughters were eagerly called to partake of her joy. Jane resolutely kept her place at the table; but Elizabeth, to satisfy her mother, went to the window--she looked--she saw Mr. Darcy with him, and sat down again by her sister.",
+        "“La!” replied Kitty, “it looks just like that man that used to be with him before. Mr. what’s his name--that tall, proud man.”",
+        "“Good gracious! Mr. Darcy!--and so it does, I vow. Well, any friend of Mr. Bingley’s will always be welcome here, to be sure; but else I must say that I hate the very sight of him.”"
+      ],
+      "uv": [930, 206, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "VII",
+      "pg": 174,
+      "paras": [
+        "“Thanks, I won’t have anything more,” said the painter, taking his cap and coat off and throwing them on the bag that he had placed in the corner. “And now, my dear fellow, I want to speak to you seriously. Don’t frown like that. You make it so much more difficult for me.”",
+        "“What is it all about?” cried Dorian in his petulant way, flinging himself down on the sofa. “I hope it is not about myself. I am tired of myself to-night. I should like to be somebody else.”",
+        "“It is about yourself,” answered Hallward in his grave deep voice, “and I must say it to you. I shall only keep you half an hour.”",
+        "“It is not much to ask of you, Dorian, and it is entirely for your own sake that I am speaking. I think it right that you should know that the most dreadful things are being said against you in London.”"
+      ],
+      "uv": [962, 206, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Dracula",
+      "vol": "VIII",
+      "pg": 345,
+      "paras": [
+        "“All day I waited to hear from him, but he did not send me anything, not even a blow-fly, and when the moon got up I was pretty angry with him. When he slid in through the window, though it was shut, and did not even knock, I got mad with him. He sneered at me, and his white face looked out of the mist with his red eyes gleaming, and he went on as though he owned the whole place, and I was no one. He didn’t even smell the same as he went by me. I couldn’t hold him. I thought that, somehow, Mrs. Harker had come into the room.”",
+        "The two men sitting on the bed stood up and came over, standing behind him so that he could not see them, but where they could hear better. They were both silent, but the Professor started and quivered; his face, however, grew grimmer and sterner still. Renfield went on without noticing:--"
+      ],
+      "uv": [994, 206, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "VIII",
+      "pg": 1342,
+      "paras": [
+        "When he was gone, they were certain at least of receiving constant information of what was going on; and their uncle promised, at parting, to prevail on Mr. Bennet to return to Longbourn as soon as he could, to the great consolation of his sister, who considered it as the only security for her husband’s not being killed in a duel.",
+        "Mrs. Gardiner and the children were to remain in Hertfordshire a few days longer, as the former thought her presence might be serviceable to her nieces. She shared in their attendance on Mrs. Bennet, and was a great comfort to them in their hours of freedom. Their other aunt also visited them frequently, and always, as she said, with the design of cheering and heartening them up--though, as she never came without reporting some fresh instance of Wickham’s extravagance or irregularity, she seldom went away without leaving them more dispirited than she found them."
+      ],
+      "uv": [1026, 206, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "VI",
+      "pg": 2701,
+      "paras": [
+        "I have given no small attention to that not unvexed subject, the skin of the whale. I have had controversies about it with experienced whalemen afloat, and learned naturalists ashore. My original opinion remains unchanged; but it is only an opinion.",
+        "The question is, what and where is the skin of the whale? Already you know what his blubber is. That blubber is something of the consistence of firm, close-grained beef, but tougher, more elastic and compact, and ranges from eight or ten to twelve and fifteen inches in thickness."
+      ],
+      "uv": [1058, 206, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "I",
+      "pg": 174,
+      "paras": [
+        "“I could not get rid of her. She brought me up to royalties, and people with stars and garters, and elderly ladies with gigantic tiaras and parrot noses. She spoke of me as her dearest friend. I had only met her once before, but she took it into her head to lionize me. I believe some picture of mine had made a great success at the time, at least had been chattered about in the penny newspapers, which is the nineteenth-century standard of immortality. Suddenly I found myself face to face with the young man whose personality had so strangely stirred me. We were quite close, almost touching. Our eyes met again. It was reckless of me, but I asked Lady Brandon to introduce me to him. Perhaps it was not so reckless, after all. It was simply inevitable. We would have spoken to each other without any introduction. I am sure of that. Dorian told me so afterwards. He, too, felt that we were destined to know each other.”"
+      ],
+      "uv": [1090, 206, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "VI",
+      "pg": 174,
+      "paras": [
+        "He sighed and touched the bell. The portrait must be hidden away at all costs. He could not run such a risk of discovery again. It had been mad of him to have allowed the thing to remain, even for an hour, in a room to which any of his friends had access.",
+        "When his servant entered, he looked at him steadfastly and wondered if he had thought of peering behind the screen. The man was quite impassive and waited for his orders. Dorian lit a cigarette and walked over to the glass and glanced into it. He could see the reflection of Victor’s face perfectly. It was like a placid mask of servility. There was nothing to be afraid of, there. Yet he thought it best to be on his guard.",
+        "Speaking very slowly, he told him to tell the house-keeper that he wanted to see her, and then to go to the frame-maker and ask him to send two of his men round at once. It seemed to him that as the man left the room his eyes wandered in the direction of the screen. Or was that merely his own fancy?"
+      ],
+      "uv": [1122, 206, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Dorian Gray",
+      "vol": "VIII",
+      "pg": 174,
+      "paras": [
+        "Campbell scrawled a few lines, blotted them, and addressed an envelope to his assistant. Dorian took the note up and read it carefully. Then he rang the bell and gave it to his valet, with orders to return as soon as possible and to bring the things with him.",
+        "As the hall door shut, Campbell started nervously, and having got up from the chair, went over to the chimney-piece. He was shivering with a kind of ague. For nearly twenty minutes, neither of the men spoke. A fly buzzed noisily about the room, and the ticking of the clock was like the beat of a hammer.",
+        "As the chime struck one, Campbell turned round, and looking at Dorian Gray, saw that his eyes were filled with tears. There was something in the purity and refinement of that sad face that seemed to enrage him. “You are infamous, absolutely infamous!” he muttered."
+      ],
+      "uv": [2, 410, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "VIII",
+      "pg": 35,
+      "paras": [
+        "“I cannot tell you all the story of that long afternoon. It would require a great effort of memory to recall my explorations in at all the proper order. I remember a long gallery of rusting stands of arms, and how I hesitated between my crowbar and a hatchet or a sword. I could not carry both, however, and my bar of iron promised best against the bronze gates. There were numbers of guns, pistols, and rifles. The most were masses of rust, but many were of some new metal, and still fairly sound. But any cartridges or powder there may once have been had rotted into dust. One corner I saw was charred and shattered; perhaps, I thought, by an explosion among the specimens. In another place was a vast array of idols—Polynesian, Mexican, Grecian, Phœnician, every country on earth, I should think. And here, yielding to an irresistible impulse, I wrote my name upon the nose of a steatite monster from South America that particularly took my fancy."
+      ],
+      "uv": [34, 410, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "IX",
+      "pg": 84,
+      "paras": [
+        "The tranquillity which I now enjoyed did not endure. Memory brought madness with it, and when I thought of what had passed, a real insanity possessed me; sometimes I was furious and burnt with rage, sometimes low and despondent. I neither spoke nor looked at anyone, but sat motionless, bewildered by the multitude of miseries that overcame me.",
+        "Elizabeth alone had the power to draw me from these fits; her gentle voice would soothe me when transported by passion and inspire me with human feelings when sunk in torpor. She wept with me and for me. When reason returned, she would remonstrate and endeavour to inspire me with resignation. Ah! It is well for the unfortunate to be resigned, but for the guilty there is no peace. The agonies of remorse poison the luxury there is otherwise sometimes found in indulging the excess of grief."
+      ],
+      "uv": [66, 410, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "VI",
+      "pg": 1342,
+      "paras": [
+        "How differently did everything now appear in which he was concerned! His attentions to Miss King were now the consequence of views solely and hatefully mercenary; and the mediocrity of her fortune proved no longer the moderation of his wishes, but his eagerness to grasp at anything. His behaviour to herself could now have had no tolerable motive: he had either been deceived with regard to her fortune, or had been gratifying his vanity by encouraging the preference which she believed she had most incautiously shown. Every lingering struggle in his favour grew fainter and fainter; and in further justification of Mr. Darcy, she could not but allow that Mr. Bingley, when questioned by Jane, had long ago asserted his blamelessness in the affair;--that, proud and repulsive as were his manners, she had never, in the whole course of their acquaintance--an acquaintance which had latterly brought them much together, and given her a sort of intimacy with his ways--seen anything that betrayed him..."
+      ],
+      "uv": [98, 410, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "III",
+      "pg": 35,
+      "paras": [
+        "“I told some of you last Thursday of the principles of the Time Machine, and showed you the actual thing itself, incomplete in the workshop. There it is now, a little travel-worn, truly; and one of the ivory bars is cracked, and a brass rail bent; but the rest of it’s sound enough. I expected to finish it on Friday; but on Friday, when the putting together was nearly done, I found that one of the nickel bars was exactly one inch too short, and this I had to get remade; so that the thing was not complete until this morning. It was at ten o’clock today that the first of all Time Machines began its career. I gave it a last tap, tried all the screws again, put one more drop of oil on the quartz rod, and sat myself in the saddle. I suppose a suicide who holds a pistol to his skull feels much the same wonder at what will come next as I felt then. I took the starting lever in one hand and the stopping one in the other, pressed the first, and almost immediately the second. I seemed to reel; I..."
+      ],
+      "uv": [130, 410, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "X",
+      "pg": 36,
+      "paras": [
+        "Wondering still more at all that I had seen, I pushed on towards Primrose Hill. Far away, through a gap in the trees, I saw a second Martian, as motionless as the first, standing in the park towards the Zoological Gardens, and silent. A little beyond the ruins about the smashed handling-machine I came upon the red weed again, and found the Regent’s Canal, a spongy mass of dark-red vegetation.",
+        "As I crossed the bridge, the sound of “Ulla, ulla, ulla, ulla,” ceased. It was, as it were, cut off. The silence came like a thunderclap."
+      ],
+      "uv": [162, 410, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "V",
+      "pg": 11,
+      "paras": [
+        "Alice glanced rather anxiously at the cook, to see if she meant to take the hint; but the cook was busily stirring the soup, and seemed not to be listening, so she went on again: “Twenty-four hours, I _think_; or is it twelve? I—”",
+        "“Oh, don’t bother _me_,” said the Duchess; “I never could abide figures!” And with that she began nursing her child again, singing a sort of lullaby to it as she did so, and giving it a violent shake at the end of every line:",
+        "While the Duchess sang the second verse of the song, she kept tossing the baby violently up and down, and the poor little thing howled so, that Alice could hardly hear the words:—",
+        "“Here! you may nurse it a bit, if you like!” the Duchess said to Alice, flinging the baby at her as she spoke. “I must go and get ready to play croquet with the Queen,” and she hurried out of the room. The cook threw a frying-pan after her as she went out, but it just missed her."
+      ],
+      "uv": [194, 410, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "I",
+      "pg": 35,
+      "paras": [
+        "“It is simply this. That Space, as our mathematicians have it, is spoken of as having three dimensions, which one may call Length, Breadth, and Thickness, and is always definable by reference to three planes, each at right angles to the others. But some philosophical people have been asking why _three_ dimensions particularly—why not another direction at right angles to the other three?—and have even tried to construct a Four-Dimensional geometry. Professor Simon Newcomb was expounding this to the New York Mathematical Society only a month or so ago. You know how on a flat surface, which has only two dimensions, we can represent a figure of a three-dimensional solid, and similarly they think that by models of three dimensions they could represent one of four—if they could master the perspective of the thing. See?”"
+      ],
+      "uv": [226, 410, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "VI",
+      "pg": 36,
+      "paras": [
+        "So he got out of the fury of the panic, and, skirting the Edgware Road, reached Edgware about seven, fasting and wearied, but well ahead of the crowd. Along the road people were standing in the roadway, curious, wondering. He was passed by a number of cyclists, some horsemen, and two motor cars. A mile from Edgware the rim of the wheel broke, and the machine became unridable. He left it by the roadside and trudged through the village. There were shops half opened in the main street of the place, and people crowded on the pavement and in the doorways and windows, staring astonished at this extraordinary procession of fugitives that was beginning. He succeeded in getting some food at an inn.",
+        "For a time he remained in Edgware not knowing what next to do. The flying people increased in number. Many of them, like my brother, seemed inclined to loiter in the place. There was no fresh news of the invaders from Mars."
+      ],
+      "uv": [258, 410, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Dracula",
+      "vol": "I",
+      "pg": 345,
+      "paras": [
+        "“I am Dracula; and I bid you welcome, Mr. Harker, to my house. Come in; the night air is chill, and you must need to eat and rest.” As he was speaking, he put the lamp on a bracket on the wall, and stepping out, took my luggage; he had carried it in before I could forestall him. I protested but he insisted:--",
+        "“Nay, sir, you are my guest. It is late, and my people are not available. Let me see to your comfort myself.” He insisted on carrying my traps along the passage, and then up a great winding stair, and along another great passage, on whose stone floor our steps rang heavily. At the end of this he threw open a heavy door, and I rejoiced to see within a well-lit room in which a table was spread for supper, and on whose mighty hearth a great fire of logs, freshly replenished, flamed and flared."
+      ],
+      "uv": [290, 410, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "IX",
+      "pg": 2701,
+      "paras": [
+        "“I know it, old man; these stubbs will weld together like glue from the melted bones of murderers. Quick! forge me the harpoon. And forge me first, twelve rods for its shank; then wind, and twist, and hammer these twelve together like the yarns and strands of a tow-line. Quick! I’ll blow the fire.”",
+        "When at last the twelve rods were made, Ahab tried them, one by one, by spiralling them, with his own hand, round a long, heavy iron bolt. “A flaw!” rejecting the last one. “Work that over again, Perth.”",
+        "This done, Perth was about to begin welding the twelve into one, when Ahab stayed his hand, and said he would weld his own iron. As, then, with regular, gasping hems, he hammered on the anvil, Perth passing to him the glowing rods, one after the other, and the hard pressed forge shooting up its intense straight flame, the Parsee passed silently, and bowing over his head towards the fire, seemed invoking some curse or some blessing on the toil. But, as Ahab looked up, he slid aside."
+      ],
+      "uv": [322, 410, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "IV",
+      "pg": 11,
+      "paras": [
+        "“Well, I should like to be a _little_ larger, sir, if you wouldn’t mind,” said Alice: “three inches is such a wretched height to be.”",
+        "“It is a very good height indeed!” said the Caterpillar angrily, rearing itself upright as it spoke (it was exactly three inches high).",
+        "“But I’m not used to it!” pleaded poor Alice in a piteous tone. And she thought of herself, “I wish the creatures wouldn’t be so easily offended!”",
+        "This time Alice waited patiently until it chose to speak again. In a minute or two the Caterpillar took the hookah out of its mouth and yawned once or twice, and shook itself. Then it got down off the mushroom, and crawled away in the grass, merely remarking as it went, “One side will make you grow taller, and the other side will make you grow shorter.”"
+      ],
+      "uv": [354, 410, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "VI",
+      "pg": 11,
+      "paras": [
+        "“Well, I’d hardly finished the first verse,” said the Hatter, “when the Queen jumped up and bawled out, ‘He’s murdering the time! Off with his head!’”",
+        "“Yes, that’s it,” said the Hatter with a sigh: “it’s always tea-time, and we’ve no time to wash the things between whiles.”",
+        "“Suppose we change the subject,” the March Hare interrupted, yawning. “I’m getting tired of this. I vote the young lady tells us a story.”",
+        "The Dormouse slowly opened his eyes. “I wasn’t asleep,” he said in a hoarse, feeble voice: “I heard every word you fellows were saying.”",
+        "“Once upon a time there were three little sisters,” the Dormouse began in a great hurry; “and their names were Elsie, Lacie, and Tillie; and they lived at the bottom of a well—”"
+      ],
+      "uv": [386, 410, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "II",
+      "pg": 1342,
+      "paras": [
+        "“Indeed I have, sir,” was her answer. “She is a great deal too ill to be moved. Mr. Jones says we must not think of moving her. We must trespass a little longer on your kindness.”",
+        "“You may depend upon it, madam,” said Miss Bingley, with cold civility, “that Miss Bennet shall receive every possible attention while she remains with us.”",
+        "“I am sure,” she added, “if it was not for such good friends, I do not know what would become of her, for she is very ill indeed, and suffers a vast deal, though with the greatest patience in the world, which is always the way with her, for she has, without exception, the sweetest temper I ever met with. I often tell my other girls they are nothing to _her_. You have a sweet room here, Mr. Bingley, and a charming prospect over that gravel walk. I do not know a place in the country that is equal to Netherfield. You will not think of quitting it in a hurry, I hope, though you have but a short lease.”"
+      ],
+      "uv": [418, 410, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "V",
+      "pg": 2701,
+      "paras": [
+        "“For three hundred and sixty miles, gentlemen, through the entire breadth of the state of New York; through numerous populous cities and most thriving villages; through long, dismal, uninhabited swamps, and affluent, cultivated fields, unrivalled for fertility; by billiard-room and bar-room; through the holy-of-holies of great forests; on Roman arches over Indian rivers; through sun and shade; by happy hearts or broken; through all the wide contrasting scenery of those noble Mohawk counties; and especially, by rows of snow-white chapels, whose spires stand almost like milestones, flows one continual stream of Venetianly corrupt and often lawless life. There’s your true Ashantee, gentlemen; there howl your pagans; where you ever find them, next door to you; under the long-flung shadow, and the snug patronising lee of churches. For by some curious fatality, as it is often noted of your metropolitan freebooters that they ever encamp around the halls of justice, so sinners, gentlemen,..."
+      ],
+      "uv": [450, 410, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Frankenstein",
+      "vol": "VIII",
+      "pg": 84,
+      "paras": [
+        "“You will know that soon enough,” replied a man with a hoarse voice. “Maybe you are come to a place that will not prove much to your taste, but you will not be consulted as to your quarters, I promise you.”",
+        "I was exceedingly surprised on receiving so rude an answer from a stranger, and I was also disconcerted on perceiving the frowning and angry countenances of his companions. “Why do you answer me so roughly?” I replied. “Surely it is not the custom of Englishmen to receive strangers so inhospitably.”",
+        "“I do not know,” said the man, “what the custom of the English may be, but it is the custom of the Irish to hate villains.”"
+      ],
+      "uv": [482, 410, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "V",
+      "pg": 120,
+      "paras": [
+        "“Mr. Hands,” he said, “here are two of us with a brace of pistols each. If any one of you six make a signal of any description, that man’s dead.”",
+        "They were a good deal taken aback, and after a little consultation one and all tumbled down the fore companion, thinking no doubt to take us on the rear. But when they saw Redruth waiting for them in the sparred galley, they went about ship at once, and a head popped out again on deck.",
+        "By this time, tumbling things in as they came, we had the jolly-boat loaded as much as we dared. Joyce and I got out through the stern-port, and we made for shore again as fast as oars could take us."
+      ],
+      "uv": [514, 410, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "VIII",
+      "pg": 2701,
+      "paras": [
+        "Had you descended from the Pequod’s try-works to the Pequod’s forecastle, where the off duty watch were sleeping, for one single moment you would have almost thought you were standing in some illuminated shrine of canonized kings and counsellors. There they lay in their triangular oaken vaults, each mariner a chiselled muteness; a score of lamps flashing upon his hooded eyes.",
+        "In merchantmen, oil for the sailor is more scarce than the milk of queens. To dress in the dark, and eat in the dark, and stumble in darkness to his pallet, this is his usual lot. But the whaleman, as he seeks the food of light, so he lives in light. He makes his berth an Aladdin’s lamp, and lays him down in it; so that in the pitchiest night the ship’s black hull still houses an illumination."
+      ],
+      "uv": [546, 410, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "The Time Machine",
+      "vol": "V",
+      "pg": 35,
+      "paras": [
+        "“I might have consoled myself by imagining the little people had put the mechanism in some shelter for me, had I not felt assured of their physical and intellectual inadequacy. That is what dismayed me: the sense of some hitherto unsuspected power, through whose intervention my invention had vanished. Yet, for one thing I felt assured: unless some other age had produced its exact duplicate, the machine could not have moved in time. The attachment of the levers—I will show you the method later—prevented anyone from tampering with it in that way when they were removed. It had moved, and was hid, only in space. But then, where could it be?"
+      ],
+      "uv": [578, 410, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "VII",
+      "pg": 1661,
+      "paras": [
+        "“Well, there is at least a curious coincidence of dates. A ventilator is made, a cord is hung, and a lady who sleeps in the bed dies. Does not that strike you?”",
+        "“The lady could not move her bed. It must always be in the same relative position to the ventilator and to the rope—or so we may call it, since it was clearly never meant for a bell-pull.”",
+        "“Holmes,” I cried, “I seem to see dimly what you are hinting at. We are only just in time to prevent some subtle and horrible crime.”",
+        "“Subtle enough and horrible enough. When a doctor does go wrong he is the first of criminals. He has nerve and he has knowledge. Palmer and Pritchard were among the heads of their profession. This man strikes even deeper, but I think, Watson, that we shall be able to strike deeper still. But we shall have horrors enough before the night is over; for goodness’ sake let us have a quiet pipe and turn our minds for a few hours to something more cheerful.”"
+      ],
+      "uv": [610, 410, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "III",
+      "pg": 1342,
+      "paras": [
+        "Mr. Wickham did not play at whist, and with ready delight was he received at the other table between Elizabeth and Lydia. At first there seemed danger of Lydia’s engrossing him entirely, for she was a most determined talker; but being likewise extremely fond of lottery tickets, she soon grew too much interested in the game, too eager in making bets and exclaiming after prizes, to have attention for anyone in particular. Allowing for the common demands of the game, Mr. Wickham was therefore at leisure to talk to Elizabeth, and she was very willing to hear him, though what she chiefly wished to hear she could not hope to be told, the history of his acquaintance with Mr. Darcy. She dared not even mention that gentleman. Her curiosity, however, was unexpectedly relieved. Mr. Wickham began the subject himself. He inquired how far Netherfield was from Meryton; and, after receiving her answer, asked in a hesitating manner how long Mr. Darcy had been staying there."
+      ],
+      "uv": [642, 410, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Treasure Island",
+      "vol": "IX",
+      "pg": 120,
+      "paras": [
+        "But if it were inexplicable to me, the appearance of the chart was incredible to the surviving mutineers. They leaped upon it like cats upon a mouse. It went from hand to hand, one tearing it from another; and by the oaths and the cries and the childish laughter with which they accompanied their examination, you would have thought, not only they were fingering the very gold, but were at sea with it, besides, in safety.",
+        "Silver suddenly sprang up, and supporting himself with a hand against the wall: “Now I give you warning, George,” he cried. “One more word of your sauce, and I’ll call you down and fight you. How? Why, how do I know? You had ought to tell me that--you and the rest, that lost me my schooner, with your interference, burn you! But not you, you can’t; you hain’t got the invention of a cockroach. But civil you can speak, and shall, George Merry, you may lay to that.”"
+      ],
+      "uv": [674, 410, 28, 200],
+      "tint": 3
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "X",
+      "pg": 2701,
+      "paras": [
+        "When in working with his hands at some lofty almost isolated place in the rigging, which chances to afford no foothold, the sailor at sea is hoisted up to that spot, and sustained there by the rope; under these circumstances, its fastened end on deck is always given in strict charge to some one man who has the special watch of it. Because in such a wilderness of running rigging, whose various different relations aloft cannot always be infallibly discerned by what is seen of them at the deck; and when the deck-ends of these ropes are being every few minutes cast down from the fastenings, it would be but a natural fatality, if, unprovided with a constant watchman, the hoisted sailor should by some carelessness of the crew be cast adrift and fall all swooping to the sea. So Ahab’s proceedings in this matter were not unusual; the only strange thing about them seemed to be, that Starbuck, almost the one only man who had ever ventured to oppose him with anything in the slightest degree..."
+      ],
+      "uv": [706, 410, 28, 200],
+      "tint": 4
+    },
+    {
+      "title": "Moby Dick",
+      "vol": "VII",
+      "pg": 2701,
+      "paras": [
+        "Perseus, St. George, Hercules, Jonah, and Vishnoo! there’s a member-roll for you! What club but the whaleman’s can head off like that?",
+        "Reference was made to the historical story of Jonah and the whale in the preceding chapter. Now some Nantucketers rather distrust this historical story of Jonah and the whale. But then there were some sceptical Greeks and Romans, who, standing out from the orthodox pagans of their times, equally doubted the story of Hercules and the whale, and Arion and the dolphin; and yet their doubting those traditions did not make those traditions one whit the less facts, for all that."
+      ],
+      "uv": [738, 410, 28, 200],
+      "tint": 5
+    },
+    {
+      "title": "War of the Worlds",
+      "vol": "IV",
+      "pg": 36,
+      "paras": [
+        "I and the artilleryman, seated on the step of the drinking fountain, made a very passable meal upon what we had brought with us. Patrols of soldiers—here no longer hussars, but grenadiers in white—were warning people to move now or to take refuge in their cellars as soon as the firing began. We saw as we crossed the railway bridge that a growing crowd of people had assembled in and about the railway station, and the swarming platform was piled with boxes and packages. The ordinary traffic had been stopped, I believe, in order to allow of the passage of troops and guns to Chertsey, and I have heard since that a savage struggle occurred for places in the special trains that were put on at a later hour."
+      ],
+      "uv": [770, 410, 28, 200],
+      "tint": 0
+    },
+    {
+      "title": "Alice in Wonderland",
+      "vol": "I",
+      "pg": 11,
+      "paras": [
+        "There were doors all round the hall, but they were all locked; and when Alice had been all the way down one side and up the other, trying every door, she walked sadly down the middle, wondering how she was ever to get out again.",
+        "Suddenly she came upon a little three-legged table, all made of solid glass; there was nothing on it except a tiny golden key, and Alice’s first thought was that it might belong to one of the doors of the hall; but, alas! either the locks were too large, or the key was too small, but at any rate it would not open any of them. However, on the second time round, she came upon a low curtain she had not noticed before, and behind it was a little door about fifteen inches high: she tried the little golden key in the lock, and to her great delight it fitted!"
+      ],
+      "uv": [802, 410, 28, 200],
+      "tint": 1
+    },
+    {
+      "title": "Pride and Prejudice",
+      "vol": "X",
+      "pg": 1342,
+      "paras": [
+        "“I am sorry, exceedingly sorry,” replied Darcy, in a tone of surprise and emotion, “that you have ever been informed of what may, in a mistaken light, have given you uneasiness. I did not think Mrs. Gardiner was so little to be trusted.”",
+        "“You must not blame my aunt. Lydia’s thoughtlessness first betrayed to me that you had been concerned in the matter; and, of course, I could not rest till I knew the particulars. Let me thank you again and again, in the name of all my family, for that generous compassion which induced you to take so much trouble, and bear so many mortifications, for the sake of discovering them.”",
+        "“If you _will_ thank me,” he replied, “let it be for yourself alone. That the wish of giving happiness to you might add force to the other inducements which led me on, I shall not attempt to deny. But your _family_ owe me nothing. Much as I respect them, I believe I thought only of _you_.”"
+      ],
+      "uv": [834, 410, 28, 200],
+      "tint": 2
+    },
+    {
+      "title": "Sherlock Holmes",
+      "vol": "II",
+      "pg": 1661,
+      "paras": [
+        "“And you did very wisely,” said Holmes. “Your case is an exceedingly remarkable one, and I shall be happy to look into it. From what you have told me I think that it is possible that graver issues hang from it than might at first sight appear.”",
+        "“As far as you are personally concerned,” remarked Holmes, “I do not see that you have any grievance against this extraordinary league. On the contrary, you are, as I understand, richer by some £ 30, to say nothing of the minute knowledge which you have gained on every subject which comes under the letter A. You have lost nothing by them.”",
+        "“No, sir. But I want to find out about them, and who they are, and what their object was in playing this prank—if it was a prank—upon me. It was a pretty expensive joke for them, for it cost them two and thirty pounds.”"
+      ],
+      "uv": [866, 410, 28, 200],
+      "tint": 3
+    }
+  ],
+  "atlas": [1152, 612],
+  "atlasSha": "8794eed7777d99d707ba0e43a3017d272fe7e6a7dcf95864800e0908f4422844"
+}

@@ -1,14 +1,52 @@
-import { mat4, type ReadonlyMat4 } from "gl-matrix";
+import { mat4, type ReadonlyMat4, type ReadonlyVec3, vec3 } from "gl-matrix";
 
 import { type Camera, viewMatrixOf } from "../css/Camera.js";
 import { imageInfo, loadImage } from "../css/images.js";
+import type { Shading, Shadows, Specular } from "../css/Material.js";
 import { PerspectiveCamera } from "../css/PerspectiveCamera.js";
 import { styleHTML } from "../css/styles.js";
+import { syncTimelines } from "../css/Timeline.js";
+import { vector } from "../css/Transform.js";
+import {
+  setTweenClasses,
+  setTweens,
+  touchTweens,
+  type Tween,
+} from "../css/Tween.js";
 
 import { ElementObject } from "./ElementObject.js";
-import { Group } from "./Group.js";
+import { Group, touchSubtree } from "./Group.js";
 import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
+import { movedPosition, setShaded } from "./Shading.js";
+import { castShadows, type Receiver } from "./Shadows.js";
+
+export interface Lights {
+  ambient?: { readonly intensity: number };
+  // In world space, direction is the way the light travels
+  directional?: {
+    readonly direction: ReadonlyVec3;
+    readonly intensity: number;
+  };
+  // In world space, instead of directional. Falls off with the squared distance
+  point?: {
+    readonly position: ReadonlyVec3;
+    readonly intensity: number;
+    // Moves it after position, like a group's. Each frame restyles the scene
+    readonly tween?: Tween | readonly Tween[] | null;
+  };
+}
+
+export interface BakeOptions {
+  // Costly, other bakes keep them as cast
+  shadows?: boolean;
+}
+
+const intensityOf = (n: number): number => {
+  if (!(n >= 0 && Number.isFinite(n)))
+    throw new RangeError(`Invalid light intensity ${n}`);
+  return n;
+};
 
 // Keeps a Camera, and its rules, alive while its element is
 const elementCameras = new WeakMap<Element, Camera>();
@@ -19,13 +57,18 @@ export class Container {
   readonly viewElement: HTMLDivElement = document.createElement("div");
 
   #root: Group = new Group();
-  #camera: Camera = new PerspectiveCamera();
+  #camera: Camera;
   #width = 0;
   #height = 0;
   #unitScale = 1;
   #refit: Promise<void> | null = null;
+  #lights: Readonly<Lights> | null = null;
+  #connected = false;
+  #castShadows = false;
 
-  constructor() {
+  // A camera given here spares a default whose rules would wait for GC
+  constructor(camera: Camera = new PerspectiveCamera()) {
+    this.#camera = camera;
     this.domElement.classList.add(
       "c3r-container",
       this.#camera.projectionClass,
@@ -47,6 +90,7 @@ export class Container {
     parents.get(root)?.removeChild(root);
     // The old root may have moved into another group
     this.viewElement.replaceChildren(root.domElement);
+    touchSubtree(root);
     this.#root = root;
   }
 
@@ -62,6 +106,70 @@ export class Container {
     classList.add(camera.projectionClass, camera.className);
     elementCameras.set(this.domElement, camera);
     this.#camera = camera;
+    // Its view's animations start over under the new class
+    touchTweens(camera.tween);
+  }
+
+  get lights(): Readonly<Lights> | null {
+    return this.#lights;
+  }
+
+  set lights(lights: Lights | null) {
+    const { ambient, directional, point } = lights ?? {};
+    if (directional && point)
+      throw new RangeError("A container takes one directional or point light");
+    const level = ambient ? intensityOf(ambient.intensity) : 0;
+    const diffuse = directional ? intensityOf(directional.intensity) : 0;
+    const intensity = point ? intensityOf(point.intensity) : 0;
+    const position = point ? vector(point.position) : [0, 0, 0];
+    const tweens = setTweens(undefined, point?.tween ?? null);
+    const moved = movedPosition(position, tweens);
+    const direction = directional && vector(directional.direction);
+    const toLight = vec3.create();
+    if (direction) {
+      vec3.normalize(toLight, vec3.negate(toLight, direction));
+      if (!vec3.length(toLight))
+        throw new RangeError(`Invalid light direction ${direction}`);
+    }
+    this.#lights =
+      lights &&
+      Object.freeze({
+        ...(ambient && { ambient: Object.freeze({ intensity: level }) }),
+        ...(direction && {
+          directional: Object.freeze({
+            direction: Object.freeze(direction),
+            intensity: diffuse,
+          }),
+        }),
+        ...(point && {
+          point: Object.freeze({
+            position: Object.freeze(position),
+            intensity,
+            ...(point.tween && {
+              tween: Array.isArray(point.tween) ? tweens : point.tween,
+            }),
+          }),
+        }),
+      });
+    const [x, y, z] = toLight;
+    const { style } = this.domElement;
+    const previous = setTweenClasses(this.domElement, tweens);
+    // It would clear an animation or transition set on the element itself
+    if (tweens.length || previous.length) setTweens(style, tweens);
+    const [px, py, pz] = moved.components;
+    for (const [name, value] of Object.entries({
+      ambient: level,
+      // Smooth polygons paint by this, a point light's values carry its intensity
+      diffuse: point ? 1 : diffuse,
+      x,
+      y,
+      z,
+      "point-x": px,
+      "point-y": py,
+      "point-z": pz,
+      intensity,
+    }))
+      style.setProperty(`--c3r-light-${name}`, String(value));
   }
 
   get width(): number {
@@ -85,7 +193,8 @@ export class Container {
     this.domElement.style.setProperty("--c3r-unit-scale", String(scale));
   }
 
-  bake(): Promise<void> {
+  bake({ shadows = false }: BakeOptions = {}): Promise<void> {
+    this.#castShadows ||= shadows;
     const loading = this.#fit();
     if (!loading.length) return Promise.resolve();
     // One refit at a time, c3r-three bakes every frame
@@ -100,11 +209,17 @@ export class Container {
   #fit(): Promise<unknown>[] {
     let density = 0;
     const loading: Promise<unknown>[] = [];
+    const polygons: Receiver[] = [];
+    const casters: Group[] = [];
     const visit = (
       node: Object3D,
       parent: ReadonlyMat4,
       image: string | null,
       cells: readonly [number, number],
+      shading: Shading | null,
+      specular: Specular | null,
+      diffuseMap: string | null,
+      shadows: Shadows | null,
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
@@ -116,7 +231,21 @@ export class Container {
       }
       if (material?.flipbook)
         cells = [material.flipbook.columns, material.flipbook.rows];
+      shading = material?.shading ?? shading;
+      specular = material?.specular ?? specular;
+      if (material?.diffuse) diffuseMap = material.diffuse.map || null;
+      shadows = material?.shadows ?? shadows;
+      if (node instanceof Group && node.shadowCaster) casters.push(node);
       if (node instanceof Polygon) {
+        polygons.push({ polygon: node, shadows });
+        setShaded(
+          node,
+          shading,
+          specular,
+          image !== null,
+          !!this.#lights?.point,
+          !!diffuseMap,
+        );
         const info = image === null ? null : imageInfo(image);
         // Keeps the old size while a new image loads
         if (info === undefined) loading.push(loadImage(image!));
@@ -135,17 +264,48 @@ export class Container {
         );
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
-        for (const child of node.children) visit(child, m, image, cells);
+        for (const child of node.children)
+          visit(child, m, image, cells, shading, specular, diffuseMap, shadows);
       }
     };
-    visit(this.#root, viewMatrixOf(this.#camera), null, [1, 1]);
+    visit(
+      this.#root,
+      viewMatrixOf(this.#camera),
+      null,
+      [1, 1],
+      null,
+      null,
+      null,
+      null,
+    );
+    // Sizes and matrices are final once every image is in
+    if (!loading.length) {
+      const cast = this.#castShadows;
+      // First, so plain bakes don't retry a cast that threw
+      this.#castShadows = false;
+      if (cast)
+        castShadows(
+          polygons,
+          casters,
+          this.#lights?.point ?? this.#lights?.directional ?? null,
+        );
+      // Put in the document, every animation in it has started over
+      const { isConnected } = this.domElement;
+      if (isConnected && !this.#connected) {
+        touchSubtree(this.#root);
+        touchTweens(this.#lights?.point?.tween ?? null);
+        touchTweens(this.#camera.tween);
+      }
+      this.#connected = isConnected;
+      syncTimelines();
+    }
     const exponent = Math.ceil(Math.log2(density || 1));
     this.unitScale = 2 ** Math.min(Math.max(exponent, -20), 20);
     return loading;
   }
 
-  async toHTML(): Promise<string> {
-    await this.bake();
+  async toHTML(options?: BakeOptions): Promise<string> {
+    await this.bake(options);
     return styleHTML() + this.domElement.outerHTML;
   }
 

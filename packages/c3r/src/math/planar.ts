@@ -9,6 +9,9 @@ import {
 
 import type { Vertex } from "./Vertex.js";
 
+// Normals this close count as one
+export const COPLANAR = 1 - 1e-6;
+
 export type Fold = "smooth" | "concave" | "convex";
 
 export interface NeighbourSide {
@@ -78,6 +81,28 @@ export const uvTransform = (
     columns(corners.map((v) => plane(v.position))),
   );
   return M && mat3.mul(M, columns(corners.map((v) => v.uv)), M);
+};
+
+// Least squares n(x, y) = c + x a + y b, exact on a triangle, as the columns
+// [c, a, b]. Plain arrays, gl-matrix's own round to single precision
+export const normalField = (
+  points: readonly ReadonlyVec2[],
+  normals: readonly ReadonlyVec3[],
+): mat3 => {
+  const rows = points.map(([x, y]) => [1, x, y]);
+  const moments = (values: readonly ArrayLike<number>[]) =>
+    Array.from({ length: 9 }, (_, i) =>
+      rows.reduce(
+        (sum, row, k) => sum + row[Math.floor(i / 3)] * values[k][i % 3],
+        0,
+      ),
+    ) as mat3;
+  const zeros = () => new Array<number>(9).fill(0) as mat3;
+  return mat3.multiply(
+    zeros(),
+    moments(normals),
+    mat3.invert(zeros(), moments(rows)) ?? zeros(),
+  );
 };
 
 const direction = (a: ReadonlyVec3, b: ReadonlyVec3) => {

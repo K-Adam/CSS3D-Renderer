@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>c3r - Specular map</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        color: #fff;
+        font: 13px monospace;
+        text-align: center;
+      }
+
+      #info a {
+        color: #8cf;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      A specular map in pure CSS, the oceans glint and the land stays matte<br />
+      Textures by
+      <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a
+      >, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>,
+      specular map converted to PNG
+    </div>
+    <script type="module">
+      import { Container, Group, Material, Transform, Tween } from "c3r";
+      import { icosphere } from "primitive-geometry";
+
+      const container = new Container();
+      document.body.appendChild(container.domElement);
+
+      container.lights = {
+        ambient: { intensity: 0.03 },
+        directional: { direction: [-1, -0.25, -0.7], intensity: 1 },
+      };
+
+      const axis = new Group();
+      container.root.addChild(axis);
+      axis.transform = Transform.rotateZ(0.41);
+
+      const earth = new Group();
+      axis.addChild(earth);
+      earth.tween = new Tween({
+        keyframes: [Transform.rotateY(2 * Math.PI)],
+        duration: 40,
+        loop: true,
+      });
+      earth.material = new Material();
+      earth.material.background = "../textures/earth_day.jpg";
+      earth.material.shading = "smooth";
+      earth.material.specular = {
+        intensity: 1,
+        shininess: 16,
+        map: "../textures/earth_specular.png",
+      };
+      earth.addMesh(icosphere({ radius: 200, subdivisions: 2 }));
+
+      container.camera.transform = Transform.translate([0, 0, 700]);
+
+      container.bake();
+    </script>
+  </body>
+</html>

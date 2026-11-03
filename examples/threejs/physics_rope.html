@@ -58,7 +58,7 @@
       <button data-move="-1">◀</button><button data-move="1">▶</button>
     </div>
 
-    <script src="js/libs/ammo.js"></script>
+    <script vite-ignore src="../js/libs/ammo.js"></script>
 
     <script type="module">
       import * as THREE from "three";
@@ -122,7 +122,7 @@
 
         camera.position.set(-7, 5, 8);
 
-        renderer = new C3RRenderer();
+        renderer = new C3RRenderer({ shading: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         controls = new OrbitControls(camera, renderer.domElement);
@@ -134,21 +134,8 @@
         const ambientLight = new THREE.AmbientLight(0x404040);
         scene.add(ambientLight);
 
-        const light = new THREE.DirectionalLight(0xffffff, 1);
+        const light = new THREE.DirectionalLight(0xffffff, 3);
         light.position.set(-10, 10, 5);
-        light.castShadow = true;
-        const d = 10;
-        light.shadow.camera.left = -d;
-        light.shadow.camera.right = d;
-        light.shadow.camera.top = d;
-        light.shadow.camera.bottom = -d;
-
-        light.shadow.camera.near = 2;
-        light.shadow.camera.far = 50;
-
-        light.shadow.mapSize.x = 1024;
-        light.shadow.mapSize.y = 1024;
-
         scene.add(light);
 
         document.body.appendChild(renderer.domElement);
@@ -195,12 +182,10 @@
           0,
           pos,
           quat,
-          new THREE.MeshPhongMaterial({ color: 0xffffff }),
+          new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }),
           16,
         );
-        ground.castShadow = true;
-        ground.receiveShadow = true;
-        textureLoader.load("textures/grid.png", function (texture) {
+        textureLoader.load("../textures/grid.png", function (texture) {
           texture.wrapS = THREE.RepeatWrapping;
           texture.wrapT = THREE.RepeatWrapping;
           texture.repeat.set(40, 40);
@@ -216,8 +201,6 @@
           new THREE.SphereGeometry(ballRadius, 8, 6),
           new THREE.MeshPhongMaterial({ color: 0x202020 }),
         );
-        ball.castShadow = true;
-        ball.receiveShadow = true;
         const ballShape = new Ammo.btSphereShape(ballRadius);
         ballShape.setMargin(margin);
         pos.set(-3, 2, 0);
@@ -253,7 +236,7 @@
               brickMassCurrent *= 0.5;
             }
 
-            const brick = createParalellepiped(
+            createParalellepiped(
               brickDepth,
               brickHeight,
               brickLengthCurrent,
@@ -262,8 +245,6 @@
               quat,
               createMaterial(),
             );
-            brick.castShadow = true;
-            brick.receiveShadow = true;
 
             if (oddRow && (i == 0 || i == nRow - 2)) {
               pos.z += 0.75 * brickLength;
@@ -287,7 +268,7 @@
           0,
           0.5,
         );
-        const ropeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+        const ropeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
         for (let i = 0; i < ropeNumSegments; i++) {
           const segment = new THREE.Mesh(ropeGeometry, ropeMaterial);
           scene.add(segment);
@@ -324,20 +305,13 @@
         const armMass = 2;
         const armLength = 3;
         const pylonHeight = ropePos.y + ropeLength;
-        const baseMaterial = new THREE.MeshPhongMaterial({ color: 0x606060 });
+        const baseMaterial = new THREE.MeshPhongMaterial({
+          color: 0x606060,
+          flatShading: true,
+        });
         pos.set(ropePos.x, 0.1, ropePos.z - armLength);
         quat.set(0, 0, 0, 1);
-        const base = createParalellepiped(
-          1,
-          0.2,
-          1,
-          0,
-          pos,
-          quat,
-          baseMaterial,
-        );
-        base.castShadow = true;
-        base.receiveShadow = true;
+        createParalellepiped(1, 0.2, 1, 0, pos, quat, baseMaterial);
         pos.set(ropePos.x, 0.5 * pylonHeight, ropePos.z - armLength);
         const pylon = createParalellepiped(
           0.4,
@@ -348,8 +322,6 @@
           quat,
           baseMaterial,
         );
-        pylon.castShadow = true;
-        pylon.receiveShadow = true;
         pos.set(ropePos.x, pylonHeight + 0.2, ropePos.z - 0.5 * armLength);
         const arm = createParalellepiped(
           0.4,
@@ -360,8 +332,6 @@
           quat,
           baseMaterial,
         );
-        arm.castShadow = true;
-        arm.receiveShadow = true;
 
         // Glue the rope extremes to the ball and the arm
         const influence = 1;
@@ -464,7 +434,10 @@
       }
 
       function createMaterial() {
-        return new THREE.MeshPhongMaterial({ color: createRandomColor() });
+        return new THREE.MeshPhongMaterial({
+          color: createRandomColor(),
+          flatShading: true,
+        });
       }
 
       function initInput() {
@@ -541,8 +514,13 @@
             ms.getWorldTransform(transformAux1);
             const p = transformAux1.getOrigin();
             const q = transformAux1.getRotation();
-            objThree.position.set(p.x(), p.y(), p.z());
-            objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
+            const next = [p.x(), p.y(), p.z(), q.x(), q.y(), q.z(), q.w()];
+            const current = [...objThree.position, ...objThree.quaternion];
+            // Bodies never sleep here, and a jitter too small to see still restyles
+            if (current.some((v, k) => Math.abs(v - next[k]) > 1e-3)) {
+              objThree.position.fromArray(next);
+              objThree.quaternion.fromArray(next, 3);
+            }
           }
         }
       }

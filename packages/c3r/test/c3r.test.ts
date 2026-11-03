@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { mat4, quat, vec3, vec4 } from "gl-matrix";
 import { cube, cylinder } from "primitive-geometry";
 import {
+  Billboard,
   CssValue,
   Container,
   cssText,
@@ -14,13 +15,17 @@ import {
   PerspectiveCamera,
   Polygon,
   styleHTML,
+  Timeline,
   Transform,
   Tween,
+  type TweenOptions,
   type Vertex,
 } from "c3r";
 import { viewMatrixOf } from "../src/css/Camera.js";
+import { deleteRule, insertRule } from "../src/css/styles.js";
 import { Accumulator } from "../src/dom/Accumulator.js";
 import { decompose } from "../src/css/Transform.js";
+import { timelineOf } from "../src/css/Tween.js";
 import { matrixOf } from "../src/dom/Object3D.js";
 
 const vertex = (x: number, y: number, z: number, u = 0, v = 0): Vertex => ({
@@ -419,6 +424,35 @@ describe("Group.addTriangles", () => {
 });
 
 describe("MeshBuilder", () => {
+  it("marks a plane that runs into a curve as part of the curve", () => {
+    const corner = (x: number, y: number, z: number, nx = 0): Vertex => ({
+      position: [x, y, z],
+      uv: [x * 9, y],
+      normal: [nx, 0, 1],
+    });
+    const strip = (x0: number, x1: number, z1 = 0, nx = 0) => [
+      [corner(x0, 0, 0), corner(x1, 0, z1, nx), corner(x1, 1, z1, nx)],
+      [corner(x0, 0, 0), corner(x1, 1, z1, nx), corner(x0, 1, 0)],
+    ];
+    const { positions, cells } = cube();
+    const curved = new MeshBuilder([
+      // Merging is limited by the area, so these stay two polygons of one plane
+      [...strip(0, 0.5), ...strip(0.5, 1), ...strip(1, 1.5, 0.2, -0.4)],
+    ]).faces(0);
+    expect(curved.length).toBeGreaterThan(1);
+    expect(curved.every((face) => face.planar === false)).toBe(true);
+    const vertex = (i: number): Vertex => ({
+      position: [...positions.slice(i * 3, i * 3 + 3)],
+      uv: [0, 0],
+    });
+    const box = new MeshBuilder([
+      Array.from({ length: cells.length / 3 }, (_, i) =>
+        [0, 1, 2].map((k) => vertex(cells[i * 3 + k])),
+      ),
+    ]).faces(0);
+    expect(box.every((face) => face.planar)).toBe(true);
+  });
+
   // Unit squares at the given corners, uv mapped by position
   const squares = (...corners: [number, number][]) =>
     corners.flatMap(([x, y]) => {
@@ -435,6 +469,30 @@ describe("MeshBuilder", () => {
       const [x2, y2] = vertices[(i + 1) % vertices.length].position;
       return s + (x1 * y2 - x2 * y1) / 2;
     }, 0);
+
+  it("merges whatever the normals, and keeps them on the corners", () => {
+    const [a, b] = squares([0, 0]);
+    const lean = (v: Vertex) => ({
+      ...v,
+      normal: [v.position[0], v.position[1], 2] as const,
+    });
+    const [face, ...rest] = new MeshBuilder([[a.map(lean), b.map(lean)]]).faces(
+      0,
+    );
+    expect(rest).toHaveLength(0);
+    expect(face.vertices).toHaveLength(4);
+    for (const { position, normal } of face.vertices) {
+      const expected = vec3.normalize(vec3.create(), [
+        position[0],
+        position[1],
+        2,
+      ]);
+      expect(vec3.dist(normal!, expected)).toBeLessThan(1e-5);
+    }
+    expect(
+      new MeshBuilder([[a, b]]).faces(0)[0].vertices[0],
+    ).not.toHaveProperty("normal");
+  });
 
   it("merges within the uv tolerance", () => {
     const [a, b] = squares([0, 0]);
@@ -578,10 +636,10 @@ describe("Material", () => {
     const rule = () => ruleOf(material.className);
 
     material.doubleSided = true;
-    expect(rule()).toMatch(/backface-visibility: ?visible/);
+    expect(rule()).toMatch(/--c3r-backface: ?visible/);
 
     material.doubleSided = false;
-    expect(rule()).not.toContain("backface-visibility");
+    expect(rule()).not.toContain("--c3r-backface");
   });
 
   it("plays a flipbook", () => {
@@ -702,6 +760,21 @@ describe("Transform", () => {
     expect(group.transform).toHaveLength(2);
   });
 
+  it("aims -z from the eye at the target", () => {
+    const group = new Group();
+    group.transform = Transform.targetTo([0, 0, 5], [3, 0, 1]);
+    const ahead = vec3.transformMat4(
+      vec3.create(),
+      [0, 0, -5],
+      matrixOf(group),
+    );
+    [3, 0, 1].forEach((v, i) => expect(ahead[i]).toBeCloseTo(v, 5));
+    const up = vec3.transformMat4(vec3.create(), [0, 1, 0], matrixOf(group));
+    [0, 1, 5].forEach((v, i) => expect(up[i]).toBeCloseTo(v, 5));
+    expect(() => Transform.targetTo([1, 2, 3], [1, 2, 3])).toThrow(RangeError);
+    expect(() => Transform.targetTo([0, 5, 0], [0, 0, 0])).toThrow(RangeError);
+  });
+
   it("rejects an invalid matrix", () => {
     expect(() => Transform.matrix([1, 0, 0])).toThrow(RangeError);
     expect(() => Transform.matrix(Array(16).fill(NaN))).toThrow(RangeError);
@@ -803,7 +876,7 @@ describe("Tween", () => {
         `100% { ${track}-rotateX: ${turn}rad; ${track}-rotateZ: ${turn}rad; ${track}-translate3d-x: 0px; ${track}-translate3d-y: 20px; ${track}-translate3d-z: 0px; }`,
       );
       expect(ruleOf(spin.className)).toContain(
-        `${track}-animation: ${className} 2s linear 0s infinite normal both var(${track}-state)`,
+        `${track}-animation: ${className} 2s linear 0s infinite normal both var(${timelineOf(spin)!.state}, running)`,
       );
       const { style } = group.domElement;
       const t = (axis: string) => `var(${track}-translate3d-${axis}, 0px)`;
@@ -813,7 +886,7 @@ describe("Tween", () => {
       expect(style.animation).toBe(`var(${track}-animation, none)`);
 
       spin.paused = true;
-      expect(ruleOf(spin.className)).toMatch(`${track}-state: paused`);
+      expect(cssText()).toContain(`${timelineOf(spin)!.state}: paused`);
 
       using other = new Tween({ keyframes: [Transform.scale(0.5)] });
       expect(cssText()).toContain(`--${other.className}-scale3d-z: 0.5`);
@@ -821,6 +894,7 @@ describe("Tween", () => {
       expect([...group.domElement.classList]).toEqual([
         "c3r-group",
         other.className,
+        timelineOf(other)!.className,
       ]);
     }
     expect(cssText()).not.toContain(`${className} `);
@@ -841,7 +915,9 @@ describe("Tween", () => {
     const { classList, style } = group.domElement;
     expect([...classList]).toEqual([
       "c3r-group",
-      ...tweens.map((t) => t.className),
+      ...tweens.flatMap((t) =>
+        [t.className, timelineOf(t)?.className ?? []].flat(),
+      ),
     ]);
     expect(style.getPropertyValue("--c3r-tween-transform")).toBe(
       `rotateY(var(--${spin.className}-rotateY, 0rad))`,
@@ -891,6 +967,21 @@ describe("Tween", () => {
     expect(ruleOf(sequence.className)).toContain(`${sequence.className} 5s`);
   });
 
+  it("emits a rule as written when the DOM can't parse a value, until it changes", () => {
+    const owner = {};
+    const value =
+      "linear-gradient(rgb(calc(var(--k) * 255) 0 0), red), url(a.png)";
+    const rule = insertRule(
+      ".c3r-source-test",
+      owner,
+      `{ background-image: ${value}; }`,
+    );
+    expect(cssText()).toContain(value);
+    rule.style.setProperty("color", "red");
+    expect(cssText()).toContain(rule.cssText);
+    deleteRule(rule);
+  });
+
   it("keeps a Firefox copy of each keyframes rule in the output", () => {
     const copy = (name: string) =>
       new RegExp(
@@ -917,7 +1008,7 @@ describe("Tween", () => {
       selector = `.${pulse.className}:not(:hover)`;
       expect(ruleOf(pulse.className)).toMatch(/pointer-events: ?auto/);
       expect(cssText()).toContain(
-        `${selector} { --${pulse.className}-state: paused; }`,
+        `${selector} { ${timelineOf(pulse)!.state}: paused; }`,
       );
     }
     expect(cssText()).not.toContain(selector);
@@ -1099,6 +1190,47 @@ describe("server-side rendering", () => {
     expect(outerHTML).toContain("--c3r-unit-scale");
   });
 
+  it("takes its camera on creation, making no default", () => {
+    const camera = new OrthographicCamera();
+    const container = new Container(camera);
+    expect(container.camera).toBe(camera);
+    expect(container.domElement.classList).toContain(camera.className);
+    expect(container.domElement.classList).toContain(camera.projectionClass);
+    // Ids count up, so the next camera's shows none was made in between
+    const id = Number(camera.className.replace("c3r-camera-", ""));
+    expect(new PerspectiveCamera().className).toBe(`c3r-camera-${id + 1}`);
+  });
+
+  it("exports the uv position of a polygon", async () => {
+    const container = new Container();
+    const { style } = container.root.addPolygon([
+      vertex(0, 0, 0, 0.25, 0.25),
+      vertex(1, 0, 0, 0.75, 0.25),
+      vertex(0, 1, 0, 0.25, 0.75),
+    ]).contentElement;
+    expect(style.getPropertyValue("--c3r-uv-position")).toContain("0.25");
+    expect(await container.toHTML()).toMatch(
+      /background-position: ?var\(--c3r-uv-position\)/,
+    );
+  });
+
+  it("serializes flat shading with a tween in its input", async () => {
+    const container = new Container();
+    container.lights = { ambient: { intensity: 0.5 } };
+    const group = new Group();
+    container.root.addChild(group);
+    group.material = new Material();
+    group.material.shading = "flat";
+    group.tween = new Tween({
+      keyframes: [[Transform.rotateX(1), Transform.rotateY(1)]],
+    });
+    group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
+
+    const html = await container.toHTML();
+    expect(html).toContain("--c3r-shade:");
+    expect(html).toContain("cos(");
+  });
+
   it("keeps every value inside the exported style element", async () => {
     const container = new Container();
     const group = new Group();
@@ -1145,6 +1277,33 @@ describe("server-side rendering", () => {
     }
   });
 
+  it("drops a JPEG's mask without a canvas, keeps a PNG's", async () => {
+    const { settings } = window.happyDOM;
+    const { enableImageFileLoading } = settings;
+    const { virtualServers } = settings.fetch;
+    settings.enableImageFileLoading = true;
+    settings.fetch.virtualServers = [
+      { url: "/assets/", directory: "examples/public" },
+    ];
+    try {
+      const container = new Container();
+      const masks = ["crate.jpg", "sprite.png"].map((file) => {
+        const group = new Group();
+        container.root.addChild(group);
+        group.material = new Material();
+        group.material.background = `/assets/textures/${file}`;
+        group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
+        return () => ruleOf(group.material!.className);
+      });
+      await container.bake();
+      expect(masks[0]()).toMatch(/--c3r-alpha-mask: ?none/);
+      expect(masks[1]()).toContain('--c3r-alpha-mask: url("/assets/');
+    } finally {
+      settings.enableImageFileLoading = enableImageFileLoading;
+      settings.fetch.virtualServers = virtualServers;
+    }
+  });
+
   it("keeps an input rule's result inside its declaration", async () => {
     using error = vi.spyOn(console, "error").mockImplementation(() => {});
     const container = new Container();
@@ -1162,6 +1321,20 @@ describe("server-side rendering", () => {
     expect(html).not.toMatch(/color: ?red/);
     expect(cssText()).not.toMatch(/color: ?red/);
     expect(error).toHaveBeenCalled();
+  });
+
+  it("writes a smooth polygon's field and rules to the HTML", async () => {
+    const container = new Container();
+    container.root.material = new Material();
+    container.root.material.shading = "smooth";
+    container.root.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    const html = await container.toHTML();
+    expect(html).toContain("--c3r-normal-center-z:");
+    expect(html).toContain("--c3r-gradient-center:");
   });
 
   it("sizes an orthographic view from setSize, without layout", () => {
@@ -1277,4 +1450,275 @@ it("polyfills Symbol.dispose before the classes use it", async () => {
   } finally {
     globalThis.Symbol = RealSymbol;
   }
+});
+
+describe("shadows", () => {
+  const scene = (caster: Group["shadowCaster"], at: number[]) => {
+    const container = new Container();
+    container.lights = { point: { position: [0, 100, 0], intensity: 1 } };
+    const floor = container.root.addPolygon(
+      [
+        vertex(-100, 0, 100),
+        vertex(100, 0, 100),
+        vertex(100, 0, -100),
+        vertex(-100, 0, -100),
+      ],
+      {},
+    );
+    floor.material = new Material();
+    floor.material.shadows = { opacity: 0.5 };
+    const group = new Group();
+    container.root.addChild(group);
+    group.transform = Transform.translate(at as vec3);
+    group.shadowCaster = caster;
+    return { container, floor, group };
+  };
+  // The shadow's corners on the floor, in world space
+  const corners = (
+    floor: Polygon,
+    clipPath: string,
+    m: mat4 = matrixOf(floor) as mat4,
+  ) =>
+    [...clipPath.matchAll(/(-?[\d.e+]+)px (-?[\d.e+]+)px/g)].map(([, x, y]) =>
+      vec3.transformMat4(vec3.create(), [+x, +y, 0], m),
+    );
+  const cast = { shadows: true };
+  const layerOf = (floor: Polygon) =>
+    floor.domElement.querySelector<HTMLElement>(".c3r-shadow > div")!;
+
+  it("casts a box straight down as its top, scaled from the light", async () => {
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    await container.bake(cast);
+    const points = corners(floor, layerOf(floor).style.clipPath);
+    expect(points).toHaveLength(4);
+    // The top at 55 casts 100 / 45 times its size
+    for (const p of points) {
+      expect(Math.abs(p[0])).toBeCloseTo((5 * 100) / 45, 1);
+      expect(Math.abs(p[2])).toBeCloseTo((5 * 100) / 45, 1);
+    }
+  });
+
+  it("keeps shadows as cast until a bake casts them again", async () => {
+    const { container, floor, group } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    await container.bake();
+    expect(floor.domElement.querySelector(".c3r-shadow")).toBeNull();
+    await container.bake(cast);
+    const clipPath = layerOf(floor).style.clipPath;
+    group.transform = Transform.translate([20, 50, 0]);
+    await container.bake();
+    expect(layerOf(floor).style.clipPath).toBe(clipPath);
+    await container.bake(cast);
+    expect(layerOf(floor).style.clipPath).not.toBe(clipPath);
+  });
+
+  it("casts a box along a directional light as its outline", async () => {
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    container.lights = { directional: { direction: [1, -1, 0], intensity: 1 } };
+    await container.bake(cast);
+    const points = corners(floor, layerOf(floor).style.clipPath);
+    const xs = points.map((p) => p[0]);
+    const zs = points.map((p) => p[2]);
+    // At 45 degrees the top at 55 lands 55 along x, the bottom at 45 lands 45 along
+    expect(Math.min(...xs)).toBeCloseTo(40, 1);
+    expect(Math.max(...xs)).toBeCloseTo(60, 1);
+    expect(Math.min(...zs)).toBeCloseTo(-5, 1);
+    expect(Math.max(...zs)).toBeCloseTo(5, 1);
+  });
+
+  it("gives no shadow to a wall a directional light runs along", async () => {
+    const { container, floor } = scene(
+      { shape: "sphere", radius: 10 },
+      [0, 50, 0],
+    );
+    const wall = new Group();
+    container.root.addChild(wall);
+    wall.transform = Transform.rotateX(Math.PI / 2);
+    wall.addChild(floor);
+    container.lights = { directional: { direction: [0, -1, 0], intensity: 1 } };
+    await container.bake(cast);
+    expect(floor.domElement.querySelector(".c3r-shadow")).toBeNull();
+  });
+
+  it("casts a sphere as a circle", async () => {
+    const { container, floor } = scene(
+      { shape: "sphere", radius: 10 },
+      [0, 50, 0],
+    );
+    await container.bake(cast);
+    const points = corners(floor, layerOf(floor).style.clipPath);
+    expect(points.length).toBeGreaterThan(12);
+    // Tangent from the light at 50 to a radius of 10, out to the floor at 100
+    const radius = 100 * Math.tan(Math.asin(10 / 50));
+    for (const p of points)
+      expect(Math.hypot(p[0], p[2])).toBeCloseTo(radius, 0);
+  });
+
+  const swing = (options: Partial<TweenOptions> = {}) =>
+    new Tween({
+      keyframes: [Transform.translate([60, 0, 0])],
+      duration: 2,
+      easing: "ease-in-out",
+      loop: true,
+      alternate: true,
+      ...options,
+    });
+
+  it("plays a moving light's shadow on its timeline, thinned to what bends", async () => {
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    const tween = swing();
+    container.lights = {
+      point: { position: [0, 100, 0], intensity: 1, tween },
+    };
+    await container.bake(cast);
+    const layer = layerOf(floor);
+    const timeline = timelineOf(tween)!;
+    expect(layer.classList).toContain(timeline.className);
+    const animation = new RegExp(
+      String.raw`animation: (c3r-shadow-\d+) 4s linear infinite var\(${timeline.state}\)`,
+    ).exec(layer.getAttribute("style")!);
+    expect(animation).not.toBeNull();
+    const keyframes = cssText()
+      .split("\n")
+      .find((rule) => rule.startsWith(`@keyframes ${animation![1]} `))!;
+    const offsets = [...keyframes.matchAll(/([\d.]+)% \{/g)].map(([, n]) => +n);
+    // The turn at the far end is a keyframe, which thinning keeps
+    expect(offsets).toContain(50);
+    expect(offsets.length).toBeLessThan(4 * 30);
+    const counts = [...keyframes.matchAll(/polygon\(([^)]*)\)/g)].map(
+      ([, list]) => list.split(",").length,
+    );
+    expect(new Set(counts).size).toBe(1);
+  });
+
+  it("follows tweens on one timeline, and refuses what it can't follow", async () => {
+    const { container, group } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    const motion = new Timeline();
+    container.lights = {
+      point: {
+        position: [0, 100, 0],
+        intensity: 1,
+        tween: swing({ timeline: motion }),
+      },
+    };
+    group.tween = swing({ duration: 1, timeline: motion });
+    await container.bake(cast);
+    for (const [tween, error] of [
+      [swing({ duration: 1 }), "one timeline"],
+      [swing({ timeline: motion, easing: "steps(4)" }), "easing"],
+    ] as const) {
+      group.tween = tween;
+      expect(() => container.bake(cast)).toThrow(error);
+    }
+    container.lights = { point: { position: [0, 100, 0], intensity: 1 } };
+    group.tween = swing({ hover: true });
+    expect(() => container.bake(cast)).toThrow("own hover");
+  });
+
+  it("transitions with a caster that moves on hover", async () => {
+    const { container, floor, group } = scene(
+      { shape: "sphere", radius: 10 },
+      [0, 50, 0],
+    );
+    const lift = new Tween({
+      keyframes: [Transform.translate([0, 20, 0])],
+      duration: 0.5,
+      easing: "ease-out",
+      hover: true,
+    });
+    group.tween = lift;
+    await container.bake(cast);
+    const layer = layerOf(floor);
+    const className = `c3r-shadow-on-${lift.className}`;
+    expect(layer.classList).toContain(className);
+    expect(layer.getAttribute("style")).toContain(
+      "transition: --c3r-shadow-progress 0.5s ease-out 0s",
+    );
+    const rule = `.c3r-container:is(:has(.${lift.className}:hover), .${lift.className}:hover) .${className}`;
+    expect(cssText()).toContain(`${rule} { --c3r-shadow-progress: 1; }`);
+    lift.paused = true;
+    expect(cssText()).not.toContain(`${rule} { --c3r-shadow-progress: 1; }`);
+  });
+
+  it("leaves the caster's own faces lit", async () => {
+    const { container, group } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    const top = group.addPolygon([
+      vertex(-5, 5, 5),
+      vertex(5, 5, 5),
+      vertex(5, 5, -5),
+      vertex(-5, 5, -5),
+    ]);
+    top.material = new Material();
+    top.material.shadows = { opacity: 0.5 };
+    await container.bake(cast);
+    expect(top.domElement.querySelector(".c3r-shadow")).toBeNull();
+  });
+
+  it("places the shadow under a scale that isn't uniform", async () => {
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [0, 50, 0],
+    );
+    const stretched = new Group();
+    container.root.addChild(stretched);
+    stretched.transform = Transform.scale([3, 1, 1]);
+    const turned = new Group();
+    stretched.addChild(turned);
+    turned.transform = Transform.rotateY(0.6);
+    turned.addChild(floor);
+    await container.bake(cast);
+    const world = mat4.mul(
+      mat4.create(),
+      mat4.mul(mat4.create(), matrixOf(stretched), matrixOf(turned)),
+      matrixOf(floor),
+    );
+    const points = corners(floor, layerOf(floor).style.clipPath, world);
+    expect(points).toHaveLength(4);
+    for (const p of points) {
+      expect(Math.abs(p[0])).toBeCloseTo((5 * 100) / 45, 0);
+      expect(Math.abs(p[2])).toBeCloseTo((5 * 100) / 45, 0);
+    }
+  });
+
+  it("drops the shadow under a billboard, or with the receiver's material", async () => {
+    const { container, floor, group } = scene(
+      { shape: "sphere", radius: 10 },
+      [0, 50, 0],
+    );
+    await container.bake(cast);
+    const layer = () => floor.domElement.querySelector(".c3r-shadow");
+    expect(layer()).not.toBeNull();
+    floor.material!.shadows = null;
+    await container.bake(cast);
+    expect(layer()).toBeNull();
+    floor.material!.shadows = { opacity: 0.5 };
+    const billboard = new Billboard();
+    container.root.addChild(billboard);
+    billboard.addChild(floor);
+    await container.bake(cast);
+    expect(layer()).toBeNull();
+    // With nothing to cast, a tween it couldn't sample is no concern
+    container.root.addChild(floor);
+    group.shadowCaster = null;
+    container.root.tween = new Tween({ keyframes: [Transform.scale(2)] });
+    await container.bake(cast);
+    expect(layer()).toBeNull();
+  });
 });

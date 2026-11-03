@@ -28,6 +28,12 @@ export function ensureStyles(): CSSStyleSheet {
 
 // A server-side DOM rejects @property, cssText() still emits it
 const rejected = new Set<CSSRule>();
+// It also drops values it can't parse, so a rule nothing changed since is emitted as written
+const sources = new WeakMap<CSSRule, { parsed: string; text: string }>();
+const sourceOf = (rule: CSSRule): string => {
+  const source = sources.get(rule);
+  return source?.parsed === rule.cssText ? source.text : rule.cssText;
+};
 
 export function deleteRule(rule: CSSRule | null): void {
   if (!rule) return;
@@ -53,6 +59,7 @@ export function insertRule(
   let rule: CSSRule;
   try {
     rule = sheet.cssRules[sheet.insertRule(text, sheet.cssRules.length)];
+    sources.set(rule, { parsed: rule.cssText, text });
   } catch (error) {
     // A server-side DOM rejects every @property, a browser only an invalid one
     if (!selector.startsWith("@property") || "CSSPropertyRule" in globalThis)
@@ -85,9 +92,7 @@ export function plainValue(text: string, vars = false): boolean {
 export const cssText = (): string =>
   [
     css,
-    ...Array.from(ensureStyles().cssRules)
-      .slice(baseRules)
-      .map((r) => r.cssText),
+    ...Array.from(ensureStyles().cssRules).slice(baseRules).map(sourceOf),
     ...Array.from(rejected, (r) => r.cssText),
   ].join("\n");
 

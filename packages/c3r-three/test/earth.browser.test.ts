@@ -25,7 +25,7 @@ const HEIGHT = 300;
 const SCALE = 4;
 const LIMIT = 0.02; // measured 0.0105
 
-// From examples/three_geometry_earth.html, without animation
+// From examples/threejs/geometry_earth.html, without animation
 async function earthScene() {
   const scene = new Scene();
   scene.background = new Color(0xffffff);

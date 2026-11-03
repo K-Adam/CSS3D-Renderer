@@ -1,3 +1,6 @@
+import type { mat4 } from "gl-matrix";
+
+import type { CssMatrix } from "./CssMatrix.js";
 import { type CssFunction, CssValue, cssRaw } from "./CssValue.js";
 
 export type Kind = "transform" | "filter" | "layer";
@@ -12,10 +15,13 @@ export interface Step {
   values: string[];
   // Transforms only, for the camera, null without an inverse
   invert?: ((value: string) => string) | null;
+  // Transforms only, its inverse-transpose at a unit determinant
+  normal?: (args: string[]) => CssMatrix;
   // Set by the factories of steps that only turn, so others can undo them
   rotates?: boolean;
   // Set by the factories of steps that only move
   moves?: boolean;
+  matrix?: (values: number[]) => mat4;
 }
 
 // Only factory-made steps, a forged one would inject raw CSS

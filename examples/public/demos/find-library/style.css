@@ -1,0 +1,292 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: clip;
+  background: #0b0806;
+}
+.c3r-container.c3r-container {
+  position: fixed;
+  inset: 0;
+  --c3r-viewport-height: 100svh;
+}
+/* On transform, never on the camera's custom properties: those restyle every frame, 10 fps */
+.c3r-view {
+  transition: transform 1.7s cubic-bezier(0.5, 0, 0.15, 1);
+}
+/* Closing, on the shut state: the cover shuts, the book turns while it is clear of the shelf, then slides home.
+   A separate translate, one transform would interpolate them together through the neighbours */
+.c3r-group.book {
+  translate: 0 0 0;
+  transition:
+    transform 0.5s 0.55s cubic-bezier(0.3, 0, 0.2, 1),
+    translate 0.55s 1.05s cubic-bezier(0.3, 0, 0.2, 1);
+}
+.c3r-group.book:has(details[open]) {
+  transition:
+    translate 0.45s cubic-bezier(0.3, 0, 0.2, 1),
+    transform 0.5s 0.4s cubic-bezier(0.3, 0, 0.2, 1);
+}
+.c3r-group.hinge {
+  transform: rotateY(0deg);
+  transition: transform 0.55s cubic-bezier(0.3, 0, 0.2, 1);
+}
+.book:has(details[open]) .c3r-group.hinge {
+  transform: rotateY(-180deg);
+  transition: transform 0.7s 0.85s cubic-bezier(0.3, 0, 0.2, 1);
+}
+/* Shades are baked for the shelf pose, and this book has left it */
+.book:has(details[open]) .c3r-polygon-content {
+  --c3r-flat-backdrop: #fff !important;
+}
+/* Hides only once the book is home. Not display: Firefox doesn't hold a transition of it, and the cover would vanish as closing starts */
+.closed-off {
+  visibility: hidden;
+  transition: visibility 0s 1.65s;
+}
+.book:has(details[open]) .closed-off {
+  visibility: visible;
+  transition: none;
+}
+.c3r-element {
+  transform-style: preserve-3d;
+}
+/* Only the shut book's spine needs depth, and in Firefox the page's text can lose to its own background */
+details.c3r-element[open] {
+  transform-style: flat;
+}
+details {
+  position: absolute;
+  color: #2b2118;
+  font:
+    15px/1.42 Georgia,
+    "Times New Roman",
+    serif;
+}
+/* Page and plate exist only while the cover is lifted: Firefox can paint them over a shut cover, a plane away.
+   Open, they wait for the hinge. Closing, they go when the cover is nearly down, sooner and the book looks hollow */
+details.c3r-element {
+  transition:
+    background 0s 0.25s allow-discrete,
+    box-shadow 0s 0.25s;
+}
+details.c3r-element[open] {
+  background: url(assets/paper.jpg) 0 0/256px;
+  box-shadow:
+    inset 26px 0 26px -18px #0006,
+    0 0 0 8px #2c1a10;
+  transition:
+    background 0s 0.85s allow-discrete,
+    box-shadow 0s 0.85s;
+}
+details.c3r-element[open] .text {
+  animation: hold-hidden 0.85s step-end;
+}
+@keyframes hold-hidden {
+  from {
+    visibility: hidden;
+  }
+}
+.plate {
+  backface-visibility: hidden;
+  visibility: hidden;
+  transition: visibility 0s 0.25s;
+}
+.book:has(details[open]) .plate {
+  visibility: visible;
+  transition: visibility 0s 0.85s;
+}
+.plate {
+  display: flex;
+  background: url(assets/paper.jpg) 0 0/256px;
+  box-shadow:
+    inset -26px 0 26px -18px #0006,
+    0 0 0 8px #2c1a10;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #5a3b1c;
+  font:
+    18px Georgia,
+    "Times New Roman",
+    serif;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 0 44px;
+}
+.plate::before {
+  content: attr(data-t);
+  font:
+    italic 700 36px/1.15 Georgia,
+    "Times New Roman",
+    serif;
+}
+.plate i {
+  display: block;
+  width: 90px;
+  height: 9px;
+  border-block: 1px solid #8a6a3c;
+}
+.plate::after {
+  content: attr(data-a) "\A" attr(data-v);
+  white-space: pre;
+  line-height: 1.6;
+}
+summary {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--w);
+  height: 100%;
+  display: block;
+  list-style: none;
+  cursor: pointer;
+  pointer-events: auto;
+  transform-origin: 0 50%;
+  transform: rotateY(90deg) translateZ(0.5px);
+  outline-offset: -3px;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary:focus-visible {
+  outline: 3px solid #ffd27a;
+}
+details.c3r-element[open] > summary {
+  transform: none;
+  z-index: 1;
+  left: auto;
+  right: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  background: none;
+}
+details.c3r-element[open] > summary::after {
+  content: "\00d7";
+  display: block;
+  text-align: center;
+  font:
+    26px/44px Georgia,
+    serif;
+  color: #6b5a44;
+}
+.text {
+  position: absolute;
+  inset: 0;
+  padding: 22px 30px 18px;
+  box-sizing: border-box;
+  overflow: clip;
+  user-select: text;
+  -webkit-user-select: text;
+  pointer-events: auto;
+}
+.text h2 {
+  font:
+    italic 700 17px Georgia,
+    serif;
+  margin: 0 26px 10px 0;
+  color: #5a3b1c;
+}
+.text p {
+  margin: 0 0 0.6em;
+  text-align: justify;
+  hyphens: auto;
+}
+::selection {
+  background: #ffcf57;
+}
+#dim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(#0000 76%, #000a);
+  opacity: 0;
+  transition: opacity 0.9s;
+}
+.c3r-container:has(details[open]) ~ #dim {
+  opacity: 1;
+}
+#cat {
+  position: fixed;
+  z-index: 3;
+  right: 10px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  color: #eadcc2;
+  font:
+    15px Georgia,
+    serif;
+  max-height: 70%;
+  display: flex;
+  flex-direction: column-reverse;
+}
+#cat summary {
+  position: static;
+  transform: none;
+  width: auto;
+  height: auto;
+  background: #2a1a10e0;
+  padding: 10px 16px;
+  border-radius: 22px;
+  text-align: center;
+  min-height: 24px;
+  line-height: 24px;
+}
+#cat .list {
+  background: #1c120cf2;
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  max-height: 58vh;
+  width: min(320px, 80vw);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#cat a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  padding: 12px 10px;
+  border-bottom: 1px solid #fff1;
+}
+#cat a:hover,
+#cat a:focus-visible {
+  background: #fff1;
+}
+#cat a::before {
+  content: attr(data-t);
+}
+#hint {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  top: max(10px, env(safe-area-inset-top));
+  translate: -50%;
+  color: #eadcc2;
+  font:
+    14px Georgia,
+    serif;
+  background: #000a;
+  padding: 8px 16px;
+  border-radius: 16px;
+  width: max-content;
+  max-width: 88vw;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+#hint b {
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  margin-right: 0.6em;
+  color: #ffd27a;
+}
+#hint::after {
+  content: attr(data-hint);
+}
+.c3r-container:has(details[open]) ~ #hint {
+  opacity: 0;
+}

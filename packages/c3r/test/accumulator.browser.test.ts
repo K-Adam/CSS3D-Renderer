@@ -8,11 +8,14 @@ import {
   PerspectiveCamera,
   Transform,
 } from "c3r";
+import { mat3, vec3 } from "gl-matrix";
+import { CssMatrix, CssVector } from "../src/css/CssMatrix.js";
 import { cssVar, matrixMultiply } from "../src/css/CssValue.js";
 import {
   Accumulator,
   type AccumulatorOptions,
 } from "../src/dom/Accumulator.js";
+import { matrixOf } from "../src/dom/Object3D.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -47,8 +50,28 @@ const group = (parent: Group | null, input?: number) => {
 const value = (obj: Object3D, name = "sum") =>
   Number(getComputedStyle(obj.domElement).getPropertyValue(`--${name}`).trim());
 
-const chained = (acc: Accumulator, obj: Object3D) =>
+const chained = (acc: { className: string }, obj: Object3D) =>
   obj.domElement.classList.contains(acc.className);
+
+it("folds inputs of another shape from a start that reads a variable", () => {
+  using s = scene();
+  s.container.domElement.style.setProperty("--start", "3");
+  const a = group(s.root);
+  using acc = new Accumulator<CssVector, CssMatrix>({
+    name: "turned",
+    syntax: "<number>",
+    identity: new CssVector([0, 0]),
+    start: new CssVector([cssVar("--start", "<number>"), 1]),
+    inputIdentity: CssMatrix.identity(2),
+    combine: (parent, input) => input.transform(parent),
+    input: (node) => (node === a ? new CssMatrix([0, 1, -1, 0]) : null),
+  });
+  const target = group(a);
+  acc.addTarget(target);
+  expect(value(target, "turned-0")).toBeCloseTo(-1, 4);
+  expect(value(target, "turned-1")).toBeCloseTo(3, 4);
+  expect(a.domElement.style.getPropertyValue("--turned-3-input")).toBe("0");
+});
 
 it("folds each path once, sharing the common ancestors", () => {
   using s = scene();
@@ -197,6 +220,20 @@ it("runs a camera's rule once its projection is set", () => {
   expect(reported).not.toHaveBeenCalled();
 });
 
+it("forgets a disposed camera", () => {
+  using s = scene();
+  const camera = new PerspectiveCamera(50);
+  s.container.camera = camera;
+  camera.fov = 40;
+  camera[Symbol.dispose]();
+  const seen: unknown[] = [];
+  using acc = sum("after", (node) => {
+    seen.push(node);
+    return CssValue.number(1);
+  });
+  expect(seen).not.toContain(camera);
+});
+
 it("restarts the fold under a selector", () => {
   using s = scene();
   using acc = sum();
@@ -208,4 +245,220 @@ it("restarts the fold under a selector", () => {
   expect(value(target)).toBe(7);
   expect(() => acc.restartUnder("x { }")).toThrow(RangeError);
   expect(() => acc.restartUnder(":not(a")).toThrow(RangeError);
+});
+
+const components = (obj: Object3D, name: string, count: number) =>
+  Array.from({ length: count }, (_, k) =>
+    Number(getComputedStyle(obj.domElement).getPropertyValue(`--${name}-${k}`)),
+  );
+
+const expectClose = (
+  actual: number[],
+  expected: ArrayLike<number>,
+  digits = 4,
+) => {
+  expect(actual).toHaveLength(expected.length);
+  actual.forEach((n, i) => expect(n).toBeCloseTo(expected[i], digits));
+};
+
+const vectors = (name: string, input: AccumulatorOptions<CssVector>["input"]) =>
+  new Accumulator({
+    name,
+    syntax: "<number>",
+    identity: new CssVector([0, 0, 0]),
+    combine: (parent, value) => parent.add(value),
+    input,
+  });
+
+const START: [number, number, number] = [1, 2, 3];
+
+const turnings = (
+  name: string,
+  input: AccumulatorOptions<CssVector, CssMatrix>["input"] = (node) =>
+    node instanceof Camera
+      ? null
+      : new CssMatrix(mat3.fromMat4(mat3.create(), matrixOf(node))),
+) =>
+  new Accumulator<CssVector, CssMatrix>({
+    name,
+    syntax: "<number>",
+    identity: new CssVector([0, 0, 0]),
+    start: new CssVector(START),
+    inputIdentity: CssMatrix.identity(3),
+    combine: (parent, value) => value.transform(parent),
+    input,
+  });
+
+const turnedBy = (...nodes: Object3D[]) =>
+  nodes.reduce<vec3>(
+    (v, node) =>
+      vec3.transformMat3(v, v, mat3.fromMat4(mat3.create(), matrixOf(node))),
+    // Float32 would drift on its own
+    [...START],
+  );
+
+const turned = (parent: Group, i: number) => {
+  const g = group(parent);
+  g.transform = [
+    Transform.rotateX(0.3 + i * 0.1),
+    Transform.rotateY(0.2),
+    Transform.scale([1, 1.01, 0.99]),
+  ];
+  return g;
+};
+
+it("folds a vector down shared ancestors", () => {
+  using s = scene();
+  const offsets = new Map<unknown, number[]>();
+  using acc = vectors("offset3", (node) => {
+    const v = offsets.get(node);
+    return v ? new CssVector(v) : null;
+  });
+  const a = group(s.root);
+  const b = group(a);
+  const c = group(a);
+  offsets.set(a, [1, 2, 3]);
+  offsets.set(b, [10, 20, 30]);
+  offsets.set(c, [100, 200, 300]);
+  acc.addTarget(b);
+  acc.addTarget(c);
+  expect(components(b, "offset3", 3)).toEqual([11, 22, 33]);
+  expect(components(c, "offset3", 3)).toEqual([101, 202, 303]);
+});
+
+it("turns a vector by each input root first, starting from the camera", () => {
+  using s = scene();
+  const A = mat3.fromValues(1, 2, 0, 0, 1, 0, 3, 0, 1);
+  const B = mat3.fromValues(0, 1, 0, -1, 0, 0, 0, 0, 2);
+  const C = mat3.fromValues(2, 0, 0, 0, 1, 4, 0, 0, 1);
+  const a = group(s.root);
+  const b = group(a);
+  const matrices = new Map<unknown, mat3>([
+    [s.container.camera, C],
+    [a, A],
+    [b, B],
+  ]);
+  using acc = turnings("product", (node) => {
+    const m = matrices.get(node);
+    return m ? new CssMatrix(m) : null;
+  });
+  // A camera registers on its first change
+  s.container.camera.transform = Transform.translate([0, 0, 1]);
+  acc.addTarget(b);
+  const expected: vec3 = [...START];
+  for (const m of [C, A, B]) vec3.transformMat3(expected, expected, m);
+  expectClose(components(b, "product", 3), expected);
+});
+
+it("stays accurate at odd and even depths", () => {
+  using s = scene();
+  using acc = turnings("deep");
+  let parent = s.root;
+  const chain: Object3D[] = [s.root];
+  for (let i = 0; i < 33; i++) {
+    parent = turned(parent, i);
+    chain.push(parent);
+    const target = group(parent);
+    acc.addTarget(target);
+    // Browsers round at each level
+    expectClose(components(target, "deep", 3), turnedBy(...chain), 3);
+  }
+});
+
+it("restarts a vector fold under a selector", () => {
+  using s = scene();
+  using acc = turnings("restarted");
+  const a = group(s.root);
+  a.transform = Transform.rotateX(1);
+  a.domElement.classList.add("fresh");
+  const target = group(a);
+  target.transform = Transform.rotateZ(1);
+  acc.addTarget(target);
+  acc.restartUnder(".fresh");
+  expectClose(components(target, "restarted", 3), turnedBy(target));
+});
+
+it("reads a vector through its result", () => {
+  using s = scene();
+  using acc = turnings("readable");
+  const target = group(s.root);
+  target.transform = Transform.rotateZ(Math.PI / 2);
+  acc.addTarget(target);
+  CSS.registerProperty({
+    name: "--read",
+    syntax: "<number>",
+    inherits: false,
+    initialValue: "0",
+  });
+  target.domElement.style.setProperty(
+    "--read",
+    String(acc.result.components[1]),
+  );
+  expect(value(target, "read")).toBeCloseTo(1, 4);
+});
+
+it("leaves the whole identity after a wrong shape input", () => {
+  using s = scene();
+  const reported = vi
+    .spyOn(globalThis, "reportError")
+    .mockImplementation(() => {});
+  using acc = turnings("shaped", (node) =>
+    node instanceof Camera ? null : CssMatrix.identity(2),
+  );
+  const target = group(s.root);
+  acc.addTarget(target);
+  expect(reported).toHaveBeenCalled();
+  expect(target.domElement.style.getPropertyValue("--shaped-0-input")).toBe("");
+  expect(components(target, "shaped", 3)).toEqual(START);
+});
+
+it("rejects a vector's wrong shape or syntax before adding rules", () => {
+  const before = rules();
+  const composite = {
+    name: "rejected",
+    syntax: "<number>",
+    identity: new CssVector([0, 0, 0]),
+    combine: (parent: CssVector, input: CssVector) => parent.add(input),
+  };
+  expect(
+    () =>
+      new Accumulator({ ...composite, combine: () => new CssVector([0, 0]) }),
+  ).toThrow(TypeError);
+  expect(() => new Accumulator({ ...composite, syntax: "<length>" })).toThrow(
+    TypeError,
+  );
+  expect(
+    () =>
+      new Accumulator({
+        ...composite,
+        start: new CssVector([0, 0]),
+        combine: () => new CssVector([0, 0, 0]),
+      }),
+  ).toThrow(TypeError);
+  expect(rules()).toBe(before);
+});
+
+it("frees every component on dispose and guards generated names", () => {
+  using s = scene();
+  const before = rules();
+  const target = group(s.root);
+  const first = turnings("x");
+  first.addTarget(target);
+  expect(() => sum("x-0")).toThrow(RangeError);
+  expect(() => sum("x-5")).toThrow(RangeError);
+  first[Symbol.dispose]();
+  expect(rules()).toBe(before);
+  expect(target.domElement.style.getPropertyValue("--x-8-input")).toBe("");
+  using scalar = sum("x-0");
+  expect(chained(scalar, target)).toBe(false);
+});
+
+it("normalizes a zero vector to zero", () => {
+  using s = scene();
+  using acc = vectors("unit", (node) =>
+    node instanceof Camera ? null : new CssVector([0, 0, 0]).normalize(),
+  );
+  const target = group(s.root);
+  acc.addTarget(target);
+  expect(components(target, "unit", 3)).toEqual([0, 0, 0]);
 });

@@ -1,0 +1,32 @@
+body {
+  margin: 0;
+  font:
+    18px/1.5 Georgia,
+    serif;
+  background: #f6f2e8;
+  color: #222;
+}
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
+h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+}
+h2 {
+  margin: 24px 0 4px;
+  font: 600 18px system-ui;
+}
+p {
+  margin: 0 0 12px;
+}
+.lede {
+  font-size: 20px;
+}
+code {
+  font:
+    15px ui-monospace,
+    monospace;
+}
