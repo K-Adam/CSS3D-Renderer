@@ -1,0 +1,87 @@
+html {
+  background: radial-gradient(ellipse at 50% 55%, #2a3040, #10131a 75%) fixed;
+  scrollbar-width: none;
+}
+body {
+  margin: 0;
+  height: 300vh;
+}
+/* Outside transform, so it dollies along the view axis. Lengths out here are in pixels, the scene inside is unit-scaled */
+@keyframes dolly {
+  to {
+    translate: 0 0 var(--dolly);
+  }
+}
+/* Without the guard an unsupporting browser fills to the last keyframe and stays zoomed */
+@supports (animation-timeline: scroll()) {
+  .c3r-view {
+    animation: dolly linear both;
+    animation-timeline: scroll(root);
+  }
+}
+.c3r-container.c3r-container {
+  position: fixed;
+  inset: 0;
+}
+i {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+a.t {
+  display: block;
+  pointer-events: auto;
+  background-color: var(--f);
+  cursor: pointer;
+}
+/* A browser hides :visited from the page by allowing it colour changes only, and that is enough */
+a.t:visited {
+  background-color: var(--c);
+}
+a.t:hover {
+  filter: brightness(1.18);
+}
+a.t:focus {
+  outline: none;
+}
+a.t:focus-visible {
+  outline: 4px solid #ffd27a;
+  outline-offset: -4px;
+}
+.pan {
+  transition: transform 0.8s ease-in-out;
+}
+header {
+  position: fixed;
+  left: 18px;
+  top: 14px;
+  z-index: 1;
+  color: #d6dbe6;
+  font:
+    14px/1.45 system-ui,
+    sans-serif;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+  max-width: min(560px, 86vw);
+}
+h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+p {
+  margin: 2px 0 0;
+}
+small {
+  position: fixed;
+  right: 14px;
+  bottom: 10px;
+  z-index: 1;
+  color: #8d94a3;
+  font:
+    12px system-ui,
+    sans-serif;
+  pointer-events: none;
+}

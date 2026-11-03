@@ -82,10 +82,10 @@
       });
 
       const shapes = [
-        { mesh: cube({ sx: 60 }), texture: "textures/crate.jpg" },
+        { mesh: cube({ sx: 60 }), texture: "../textures/crate.jpg" },
         {
           mesh: sphere({ radius: 35, nx: 12, ny: 6 }),
-          texture: "textures/ornament.jpg",
+          texture: "../textures/ornament.jpg",
         },
         {
           mesh: cylinder({
@@ -96,10 +96,10 @@
             capBase: false,
             capApex: false,
           }),
-          texture: "textures/can-label.jpg",
+          texture: "../textures/can-label.jpg",
           caps: [
-            cap(28, 8, 30, "textures/can-lid.jpg"),
-            cap(28, 8, -30, "textures/can-lid.jpg"),
+            cap(28, 8, 30, "../textures/can-lid.jpg"),
+            cap(28, 8, -30, "../textures/can-lid.jpg"),
           ],
         },
         {
@@ -109,13 +109,13 @@
             segments: 12,
             minorSegments: 6,
           }),
-          texture: "textures/lifebuoy.jpg",
+          texture: "../textures/lifebuoy.jpg",
         },
         {
           // Rings keep the texture continuous below the apex triangles
           mesh: cone({ height: 60, radius: 32, nx: 12, ny: 4, capBase: false }),
-          texture: "textures/mountain.jpg",
-          caps: [cap(32, 12, -30, "textures/dirt.jpg")],
+          texture: "../textures/mountain.jpg",
+          caps: [cap(32, 12, -30, "../textures/dirt.jpg")],
         },
       ];
 

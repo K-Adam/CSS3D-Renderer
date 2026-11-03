@@ -1,0 +1,35 @@
+<% layout("@layout", { title: "The Moon, in HTML" }) %>
+<div class="tilt-n"></div><div class="tilt-s"></div>
+<div class="stage"><%~ it.scene %></div>
+<div class="labels"><%~ it.labels %></div>
+<main>
+<section style="top:<%= it.at(0) %>vh">
+<h1>The Moon, in HTML</h1>
+<p class="try">Scroll to fly around it. Point at a name to read about it, click it to follow the link.</p>
+<p>320 flat triangles and ten real links. No canvas, no WebGL, no script.</p>
+</section>
+<section style="top:<%= it.at(60 / 360) %>vh">
+<h2>The near side</h2>
+<p>All six Apollo landings are on the face that always looks at Earth. Their crews brought back 382 kg of rock and soil.</p>
+<p>The dark plains are old lava. With the Sun behind you, as here, the Moon is nearly full and the relief goes flat.</p>
+</section>
+<section style="top:<%= it.at(135 / 360) %>vh">
+<h2>The far side, in daylight</h2>
+<p>The lit half you are looking at now is mostly far side. It gets as much sunlight as the near side, Earth just never sees it. It has almost no dark plains and far more craters.</p>
+<p>Nobody saw it until Luna 3 photographed it in 1959.</p>
+</section>
+<section style="top:<%= it.at(195 / 360) %>vh">
+<h2>The terminator</h2>
+<p>The Sun stays where it is while you move, so the phases you see are real phases. Long shadows along the line between day and night show the relief best.</p>
+<p>Chang'e 4 landed nearby in 2019, just inside the night side.</p>
+</section>
+<section style="top:<%= it.at(262 / 360) %>vh">
+<h2>The night side</h2>
+<p>Almost nothing is lit here, because this half faces away from the Sun. At new moon that is the near side, while the far side is in full sunlight. "The dark side" is not a place.</p>
+</section>
+<section style="top:<%= it.at(1) %>vh">
+<h2>How it was made</h2>
+<p>The surface comes from NASA's Lunar Reconnaissance Orbiter mosaic. Its laser altimeter heights cast the shadows, baked into the texture. Nothing is lit live, the whole scene just turns.</p>
+<small>Imagery: NASA's Scientific Visualization Studio, <a target="_blank" href="https://svs.gsfc.nasa.gov/4720/">CGI Moon Kit</a>, from LROC and LOLA data. <a target="_blank" href="CREDITS.md">Credits and fact sources</a></small>
+</section>
+</main>

@@ -133,8 +133,9 @@
   }
 }
 
+/* Not hidden, focus or scrollIntoView would scroll a scroll container */
 .c3r-container {
-  overflow: hidden;
+  overflow: clip;
   position: relative;
   contain: strict;
   --c3r-viewport-width: 100vw;
@@ -154,7 +155,6 @@
   transform-origin: 0 0;
   -webkit-user-select: none;
   user-select: none;
-  backface-visibility: inherit;
 }
 
 .c3r-group {
@@ -169,7 +169,6 @@
   top: 50%;
   left: 50%;
   pointer-events: none;
-  backface-visibility: hidden;
 }
 
 .c3r-perspective {
@@ -212,7 +211,9 @@
   width: var(--c3r-width, 0px);
   height: var(--c3r-height, 0px);
   transform-style: flat;
-  overflow: hidden;
+  overflow: clip;
+  /* Only here, Chrome's hit test skips the subtree of a hidden group turned away */
+  backface-visibility: var(--c3r-backface, hidden);
 }
 
 .c3r-polygon-clip {
@@ -323,6 +324,9 @@
 
 /* No specificity, so the user's own styles win */
 :where(.c3r-element) {
+  /* A parent's texture has uvs for polygons, here it would cover the whole box */
+  --c3r-background-color: initial;
+  --c3r-background-image: initial;
   background-color: var(--c3r-background-color, transparent);
   background-image: var(--c3r-background-image, none);
   background-size: 100% 100%;

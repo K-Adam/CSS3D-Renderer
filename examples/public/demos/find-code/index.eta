@@ -1,0 +1,5 @@
+<% layout("@layout", { title: "Find the Code" }) %>
+<%~ it.scene %>
+<header><h1>Find the Code</h1><p data-hint="Look for the code, then type it into the screen."></p></header>
+<div class="win"></div>
+<small class="src"></small>

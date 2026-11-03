@@ -48,7 +48,7 @@
       const container = new Container();
       document.body.appendChild(container.domElement);
 
-      const textured = (url, filter) =>
+      const textured = (url, filter = null) =>
         Object.assign(new Material(), { background: url, filter });
 
       const ground = new Group();
@@ -56,12 +56,12 @@
       ground.transform = Transform.rotateX(-Math.PI / 2);
       ground.addMesh(quad({ scale: 600 }));
       ground.material = textured(
-        "textures/dirt.jpg",
+        "../textures/dirt.jpg",
         Filter.tint([1, 0.66, 0.42]),
       );
       ground.material.shading = "smooth";
       // The logs' shadows, cast by points spread through the flames
-      ground.material.diffuse = { map: "textures/firelight_shadows.png" };
+      ground.material.diffuse = { map: "../textures/firelight_shadows.png" };
       container.lights = {
         ambient: { intensity: 0.17 },
         point: { position: [0, 60, 0], intensity: 6000 },
@@ -75,11 +75,11 @@
         wave(5.75, 0.044, 2),
       );
 
-      const bark = textured("textures/bark.jpg", [
+      const bark = textured("../textures/bark.jpg", [
         Filter.tint([1, 0.72, 0.5]),
         Filter.brightness(0.6),
       ]);
-      const endGrain = textured("textures/log_end.png", [
+      const endGrain = textured("../textures/log_end.png", [
         Filter.tint([1, 0.7, 0.5]),
         Filter.brightness(0.45),
       ]);
@@ -153,7 +153,7 @@
         container.root.addChild(fire);
         fire.transform = Transform.translate(offset);
         fire.addMesh(fireQuad(width, mirrored));
-        fire.material = textured(`textures/bonfire_${sheet}.png`);
+        fire.material = textured(`../textures/bonfire_${sheet}.png`);
         fire.material.flipbook = { columns: 8, rows: 8, fps };
       }
 
@@ -200,7 +200,7 @@
         },
       });
       container.root.addChild(smoke);
-      smoke.material = textured("textures/smoke_puff.png");
+      smoke.material = textured("../textures/smoke_puff.png");
 
       const embers = new ParticleSystem({
         count: 14,
@@ -244,7 +244,7 @@
         },
       });
       container.root.addChild(embers);
-      embers.material = textured("textures/lensflare/lensflare0_alpha.png");
+      embers.material = textured("../textures/lensflare/lensflare0_alpha.png");
 
       container.camera.transform = Transform.translate([0, 80, 0]);
       container.camera.tween = new Tween({

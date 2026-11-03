@@ -19,6 +19,7 @@ import {
   type Vertex,
 } from "c3r";
 import { viewMatrixOf } from "../src/css/Camera.js";
+import { deleteRule, insertRule } from "../src/css/styles.js";
 import { Accumulator } from "../src/dom/Accumulator.js";
 import { decompose } from "../src/css/Transform.js";
 import { matrixOf } from "../src/dom/Object3D.js";
@@ -631,10 +632,10 @@ describe("Material", () => {
     const rule = () => ruleOf(material.className);
 
     material.doubleSided = true;
-    expect(rule()).toMatch(/backface-visibility: ?visible/);
+    expect(rule()).toMatch(/--c3r-backface: ?visible/);
 
     material.doubleSided = false;
-    expect(rule()).not.toContain("backface-visibility");
+    expect(rule()).not.toContain("--c3r-backface");
   });
 
   it("plays a flipbook", () => {
@@ -753,6 +754,21 @@ describe("Transform", () => {
     mat4.rotateZ(expected, expected, 1);
     expect(matrixOf(group)).toEqual(expected);
     expect(group.transform).toHaveLength(2);
+  });
+
+  it("aims -z from the eye at the target", () => {
+    const group = new Group();
+    group.transform = Transform.targetTo([0, 0, 5], [3, 0, 1]);
+    const ahead = vec3.transformMat4(
+      vec3.create(),
+      [0, 0, -5],
+      matrixOf(group),
+    );
+    [3, 0, 1].forEach((v, i) => expect(ahead[i]).toBeCloseTo(v, 5));
+    const up = vec3.transformMat4(vec3.create(), [0, 1, 0], matrixOf(group));
+    [0, 1, 5].forEach((v, i) => expect(up[i]).toBeCloseTo(v, 5));
+    expect(() => Transform.targetTo([1, 2, 3], [1, 2, 3])).toThrow(RangeError);
+    expect(() => Transform.targetTo([0, 5, 0], [0, 0, 0])).toThrow(RangeError);
   });
 
   it("rejects an invalid matrix", () => {
@@ -942,6 +958,21 @@ describe("Tween", () => {
     ])
       expect(cssText()).toContain(block);
     expect(ruleOf(sequence.className)).toContain(`${sequence.className} 5s`);
+  });
+
+  it("emits a rule as written when the DOM can't parse a value, until it changes", () => {
+    const owner = {};
+    const value =
+      "linear-gradient(rgb(calc(var(--k) * 255) 0 0), red), url(a.png)";
+    const rule = insertRule(
+      ".c3r-source-test",
+      owner,
+      `{ background-image: ${value}; }`,
+    );
+    expect(cssText()).toContain(value);
+    rule.style.setProperty("color", "red");
+    expect(cssText()).toContain(rule.cssText);
+    deleteRule(rule);
   });
 
   it("keeps a Firefox copy of each keyframes rule in the output", () => {
@@ -1152,6 +1183,30 @@ describe("server-side rendering", () => {
     expect(outerHTML).toContain("--c3r-unit-scale");
   });
 
+  it("takes its camera on creation, making no default", () => {
+    const camera = new OrthographicCamera();
+    const container = new Container(camera);
+    expect(container.camera).toBe(camera);
+    expect(container.domElement.classList).toContain(camera.className);
+    expect(container.domElement.classList).toContain(camera.projectionClass);
+    // Ids count up, so the next camera's shows none was made in between
+    const id = Number(camera.className.replace("c3r-camera-", ""));
+    expect(new PerspectiveCamera().className).toBe(`c3r-camera-${id + 1}`);
+  });
+
+  it("exports the uv position of a polygon", async () => {
+    const container = new Container();
+    const { style } = container.root.addPolygon([
+      vertex(0, 0, 0, 0.25, 0.25),
+      vertex(1, 0, 0, 0.75, 0.25),
+      vertex(0, 1, 0, 0.25, 0.75),
+    ]).contentElement;
+    expect(style.getPropertyValue("--c3r-uv-position")).toContain("0.25");
+    expect(await container.toHTML()).toMatch(
+      /background-position: ?var\(--c3r-uv-position\)/,
+    );
+  });
+
   it("serializes flat shading with a tween in its input", async () => {
     const container = new Container();
     container.lights = { ambient: { intensity: 0.5 } };
@@ -1209,6 +1264,33 @@ describe("server-side rendering", () => {
       const width = (poly: Polygon) =>
         poly.domElement.style.getPropertyValue("--c3r-width");
       expect(width(loaded)).toBe(width(sized));
+    } finally {
+      settings.enableImageFileLoading = enableImageFileLoading;
+      settings.fetch.virtualServers = virtualServers;
+    }
+  });
+
+  it("drops a JPEG's mask without a canvas, keeps a PNG's", async () => {
+    const { settings } = window.happyDOM;
+    const { enableImageFileLoading } = settings;
+    const { virtualServers } = settings.fetch;
+    settings.enableImageFileLoading = true;
+    settings.fetch.virtualServers = [
+      { url: "/assets/", directory: "examples/public" },
+    ];
+    try {
+      const container = new Container();
+      const masks = ["crate.jpg", "sprite.png"].map((file) => {
+        const group = new Group();
+        container.root.addChild(group);
+        group.material = new Material();
+        group.material.background = `/assets/textures/${file}`;
+        group.addPolygon([vertex(0, 0, 0), vertex(1, 0, 0), vertex(0, 1, 0)]);
+        return () => ruleOf(group.material!.className);
+      });
+      await container.bake();
+      expect(masks[0]()).toMatch(/--c3r-alpha-mask: ?none/);
+      expect(masks[1]()).toContain('--c3r-alpha-mask: url("/assets/');
     } finally {
       settings.enableImageFileLoading = enableImageFileLoading;
       settings.fetch.virtualServers = virtualServers;

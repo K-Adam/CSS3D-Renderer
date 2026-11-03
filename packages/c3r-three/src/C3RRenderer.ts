@@ -499,9 +499,7 @@ const sameKey = (a: unknown[], b: unknown[]) =>
 
 function createNode(object: Object3D): C3R.Group {
   if (object instanceof CSS3DObject) {
-    const node = new C3R.ElementObject(object.element);
-    node.domElement.style.backfaceVisibility = "visible";
-    return node;
+    return new C3R.ElementObject(object.element);
   }
 
   if (object instanceof Sprite) {

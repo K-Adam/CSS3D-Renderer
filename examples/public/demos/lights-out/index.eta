@@ -1,0 +1,3 @@
+<% layout("@layout", { title: "Lights Out" }) %>
+<%~ it.scene %>
+<header><h1>Lights Out</h1><p>Scroll to step closer. Read and scroll the page on the wall. The pillar blocks clicks behind it. <a href="CREDITS.md" target="_blank">Credits</a></p></header>

@@ -60,12 +60,12 @@
         loop: true,
       });
       earth.material = new Material();
-      earth.material.background = "textures/earth_day.jpg";
+      earth.material.background = "../textures/earth_day.jpg";
       earth.material.shading = "smooth";
       earth.material.specular = {
         intensity: 1,
         shininess: 16,
-        map: "textures/earth_specular.png",
+        map: "../textures/earth_specular.png",
       };
       earth.addMesh(icosphere({ radius: 200, subdivisions: 2 }));
 

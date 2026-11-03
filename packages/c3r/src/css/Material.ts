@@ -126,7 +126,7 @@ export class Material {
   set doubleSided(doubleSided: boolean) {
     if (doubleSided === this.#doubleSided) return;
     this.#doubleSided = doubleSided;
-    this.#set("backface-visibility", doubleSided ? "visible" : null);
+    this.#set("--c3r-backface", doubleSided ? "visible" : null);
   }
 
   get flipbook(): Readonly<Flipbook> | null {

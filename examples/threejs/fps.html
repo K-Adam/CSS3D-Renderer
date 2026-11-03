@@ -317,8 +317,7 @@
 
             // run several fixed-step iterations to approximate varying-step
 
-            dt = 5;
-            while (timeLeft >= dt) {
+            while (timeLeft >= timeStep) {
               const time = 0.3,
                 damping = 0.93,
                 gravity = 0.01,
@@ -360,7 +359,7 @@
               motion.rotation.y += tau;
               motion.rotation.y %= tau;
 
-              timeLeft -= dt;
+              timeLeft -= timeStep;
             }
           }
         };
@@ -404,7 +403,6 @@
         const placeholder = new THREE.Object3D();
 
         const texture = new THREE.TextureLoader().load(textureUrl);
-        texture.minFilter = THREE.LinearFilter;
 
         // The diamond plate tiles in world space, so neighbouring faces line up
         const plate = new THREE.TextureLoader().load(plateUrl);
@@ -435,12 +433,12 @@
 
       const skybox = makeSkybox(
         [
-          "textures/cube/skybox/px.jpg", // right
-          "textures/cube/skybox/nx.jpg", // left
-          "textures/cube/skybox/py.jpg", // top
-          "textures/cube/skybox/ny.jpg", // bottom
-          "textures/cube/skybox/pz.jpg", // back
-          "textures/cube/skybox/nz.jpg", // front
+          "../textures/cube/skybox/px.jpg", // right
+          "../textures/cube/skybox/nx.jpg", // left
+          "../textures/cube/skybox/py.jpg", // top
+          "../textures/cube/skybox/ny.jpg", // bottom
+          "../textures/cube/skybox/pz.jpg", // back
+          "../textures/cube/skybox/nz.jpg", // front
         ],
         2000,
       );
@@ -449,9 +447,9 @@
 
       scene.add(
         makePlatform(
-          "models/platform/platform.json",
-          "models/platform/platform.jpg",
-          "models/platform/plate.jpg",
+          "../models/platform/platform.json",
+          "../models/platform/platform.jpg",
+          "../models/platform/plate.jpg",
         ),
       );
 

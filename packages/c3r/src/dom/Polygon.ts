@@ -706,12 +706,11 @@ export class Polygon extends Object3D {
 
     const position = `calc(var(--c3r-width) * ${-scx} * (${txmin} + var(--c3r-column, 0))) calc(var(--c3r-height) * (1 + ${scy} * (${tymin} - var(--c3r-row, 0) - 1)))`;
     const size = `calc(${100 * scx}% * var(--c3r-columns, 1)) calc(${100 * scy}% * var(--c3r-rows, 1))`;
-    style.backgroundPosition = style.maskPosition = position;
+    style.setProperty("--c3r-uv-position", position);
+    // happy-dom drops this shorthand with var() inside calc(), a whole var() stays
+    style.backgroundPosition = style.maskPosition = "var(--c3r-uv-position)";
     style.backgroundSize = style.maskSize = size;
-    if (this.#lit || this.#mapped) {
-      style.setProperty("--c3r-uv-position", position);
-      style.setProperty("--c3r-uv-size", size);
-    }
+    if (this.#lit || this.#mapped) style.setProperty("--c3r-uv-size", size);
 
     const uvPoint = ([u, v]: vec2): Point => [
       (u - txmin) * scx,

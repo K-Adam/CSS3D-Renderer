@@ -59,12 +59,12 @@
       plane.transform = Transform.rotateX(-Math.PI / 2);
       plane.addMesh(quad({ scale: 600 }));
       plane.material = new Material();
-      plane.material.background = "textures/metal062c.jpg";
+      plane.material.background = "../textures/metal062c.jpg";
       plane.material.shading = "smooth";
       plane.material.specular = {
         intensity: 1,
         shininess: 32,
-        map: "textures/metal062c_specular.png",
+        map: "../textures/metal062c_specular.png",
       };
 
       const carrier = new Group();
@@ -75,7 +75,7 @@
       marker.transform = Transform.translate(lightAt);
       marker.addMesh(quad({ scale: 48 }));
       marker.material = new Material();
-      marker.material.background = "textures/lensflare/lensflare0_alpha.png";
+      marker.material.background = "../textures/lensflare/lensflare0_alpha.png";
 
       container.camera.tween = new Tween({
         from: [

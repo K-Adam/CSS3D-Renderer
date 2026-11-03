@@ -252,6 +252,24 @@ export class Transform {
     ]);
   }
 
+  // At eye, its -z axis towards target, like a camera
+  static targetTo(
+    eye: ReadonlyVec3,
+    target: ReadonlyVec3,
+    up: ReadonlyVec3 = [0, 1, 0],
+  ): Transform {
+    const m = mat4.targetTo(
+      mat4.create(),
+      vector(eye),
+      vector(target),
+      vector(up),
+    );
+    // An eye on its target or an up along the view has no orientation
+    if (!mat4.determinant(m))
+      throw new RangeError(`No orientation from ${[...eye]} to ${[...target]}`);
+    return Transform.matrix(m);
+  }
+
   static matrix(m: ArrayLike<number>): Transform {
     const matrix = Float32Array.from(m);
     if (matrix.length !== 16)

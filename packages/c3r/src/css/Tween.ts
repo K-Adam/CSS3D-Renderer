@@ -203,8 +203,8 @@ export class Tween {
       s.values.map((_, i) => `var(${property(s, i)}, ${s.identity})`);
     const cssText = (stop: Map<string, Step>) =>
       frame(stop)
-        .map(([name, value]) => `${name}: ${value}`)
-        .join("; ");
+        .map(([name, value]) => `${name}: ${value};`)
+        .join(" ");
     const total = times[times.length - 1];
 
     // A camera's view can't take the class, so it shares the variables
@@ -285,7 +285,7 @@ export class Tween {
         this.#hoverRule = insertRule(
           `.${this.className}:not(:hover)`,
           this,
-          `{ ${track}-state: paused }`,
+          `{ ${track}-state: paused; }`,
         );
       }
     }

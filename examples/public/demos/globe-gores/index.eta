@@ -1,0 +1,10 @@
+<% layout("@layout", { title: "America, folded" }) %>
+<header><h1>America, folded</h1><p>Scroll to fold the 1507 sheet into a globe, then point at a printed name.</p></header>
+<div id="sheet"></div>
+<%~ it.scene %>
+<main>
+<section><div><h2>A globe you cut out yourself</h2><p>Martin Waldseemüller printed these twelve gores around 1507, to be cut out and pasted on a ball. The bar under them, <i>Diameter Globi</i>, gives the size of that ball. This copy is in the University Library of Munich.</p></div></section>
+<section><div><h2>Twelve hinges at the equator</h2><p>Each gore is a chain of flat strips, every strip one element hinged on its neighbour. No script runs: scrolling drives a CSS animation on each hinge.</p></div></section>
+<section><div><h2>The old world first</h2><p>Keep going and the printed coasts come round: <a target="_blank" href="https://en.wikipedia.org/wiki/Africa">Affrica</a>, then <a target="_blank" href="https://en.wikipedia.org/wiki/Asia">Asia</a>, then a very wide ocean.</p></div></section>
+<section><div><h2>America</h2><p>On the far side, south of the equator, a thin new land carries the name. This map and its companion wall map are the first known to print it. <a target="_blank" href="https://en.wikipedia.org/wiki/Naming_of_the_Americas">Why that name</a>.</p></div></section>
+</main>

@@ -57,11 +57,13 @@ container.camera.transform = Transform.translate([0, 0, 400]);
 | `Material`                                | `background` (`[r, g, b, a]` in 0-1, or an image URL), `filter` (one or an array of `Filter` steps, before a tween's), `doubleSided`, `shading`, `diffuse`, `specular`, inherited by the object's descendants; on an `ElementObject`, its element only |
 | `PerspectiveCamera`, `OrthographicCamera` | `transform` (pose), `tween`, and `fov`, or `left`, `right`, `top`, `bottom`                                                                                                                                                                            |
 
-An image's alpha shows through. A color and an image don't combine, tint either with `Filter.tint`; a color hides an inherited image and an image hides an inherited color. Every property but `shading`, `diffuse` and `specular` applies on assignment; there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
+An image's alpha shows through. A color and an image don't combine, tint either with `Filter.tint`. A color hides an inherited image and an image hides an inherited color. An `ElementObject`'s element shows only its own material's background, never a parent's. Every property but `shading`, `diffuse` and `specular` applies on assignment, there is no `update()` to call. A polygon is laid out from its vertices on construction, so put it in a group to move it.
+
+To make a polygon interactive, set `pointer-events: auto` on its `contentElement`, which hits its exact shape, not on its `domElement`, which hits the whole bounding box.
 
 A material's `flipbook = { columns, rows, frames?, fps? }` plays on polygons an image of frames in a grid, in reading order at 30 fps by default, with the uvs covering one cell.
 
-A `Material`, `Tween` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block; otherwise it is removed once the owner and its elements are garbage-collected.
+A `Material`, `Tween` or camera is a class rule in one shared stylesheet, so the objects using it share one style. The rule stays until `[Symbol.dispose]()` is called, or the owner leaves a `using` block. Otherwise it is removed once the owner and its elements are garbage-collected. A container that is assigned another camera keeps the old one's rules until then, since cameras can be shared, so pass the camera to `new Container(camera)` instead of replacing the default `PerspectiveCamera`.
 
 A `transform` array applies in order, like CSS. A tween animates a group after its `transform`, from rest or from the `from` steps, and a group's tweens apply in array order. Its keyframes play in sequence, `duration` seconds each unless written as `{ steps, duration }`, and `easing` applies to each; a keyframe is one step or an array of steps, and what it doesn't list holds. Transforms apply in the order they first appear, `from` first. Angles are radians and may exceed a half turn. A `Transform.matrix` keyframe tweens its translation, rotation and scale separately, and can't have shear, perspective or a zero scale. `Filter` steps apply to the polygons and `ElementObject` elements, and a nested group's filters replace its parent's. With `hover`, a `loop` plays only while hovered; any other tween takes one keyframe and eases to it and back. Setting `paused` later pauses everything using the tween; a hover transition can't pause, so it stops responding to hover instead. It runs on the main thread and `bake()` ignores its scale. Use a negative `delay`, in seconds, to offset the phase.
 
@@ -89,7 +91,7 @@ A shaded material's `specular = { intensity, shininess, map? }` adds a white Bli
 
 A `Billboard` undoes every rotation above it and its own, so turn a child group to spin it. A scale that isn't uniform, a shear, or a mirror in a tween skews it.
 
-Aim a camera with gl-matrix (install it): `Transform.matrix(mat4.targetTo(mat4.create(), eye, target, [0, 1, 0]))`. Its tween moves it after its `transform` (`translate([0, 0, 400])` backs away) and can't `hover` or scale by zero or less; its filters apply to every group without its own, and `bake()` ignores it.
+Aim a camera, or any object, with `Transform.targetTo(eye, target, up = [0, 1, 0])`: it stands at `eye` with its -z axis towards `target`, and throws when `eye` is on `target` or `up` points along the view. A camera's tween moves it after its `transform` (`translate([0, 0, 400])` backs away) and can't `hover` or scale by zero or less. Its filters apply to every group without its own, and `bake()` ignores it.
 
 On a live page, call `container.bake()` after building, heavily scaling or changing textures; `toHTML()` awaits it for you. It also sizes polygons to their image's texels, loading each url once.
 

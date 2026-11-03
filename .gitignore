@@ -2,3 +2,5 @@ node_modules/
 dist/
 __screenshots__/
 .vitest/
+examples/public/demos/*/index.html
+examples/public/demos/lights-out/frame.html

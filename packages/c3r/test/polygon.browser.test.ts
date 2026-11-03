@@ -1,5 +1,12 @@
-import { expect, it } from "vitest";
-import { Container, ElementObject, type Group, Material, Polygon } from "c3r";
+import { expect, it, onTestFinished } from "vitest";
+import {
+  Container,
+  ElementObject,
+  Group,
+  Material,
+  Polygon,
+  Transform,
+} from "c3r";
 
 const image = async (width: number, height: number) => {
   const canvas = document.createElement("canvas");
@@ -73,4 +80,101 @@ it("doesn't size an element's children by its material", async () => {
   const before = width(face);
   await container.bake();
   expect(width(face)).toBe(before);
+});
+
+const scene = () => {
+  const container = new Container();
+  container.setSize(400, 400);
+  document.body.append(container.domElement);
+  onTestFinished(() => container.domElement.remove());
+  container.camera.transform = Transform.translate([0, 0, 500]);
+  return container;
+};
+
+const centered = (parent: Group) =>
+  parent.addPolygon(
+    [
+      [-100, -100],
+      [100, -100],
+      [100, 100],
+      [-100, 100],
+    ].map(([x, y]) => ({ position: [x, y, 0], uv: [0, 0] })),
+  );
+
+const center = (container: Container) => {
+  const { left, top } = container.domElement.getBoundingClientRect();
+  return document.elementFromPoint(left + 200, top + 200);
+};
+
+const turned = (parent: Group) => {
+  const group = new Group();
+  group.transform = Transform.rotateY(Math.PI);
+  parent.addChild(group);
+  return group;
+};
+
+it("does not scroll when something inside a polygon takes focus", () => {
+  const container = scene();
+  const polygon = centered(container.root);
+  const input = document.createElement("input");
+  input.style.cssText = "position: absolute; left: 3000px; top: 3000px";
+  polygon.contentElement.append(input);
+  input.focus();
+  expect(document.activeElement).toBe(input);
+  input.scrollIntoView();
+
+  expect(container.domElement.scrollTop).toBe(0);
+  expect(container.domElement.scrollLeft).toBe(0);
+  expect(polygon.domElement.scrollTop).toBe(0);
+  expect(polygon.domElement.scrollLeft).toBe(0);
+});
+
+it("hits a polygon facing the camera under groups turned away", () => {
+  const container = scene();
+  const { contentElement } = centered(turned(turned(container.root)));
+  contentElement.style.pointerEvents = "auto";
+  expect(center(container)).toBe(contentElement);
+});
+
+it("hits a polygon facing a camera behind the scene", () => {
+  const container = scene();
+  container.camera.transform = [
+    Transform.rotateY(Math.PI),
+    Transform.translate([0, 0, 500]),
+  ];
+  const { contentElement } = centered(turned(container.root));
+  contentElement.style.pointerEvents = "auto";
+  expect(center(container)).toBe(contentElement);
+});
+
+it("culls a back face, unless a material above it is double sided", () => {
+  const container = scene();
+  const group = new Group();
+  container.root.addChild(group);
+  const { contentElement } = centered(turned(group));
+  contentElement.style.pointerEvents = "auto";
+  expect(center(container)).toBe(container.domElement);
+
+  group.material = new Material();
+  group.material.doubleSided = true;
+  expect(center(container)).toBe(contentElement);
+  group.material[Symbol.dispose]();
+});
+
+it("hits a polygon's shape on its content, its box on its element", () => {
+  const container = scene();
+  const triangle = container.root.addPolygon(
+    [
+      [-150, -100],
+      [150, -100],
+      [0, 0],
+    ].map(([x, y]) => ({ position: [x, y, 0], uv: [0, 0] })),
+  );
+  const { left, top } = container.domElement.getBoundingClientRect();
+  const corner = () => document.elementFromPoint(left + 125, top + 205);
+
+  triangle.contentElement.style.pointerEvents = "auto";
+  expect(corner()).toBe(container.domElement);
+  triangle.domElement.style.pointerEvents = "auto";
+  expect(corner()).toBe(triangle.domElement);
 });

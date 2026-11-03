@@ -58,7 +58,7 @@
       <button data-move="-1">◀</button><button data-move="1">▶</button>
     </div>
 
-    <script src="js/libs/ammo.js"></script>
+    <script vite-ignore src="../js/libs/ammo.js"></script>
 
     <script type="module">
       import * as THREE from "three";
@@ -136,19 +136,6 @@
 
         const light = new THREE.DirectionalLight(0xffffff, 3);
         light.position.set(-10, 10, 5);
-        light.castShadow = true;
-        const d = 10;
-        light.shadow.camera.left = -d;
-        light.shadow.camera.right = d;
-        light.shadow.camera.top = d;
-        light.shadow.camera.bottom = -d;
-
-        light.shadow.camera.near = 2;
-        light.shadow.camera.far = 50;
-
-        light.shadow.mapSize.x = 1024;
-        light.shadow.mapSize.y = 1024;
-
         scene.add(light);
 
         document.body.appendChild(renderer.domElement);
@@ -198,9 +185,7 @@
           new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }),
           16,
         );
-        ground.castShadow = true;
-        ground.receiveShadow = true;
-        textureLoader.load("textures/grid.png", function (texture) {
+        textureLoader.load("../textures/grid.png", function (texture) {
           texture.wrapS = THREE.RepeatWrapping;
           texture.wrapT = THREE.RepeatWrapping;
           texture.repeat.set(40, 40);
@@ -216,8 +201,6 @@
           new THREE.SphereGeometry(ballRadius, 8, 6),
           new THREE.MeshPhongMaterial({ color: 0x202020 }),
         );
-        ball.castShadow = true;
-        ball.receiveShadow = true;
         const ballShape = new Ammo.btSphereShape(ballRadius);
         ballShape.setMargin(margin);
         pos.set(-3, 2, 0);
@@ -253,7 +236,7 @@
               brickMassCurrent *= 0.5;
             }
 
-            const brick = createParalellepiped(
+            createParalellepiped(
               brickDepth,
               brickHeight,
               brickLengthCurrent,
@@ -262,8 +245,6 @@
               quat,
               createMaterial(),
             );
-            brick.castShadow = true;
-            brick.receiveShadow = true;
 
             if (oddRow && (i == 0 || i == nRow - 2)) {
               pos.z += 0.75 * brickLength;
@@ -330,17 +311,7 @@
         });
         pos.set(ropePos.x, 0.1, ropePos.z - armLength);
         quat.set(0, 0, 0, 1);
-        const base = createParalellepiped(
-          1,
-          0.2,
-          1,
-          0,
-          pos,
-          quat,
-          baseMaterial,
-        );
-        base.castShadow = true;
-        base.receiveShadow = true;
+        createParalellepiped(1, 0.2, 1, 0, pos, quat, baseMaterial);
         pos.set(ropePos.x, 0.5 * pylonHeight, ropePos.z - armLength);
         const pylon = createParalellepiped(
           0.4,
@@ -351,8 +322,6 @@
           quat,
           baseMaterial,
         );
-        pylon.castShadow = true;
-        pylon.receiveShadow = true;
         pos.set(ropePos.x, pylonHeight + 0.2, ropePos.z - 0.5 * armLength);
         const arm = createParalellepiped(
           0.4,
@@ -363,8 +332,6 @@
           quat,
           baseMaterial,
         );
-        arm.castShadow = true;
-        arm.receiveShadow = true;
 
         // Glue the rope extremes to the ball and the arm
         const influence = 1;

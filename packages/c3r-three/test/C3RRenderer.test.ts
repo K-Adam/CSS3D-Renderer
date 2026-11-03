@@ -309,8 +309,8 @@ it("shows back faces unless the material is FrontSide", () => {
   const [frontRule, doubleRule] = [...root().children].map((mesh) =>
     materialRule(mesh.firstElementChild!),
   );
-  expect(frontRule).not.toContain("backface-visibility");
-  expect(doubleRule).toMatch(/backface-visibility: ?visible/);
+  expect(frontRule).not.toContain("--c3r-backface");
+  expect(doubleRule).toMatch(/--c3r-backface: ?visible/);
 
   front.dispose();
   double.dispose();

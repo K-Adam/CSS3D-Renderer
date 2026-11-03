@@ -45,14 +45,16 @@ export class Container {
   readonly viewElement: HTMLDivElement = document.createElement("div");
 
   #root: Group = new Group();
-  #camera: Camera = new PerspectiveCamera();
+  #camera: Camera;
   #width = 0;
   #height = 0;
   #unitScale = 1;
   #refit: Promise<void> | null = null;
   #lights: Readonly<Lights> | null = null;
 
-  constructor() {
+  // A camera given here spares a default whose rules would wait for GC
+  constructor(camera: Camera = new PerspectiveCamera()) {
+    this.#camera = camera;
     this.domElement.classList.add(
       "c3r-container",
       this.#camera.projectionClass,

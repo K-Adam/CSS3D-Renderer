@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="script-src 'none'">
+<title>Live lighting without JavaScript</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="frame.css">
+<main>
+<h1>Live lighting without JavaScript</h1>
+<p class="lede">The lamp in this room moves every frame and every surface answers it, yet the page runs no script. c3r writes the lighting as CSS, and the browser does the maths.</p>
+
+<h2>The light travels down the tree</h2>
+<p>Each group in the scene holds its transform in custom properties. The light's position starts at the root as a set of numbers, and every group passes it down after undoing its own transform in <code>calc()</code>. By the time it reaches a polygon, the light is in that polygon's own frame, where the maths is simple.</p>
+
+<h2>Keyframes move the lamp</h2>
+<p>The lamp's orbit is an ordinary CSS animation. The same keyframes move its sprite and animate the light's coordinates, which are registered with <code>@property</code> so the browser can interpolate them. Every frame, the new position flows down the tree and each polygon recomputes its brightness.</p>
+
+<h2>One shade per polygon</h2>
+<p>A flat polygon takes the light at its centre: the ambient level, plus the intensity times how squarely it faces the lamp, divided by the squared distance. It is a single <code>calc()</code>, painted as a grey layer that multiplies the content under it.</p>
+
+<h2>Exact falloff on a plane</h2>
+<p>A smooth polygon draws a <code>radial-gradient</code> centred where the lamp stands over its plane. Its size and colour stops follow the same falloff, so the pool of light is exact across the whole surface, and it slides as the lamp moves.</p>
+
+<h2>The page stays a page</h2>
+<p>The lighting is a pseudo-element over the content and ignores the pointer. Underneath, this text is still text: you can select it, scroll it and find it with the browser's search, all while the light passes over.</p>
+</main>

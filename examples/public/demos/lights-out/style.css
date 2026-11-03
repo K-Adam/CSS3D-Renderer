@@ -1,0 +1,91 @@
+html {
+  background: #000;
+  scrollbar-width: none;
+}
+/* Scrolling the page only zooms, the scene stays put */
+body {
+  margin: 0;
+  height: 300vh;
+}
+.c3r-container.c3r-container {
+  position: fixed;
+  inset: 0;
+}
+/* Outside transform, so it dollies along the view axis. Lengths out here are in pixels, the scene
+   inside is unit-scaled */
+@keyframes dolly {
+  to {
+    translate: 0 0 var(--dolly);
+  }
+}
+/* Without the guard an unsupporting browser fills to the last keyframe and stays zoomed */
+@supports (animation-timeline: scroll()) {
+  .c3r-view {
+    animation: dolly linear both;
+    animation-timeline: scroll(root);
+  }
+}
+/* A page parsed in chunks starts its animations up to half a second apart, which would throw the
+   shadows off the pillar for good. This holds them all until the last element arrives */
+body:not(:has(> header)) * {
+  animation-play-state: paused !important;
+}
+.c3r-polygon-content {
+  pointer-events: auto;
+}
+#wallpage,
+#film,
+#tank {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#wallpage {
+  border: 0;
+}
+#film,
+#tank {
+  object-fit: cover;
+  background: #000;
+}
+.shadow,
+.shadow > div {
+  position: absolute;
+  pointer-events: none;
+}
+.shadow {
+  inset: 0;
+}
+.shadow > div {
+  background: #000;
+}
+header {
+  position: fixed;
+  left: 16px;
+  top: 10px;
+  z-index: 2;
+  pointer-events: none;
+  color: #d8cfbe;
+  font:
+    13px/1.35 Georgia,
+    serif;
+  text-shadow: 0 0 4px #000;
+}
+h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: normal;
+  color: #fff;
+}
+p {
+  margin: 0;
+}
+header a {
+  color: inherit;
+  pointer-events: auto;
+}
+@media (max-aspect-ratio: 1/1) {
+  .c3r-perspective {
+    --c3r-camera-fov: 105deg !important;
+  }
+}

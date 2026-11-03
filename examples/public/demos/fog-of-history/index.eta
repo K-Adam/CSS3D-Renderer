@@ -1,0 +1,5 @@
+<% layout("@layout", { title: "Fog of History" }) %>
+<%~ it.targets %>
+<%~ it.scene %>
+<header><h1>Fog of History</h1><p>Click hexes to clear the fog, then press Back to rewind the camera. Your browser's history draws this map, the page stores nothing.</p></header>
+<small>No JS, view source</small>
