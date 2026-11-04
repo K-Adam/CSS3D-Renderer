@@ -132,13 +132,14 @@ export class Group extends Object3D {
           : caster.shape === "sphere"
             ? [caster.radius]
             : [NaN];
+    const center = caster.center && vector(caster.center);
     if (!sizes.every((n) => n > 0 && Number.isFinite(n)))
       throw new RangeError(`Invalid shadow caster ${JSON.stringify(caster)}`);
-    this.#shadowCaster = Object.freeze(
-      caster.shape === "box"
-        ? { shape: "box", size: Object.freeze(sizes) }
-        : { ...caster },
-    );
+    this.#shadowCaster = Object.freeze({
+      ...caster,
+      ...(caster.shape === "box" && { size: Object.freeze(sizes) }),
+      ...(center && { center: Object.freeze(center) }),
+    } as ShadowCaster);
   }
 
   get children(): readonly Object3D[] {

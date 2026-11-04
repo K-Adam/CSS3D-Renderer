@@ -1,8 +1,9 @@
-import { expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mat4 } from "gl-matrix";
 import {
   AmbientLight,
   BoxGeometry,
+  CylinderGeometry,
   DirectionalLight,
   DoubleSide,
   Group,
@@ -12,13 +13,15 @@ import {
   MeshStandardMaterial,
   OrthographicCamera,
   PerspectiveCamera,
+  PointLight,
   Scene,
+  SphereGeometry,
   Sprite,
   SpriteMaterial,
   Texture,
   Vector3,
 } from "three";
-import { cssText, styleHTML } from "c3r";
+import { Container, cssText, styleHTML } from "c3r";
 import { C3RRenderer, CSS3DObject } from "../src/C3RRenderer.js";
 
 const materialRule = (element: Element) => {
@@ -464,4 +467,150 @@ it("leaves out lights that give no light", () => {
   const { style } = renderer.domElement.firstElementChild as HTMLElement;
   expect(style.getPropertyValue("--c3r-light-ambient")).toBe("0");
   expect(Number(style.getPropertyValue("--c3r-light-y"))).toBeCloseTo(1, 5);
+});
+
+it("maps the first point light", () => {
+  const scene = new Scene();
+  const point = new PointLight(0xffffff, 20);
+  point.position.set(1, 2, 3);
+  const group = new Group();
+  group.position.set(10, 0, 0);
+  group.add(point);
+  const directional = new DirectionalLight(0xffffff, 2);
+  scene.add(group, directional);
+  scene.updateMatrixWorld();
+  const renderer = new C3RRenderer({ shading: true });
+  renderer.render(scene, new PerspectiveCamera());
+  const { style } = renderer.domElement.firstElementChild as HTMLElement;
+  const value = (name: string) =>
+    Number(style.getPropertyValue(`--c3r-light-${name}`));
+  expect([value("point-x"), value("point-y"), value("point-z")]).toEqual([
+    11, 2, 3,
+  ]);
+  expect(value("intensity")).toBeCloseTo(20 / Math.PI, 5);
+});
+
+describe("shadows", () => {
+  // A ball over a lit floor, its top face at y = 0
+  const setup = () => {
+    const scene = new Scene();
+    scene.add(new AmbientLight(0xffffff, 1));
+    const light = new DirectionalLight(0xffffff, 3);
+    light.position.set(0, 10, 0);
+    light.castShadow = true;
+    const floor = new Mesh(
+      new BoxGeometry(20, 1, 20).translate(0, -0.5, 0),
+      new MeshPhongMaterial(),
+    );
+    floor.receiveShadow = true;
+    const ball = new Mesh(new SphereGeometry(1), new MeshPhongMaterial());
+    ball.position.set(0, 3, 0);
+    ball.castShadow = true;
+    scene.add(light, floor, ball);
+    scene.updateMatrixWorld();
+    const renderer = new C3RRenderer({ shading: true, shadows: true });
+    const camera = new PerspectiveCamera();
+    const render = () => {
+      scene.updateMatrixWorld();
+      renderer.render(scene, camera);
+    };
+    const layer = () =>
+      renderer.domElement.querySelector<HTMLElement>(".c3r-shadow");
+    return { light, ball, renderer, render, layer };
+  };
+  const points = (layer: HTMLElement) =>
+    layer.querySelector<HTMLElement>("div")!.style.clipPath.split(",").length;
+
+  it("casts from a light that casts, while shading and shadows are on", () => {
+    const { light, renderer, render, layer } = setup();
+    light.castShadow = false;
+    render();
+    expect(layer()).toBeNull();
+    light.castShadow = true;
+    render();
+    // The directional light's share over the ambient
+    expect(Number(layer()!.style.opacity)).toBeCloseTo(3 / 4, 5);
+    expect(layer()!.style.filter).toBe("");
+    renderer.shadows = { blur: 1 };
+    render();
+    expect(layer()!.style.filter).toMatch(/^blur\(/);
+    renderer.shadows = false;
+    render();
+    expect(layer()).toBeNull();
+    renderer.shadows = true;
+    renderer.shading = false;
+    render();
+    expect(layer()).toBeNull();
+  });
+
+  it("fits a sphere to a sphere and a box to other geometry", () => {
+    const { ball, render, layer } = setup();
+    render();
+    expect(points(layer()!)).toBeGreaterThan(8);
+    ball.geometry = new BoxGeometry(2, 2, 2);
+    render();
+    expect(points(layer()!)).toBe(4);
+    // Flat ones fall back to a box
+    for (const flat of [
+      [1, 1, 0],
+      [0, 0, 1],
+    ]) {
+      ball.geometry = new CylinderGeometry(...flat);
+      expect(render).not.toThrow();
+    }
+  });
+
+  it("casts from the geometry's center", () => {
+    const moved = setup();
+    moved.ball.position.set(2, 3, 0);
+    moved.render();
+    const offset = setup();
+    offset.ball.geometry = new SphereGeometry(1).translate(2, 0, 0);
+    offset.render();
+    expect(offset.layer()!.innerHTML).toBe(moved.layer()!.innerHTML);
+  });
+
+  it("skips a caster around the point light", () => {
+    const { light, ball, render } = setup();
+    light.visible = false;
+    const point = new PointLight(0xffffff, 50);
+    point.castShadow = true;
+    ball.add(point);
+    expect(render).not.toThrow();
+    // On the surface, where rounding decides
+    for (let i = 1; i <= 20; i++) {
+      ball.rotation.set(i, 2 * i, 3 * i);
+      ball.scale.set(1 + i / 7, 1 + i / 11, 1 + i / 13);
+      const height = 0.5 + i / 17;
+      ball.geometry =
+        i % 2
+          ? new BoxGeometry(1.3, height, 0.7)
+          : new CylinderGeometry(0.6, 0.6, height);
+      point.position.set(0, height / 2, 0);
+      expect(render).not.toThrow();
+    }
+  });
+
+  it("drops the caster of a mesh rebuilt without one", () => {
+    const { ball, render, layer } = setup();
+    render();
+    ball.castShadow = false;
+    ball.geometry.attributes.position.needsUpdate = true;
+    render();
+    expect(layer()).toBeNull();
+  });
+
+  it("casts again only once something moved", () => {
+    const bake = vi.spyOn(Container.prototype, "bake");
+    const { ball, render } = setup();
+    const cast = () => bake.mock.lastCall![0]?.shadows;
+    render();
+    expect(cast()).toBe(true);
+    render();
+    expect(cast()).toBe(false);
+    ball.position.x = 1;
+    render();
+    expect(cast()).toBe(true);
+    bake.mockRestore();
+  });
 });

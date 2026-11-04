@@ -31,15 +31,16 @@ import { Group } from "./Group.js";
 import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import type { Polygon } from "./Polygon.js";
 
-// Centred on the group's origin, a cylinder along its y axis
-export type ShadowCaster =
+// Centred on center in the group's space, a cylinder along its y axis
+export type ShadowCaster = { readonly center?: ReadonlyVec3 } & (
   | { readonly shape: "sphere"; readonly radius: number }
   | {
       readonly shape: "cylinder";
       readonly radius: number;
       readonly height: number;
     }
-  | { readonly shape: "box"; readonly size: ReadonlyVec3 };
+  | { readonly shape: "box"; readonly size: ReadonlyVec3 }
+);
 
 export type ShadowLight =
   | {
@@ -130,25 +131,54 @@ const across = (d: vec3): [vec3, vec3] => {
   return [a, vec3.cross(vec3.create(), d, a)];
 };
 
+const placed = (caster: ShadowCaster, group: ReadonlyMat4): ReadonlyMat4 =>
+  caster.center ? mat4.translate(mat4.create(), group, caster.center) : group;
+
+const sphereRadius = (radius: number, m: ReadonlyMat4) =>
+  radius *
+  Math.cbrt(Math.abs(mat3.determinant(mat3.fromMat4(mat3.create(), m))));
+
+function holds(caster: ShadowCaster, m: ReadonlyMat4, at: ReadonlyVec3) {
+  if (caster.shape === "sphere") {
+    const center = vec3.transformMat4(vec3.create(), [0, 0, 0], m);
+    const d = vec3.length(vec3.sub(vec3.create(), center, at));
+    return d <= sphereRadius(caster.radius, m);
+  }
+  const l = vec3.transformMat4(
+    vec3.create(),
+    at,
+    mat4.invert(mat4.create(), m) ?? mat4.create(),
+  );
+  return caster.shape === "box"
+    ? Array.from(caster.size).every((n, i) => Math.abs(l[i]) < n / 2)
+    : Math.hypot(l[0], l[2]) < caster.radius &&
+        Math.abs(l[1]) < caster.height / 2;
+}
+
+// Whether a point light there is inside the caster on the group at rest, which
+// casting throws for. It computes like casting does, so they agree on the surface
+export const holdsLight = (
+  caster: ShadowCaster,
+  group: Group,
+  position: ReadonlyVec3,
+): boolean =>
+  holds(
+    caster,
+    placed(caster, worldAt(chainOf(group), STATIC.pose, 0)),
+    vec3.clone(position),
+  );
+
 function casterPoints(
   caster: ShadowCaster,
-  m: ReadonlyMat4,
+  group: ReadonlyMat4,
   source: Source,
 ): vec3[] {
+  const m = placed(caster, group);
   // A directional light is infinitely far, so no caster contains it
-  const local = () =>
-    "at" in source
-      ? vec3.transformMat4(
-          vec3.create(),
-          source.at,
-          mat4.invert(mat4.create(), m) ?? mat4.create(),
-        )
-      : vec3.fromValues(Infinity, Infinity, Infinity);
-  const inside = new RangeError("The light is inside a shadow caster");
+  if ("at" in source && holds(caster, m, source.at))
+    throw new RangeError("The light is inside a shadow caster");
   if (caster.shape === "box") {
     const half = Array.from(caster.size, (n) => n / 2);
-    const l = local();
-    if (half.every((n, i) => Math.abs(l[i]) < n)) throw inside;
     const corners = Array.from(
       { length: 8 },
       (_, i) => half.map((n, k) => (i & (1 << k) ? n : -n)) as vec3,
@@ -157,24 +187,18 @@ function casterPoints(
   }
   if (caster.shape === "cylinder") {
     const { radius, height } = caster;
-    const l = local();
-    if (Math.hypot(l[0], l[2]) < radius && Math.abs(l[1]) < height / 2)
-      throw inside;
     const cap = (y: number) =>
       ring(vec3.fromValues(0, y, 0), [1, 0, 0], [0, 0, 1], radius);
     return transformed([...cap(-height / 2), ...cap(height / 2)], m);
   }
   const center = vec3.transformMat4(vec3.create(), [0, 0, 0], m);
-  const radius =
-    caster.radius *
-    Math.cbrt(Math.abs(mat3.determinant(mat3.fromMat4(mat3.create(), m))));
+  const radius = sphereRadius(caster.radius, m);
   if ("along" in source) {
     const [a, b] = across(source.along);
     return ring(center, a, b, radius);
   }
   const away = vec3.sub(vec3.create(), center, source.at);
   const d = vec3.length(away);
-  if (d <= radius) throw inside;
   vec3.scale(away, away, 1 / d);
   const [a, b] = across(away);
   const outline = vec3.scaleAndAdd(
@@ -251,12 +275,50 @@ function clipped(shape: Point[], [x0, y0]: Point, [x1, y1]: Point): Point[] {
   }, shape);
 }
 
+type Sphere = { center: vec3; radius: number };
+
+const boundOf = (points: readonly vec3[]): Sphere => {
+  const min = vec3.clone(points[0]);
+  const max = vec3.clone(points[0]);
+  for (const p of points) {
+    vec3.min(min, min, p);
+    vec3.max(max, max, p);
+  }
+  const center = vec3.lerp(vec3.create(), min, max, 0.5);
+  const radius = Math.max(...points.map((p) => vec3.distance(p, center)));
+  return { center, radius };
+};
+
+// Whether the receiver's bounds meet the shadow volume of the caster's, a cheap cull
+function reaches(source: Source, caster: Sphere, receiver: Sphere): boolean {
+  const { radius } = caster;
+  if (!("at" in source)) {
+    const v = vec3.sub(vec3.create(), receiver.center, caster.center);
+    const t = vec3.dot(v, source.along);
+    const off = vec3.length(vec3.scaleAndAdd(v, v, source.along, -t));
+    return t + receiver.radius >= -radius && off <= radius + receiver.radius;
+  }
+  const axis = vec3.sub(vec3.create(), caster.center, source.at);
+  const distance = vec3.length(axis);
+  if (distance <= radius) return true;
+  vec3.scale(axis, axis, 1 / distance);
+  const v = vec3.sub(vec3.create(), receiver.center, source.at);
+  const t = vec3.dot(v, axis);
+  if (t + receiver.radius < distance - radius) return false;
+  const off = vec3.length(vec3.scaleAndAdd(v, v, axis, -t));
+  const sin = radius / distance;
+  const cos = Math.sqrt(1 - sin * sin);
+  return off * cos <= Math.max(t, 0) * sin + receiver.radius;
+}
+
 // On the polygon's element in pixels, null where the polygon gets no shadow
 function shadowOn(
   polygon: ReadonlyMat4,
   source: Source,
   points: vec3[],
   box: [Point, Point],
+  inner: [Point, Point],
+  blur: number,
 ): Point[] | null {
   const origin = vec3.fromValues(polygon[12], polygon[13], polygon[14]);
   const ex = vec3.fromValues(polygon[0], polygon[1], polygon[2]);
@@ -298,7 +360,15 @@ function shadowOn(
   });
   // Corners that fly off near the light's height would blend badly, and only
   // the part over the polygon shows
-  const shape = clipped(hull(onPlane), ...box);
+  const outline = hull(onPlane);
+  // A caster touching the polygon from the side only darkens its own footprint,
+  // which a blur would spread over the polygon
+  if (
+    Math.max(...lit.map(height)) <= blur &&
+    clipped(outline, ...inner).length < 3
+  )
+    return null;
+  const shape = clipped(outline, ...box);
   return shape.length >= 3 ? shape : null;
 }
 
@@ -549,7 +619,8 @@ export function castShadows(
         ),
       ),
     );
-    return { driver, lightAt, points };
+    const bounds = points.map((list) => list.map(boundOf));
+    return { driver, lightAt, points, bounds };
   };
   const sampled = (tweens: Tween[]) => {
     const key = tweens.map((t) => t.className).join();
@@ -557,7 +628,7 @@ export function castShadows(
     return cache.get(key)!;
   };
   receivers.forEach(({ polygon, shadows }, r) => {
-    const { driver, lightAt, points } = sampled([
+    const { driver, lightAt, points, bounds } = sampled([
       ...new Set([...shared, ...tweensIn(receiverChains[r])]),
     ]);
     const { pose, positions } = driver;
@@ -565,9 +636,8 @@ export function castShadows(
     const [width, height] = ["--c3r-width", "--c3r-height"].map((name) =>
       parseFloat(polygon.domElement.style.getPropertyValue(name)),
     );
-    const blurPx =
-      (shadows!.blur ?? 0) /
-      Math.hypot(worlds[0][0], worlds[0][1], worlds[0][2]);
+    const blur = shadows!.blur ?? 0;
+    const blurPx = blur / Math.hypot(worlds[0][0], worlds[0][1], worlds[0][2]);
     const pad = Math.ceil(blurPx * 3);
     // Out past where the blur reaches in
     const margin = 2 * pad + 1;
@@ -575,11 +645,31 @@ export function castShadows(
       [-margin, -margin],
       [width + margin, height + margin],
     ];
+    const inset = Math.min(1, width / 2, height / 2);
+    const inner: [Point, Point] = [
+      [inset, inset],
+      [width - inset, height - inset],
+    ];
+    const corners = [
+      box[0],
+      [box[1][0], box[0][1]],
+      box[1],
+      [box[0][0], box[1][1]],
+    ];
+    const reach = worlds.map((m) =>
+      boundOf(
+        corners.map(([x, y]) =>
+          vec3.transformMat4(vec3.create(), [x, y, 0], m),
+        ),
+      ),
+    );
     const layers = casters.flatMap((caster, c) => {
       // A convex caster can only darken its own faces wrongly
       if (receiverChains[r].includes(caster)) return [];
       const shapes = positions.map((_, i) =>
-        shadowOn(worlds[i], lightAt[i], points[c][i], box),
+        reaches(lightAt[i], bounds[c][i], reach[i])
+          ? shadowOn(worlds[i], lightAt[i], points[c][i], box, inner, blur)
+          : null,
       );
       // One that never reaches the polygon would only cost paint time
       if (!shapes.some(Boolean)) return [];
