@@ -1,6 +1,7 @@
 import {
   AmbientLight,
   ClampToEdgeWrapping,
+  CylinderGeometry,
   DirectionalLight,
   FrontSide,
   InterleavedBufferAttribute,
@@ -11,7 +12,9 @@ import {
   MeshStandardMaterial,
   OrthographicCamera,
   PerspectiveCamera,
+  PointLight,
   Quaternion,
+  SphereGeometry,
   SRGBColorSpace,
   Sprite,
   Vector3,
@@ -47,6 +50,16 @@ interface Range {
 interface MeshState {
   key: unknown[];
   groups: { node: C3R.Group; polygons: C3R.Polygon[] }[];
+  fitted?: C3R.ShadowCaster | null;
+  caster: C3R.ShadowCaster | null;
+  receiver?: C3R.Material;
+}
+
+interface ShadowLight {
+  ambient: number;
+  level: number;
+  position: NonNullable<C3R.Lights["point"]>["position"] | null;
+  blur: number;
 }
 
 interface MaterialState {
@@ -81,7 +94,10 @@ const shadingOf = (material: Material): C3R.Shading | null =>
 const luminance = ({ r, g, b }: Color) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
 // Divided by π like three.js' diffuse, so a scene is as bright as under WebGL
-const lightLevel = ({ color, intensity }: AmbientLight | DirectionalLight) =>
+const lightLevel = ({
+  color,
+  intensity,
+}: AmbientLight | DirectionalLight | PointLight) =>
   (intensity * luminance(color)) / Math.PI;
 
 // three.js' BRDF_BlinnPhong without Fresnel, relative to the level above
@@ -92,18 +108,54 @@ const specularOf = (material: Material): C3R.Specular | null => {
   return intensity > 0 && shininess > 0 ? { intensity, shininess } : null;
 };
 
+const casterOf = (geometry: BufferGeometry): C3R.ShadowCaster | null => {
+  if (geometry instanceof SphereGeometry) {
+    geometry.computeBoundingSphere();
+    const { center, radius } = geometry.boundingSphere!;
+    return radius > 0
+      ? { shape: "sphere", radius, center: center.toArray() }
+      : null;
+  }
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox!;
+  if (box.isEmpty()) return null;
+  const center = box.getCenter(new Vector3()).toArray();
+  const size = box.getSize(new Vector3()).toArray();
+  if (geometry instanceof CylinderGeometry) {
+    const { radiusTop, radiusBottom, height } = geometry.parameters;
+    const radius = Math.max(radiusTop, radiusBottom);
+    // Rotated vertices leave the parameters along y
+    if (radius > 0 && height > 0 && Math.abs(size[1] - height) <= 1e-6 * height)
+      return { shape: "cylinder", radius, height, center };
+  }
+  const largest = Math.max(...size);
+  if (!(largest > 0)) return null;
+  // A plane casts too, a box can't be flat
+  const [x, y, z] = size.map((n) => Math.max(n, largest * 1e-3));
+  return { shape: "box", size: [x, y, z], center };
+};
+
 export interface C3RRendererOptions {
   shading?: boolean;
   // Needs shading
   specular?: boolean;
+  // Needs shading, blur in scene units softens them
+  shadows?: boolean | { readonly blur: number };
 }
 
 export class C3RRenderer {
   readonly domElement: HTMLDivElement = document.createElement("div");
 
-  #shading: boolean;
-  #specular: boolean;
+  shading: boolean;
+  specular: boolean;
+  shadows: boolean | { readonly blur: number };
+
+  #shadowLight: ShadowLight | null = null;
+  // Whether this render moved anything a shadow follows
+  #changed = false;
   #lights = new WeakMap<C3R.Container, string>();
+  // Those last rendered with shadows, cast once more when they turn off
+  #casting = new WeakSet<C3R.Container>();
   #width = 0;
   #height = 0;
   #containers = new Map<Scene, C3R.Container>(); // multiple scenes can overlap
@@ -112,9 +164,14 @@ export class C3RRenderer {
   #materials = new WeakMap<Material, MaterialState>();
   #poses = new WeakMap<C3R.Group | C3R.Camera, number[]>();
 
-  constructor({ shading = false, specular = false }: C3RRendererOptions = {}) {
-    this.#shading = shading;
-    this.#specular = shading && specular;
+  constructor({
+    shading = false,
+    specular = false,
+    shadows = false,
+  }: C3RRendererOptions = {}) {
+    this.shading = shading;
+    this.specular = specular;
+    this.shadows = shadows;
   }
 
   getSize(): { width: number; height: number } {
@@ -155,34 +212,61 @@ export class C3RRenderer {
     if (camera.parent === null && camera.matrixWorldAutoUpdate)
       camera.updateMatrixWorld();
 
+    this.#changed = false;
     this.#syncCamera(container, camera);
-    if (this.#shading) this.#syncLights(scene, container);
+    if (this.shading) this.#syncLights(scene, container);
+    else this.#shadowLight = null;
     this.#syncObject(scene, container.root, camera);
-    void container.bake();
+    const casting = this.shading && !!this.shadows;
+    void container.bake({
+      shadows: this.#changed && (casting || this.#casting.has(container)),
+    });
+    if (casting) this.#casting.add(container);
+    else this.#casting.delete(container);
   }
 
   #syncLights(scene: Scene, container: C3R.Container): void {
     let ambient = 0;
+    let light: DirectionalLight | PointLight | undefined;
     let directional: C3R.Lights["directional"];
+    let point: C3R.Lights["point"];
     scene.traverseVisible((object) => {
       if (object instanceof AmbientLight) ambient += lightLevel(object);
-      if (!(object instanceof DirectionalLight) || directional) return;
+      if (light) return;
+      if (!(object instanceof DirectionalLight || object instanceof PointLight))
+        return;
       const intensity = lightLevel(object);
       if (intensity <= 0) return;
+      _position.setFromMatrixPosition(object.matrixWorld);
+      if (object instanceof PointLight) {
+        point = { position: _position.toArray(), intensity };
+        light = object;
+        return;
+      }
       _direction
         .setFromMatrixPosition(object.target.matrixWorld)
-        .sub(_position.setFromMatrixPosition(object.matrixWorld));
-      if (_direction.lengthSq())
-        directional = { direction: _direction.toArray(), intensity };
+        .sub(_position);
+      if (!_direction.lengthSq()) return;
+      directional = { direction: _direction.toArray(), intensity };
+      light = object;
     });
-    const lights = {
-      ambient: { intensity: Math.max(0, ambient) },
-      directional,
-    };
-    const key = JSON.stringify(lights);
+    ambient = Math.max(0, ambient);
+    const lights = { ambient: { intensity: ambient }, directional, point };
+    const { shadows } = this;
+    this.#shadowLight =
+      shadows && light?.castShadow
+        ? {
+            ambient,
+            level: (point ?? directional)!.intensity,
+            position: point?.position ?? null,
+            blur: shadows === true ? 0 : shadows.blur,
+          }
+        : null;
+    const key = JSON.stringify([lights, !!this.#shadowLight]);
     if (this.#lights.get(container) === key) return;
     this.#lights.set(container, key);
     container.lights = lights;
+    this.#changed = true;
   }
 
   async toHTML(): Promise<string> {
@@ -221,10 +305,31 @@ export class C3RRenderer {
     this.#setPose(container.camera, camera.matrixWorld.elements);
   }
 
+  // The light's share of the brightness at the mesh's center, which a shadow takes
+  #shadowOpacity(mesh: Mesh): number {
+    const { ambient, level, position } = this.#shadowLight!;
+    let light = level;
+    if (position) {
+      const { geometry } = mesh;
+      if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+      _position
+        .copy(geometry.boundingSphere!.center)
+        .applyMatrix4(mesh.matrixWorld);
+      light /= Math.max(
+        _position.distanceToSquared(_direction.fromArray(position)),
+        1e-12,
+      );
+    }
+    return light / (ambient + light);
+  }
+
   #syncObject(object: Object3D, node: C3R.Group, camera: Camera): void {
     const { style } = node.domElement;
     const display = object.visible ? "" : "none";
-    if (style.display !== display) style.display = display;
+    if (style.display !== display) {
+      style.display = display;
+      this.#changed = true;
+    }
     if (!object.visible) return;
 
     const isSprite = object instanceof Sprite || object instanceof CSS3DSprite;
@@ -232,7 +337,8 @@ export class C3RRenderer {
       ? this.#spriteMatrix(object, node, camera)
       : object.matrix.elements;
 
-    this.#setPose(node, matrix);
+    // A sprite turns with the camera, which shadows don't follow
+    if (this.#setPose(node, matrix) && !isSprite) this.#changed = true;
 
     this.#syncChildren(object, node, camera);
 
@@ -248,11 +354,12 @@ export class C3RRenderer {
   }
 
   // Most nodes hold still, a new Transform each frame is the slow part
-  #setPose(target: C3R.Group | C3R.Camera, elements: number[]): void {
+  #setPose(target: C3R.Group | C3R.Camera, elements: number[]): boolean {
     const last = this.#poses.get(target);
-    if (last?.every((v, i) => v === elements[i])) return;
+    if (last?.every((v, i) => v === elements[i])) return false;
     target.transform = C3R.Transform.matrix(elements);
     this.#poses.set(target, [...elements]);
+    return true;
   }
 
   #spriteMatrix(object: Object3D, node: C3R.Group, camera: Camera): number[] {
@@ -284,12 +391,15 @@ export class C3RRenderer {
       if (!childNode) {
         childNode = createNode(child);
         node.addChild(childNode);
+        this.#changed = true;
       }
       current.set(child, childNode);
     }
 
     for (const [child, childNode] of previous) {
-      if (!current.has(child)) node.removeChild(childNode);
+      if (current.has(child)) continue;
+      node.removeChild(childNode);
+      this.#changed = true;
     }
 
     this.#children.set(node, current);
@@ -304,7 +414,7 @@ export class C3RRenderer {
     const { index, attributes, drawRange } = geometry;
     const { position, uv } = attributes;
     if (!position) return;
-    const normal = this.#shading ? attributes.normal : undefined;
+    const normal = this.shading ? attributes.normal : undefined;
 
     const total = index ? index.count : position.count;
 
@@ -355,9 +465,45 @@ export class C3RRenderer {
         const options = maps[i] ? {} : { getDomSize: flatDomSize };
         return { node, polygons: node.addFaces(builder.faces(i), options) };
       });
-      state = { key, groups };
+      // The node keeps its caster until it's replaced
+      state = { key, groups, caster: state?.caster ?? null };
       state.groups.forEach((g) => node.addChild(g.node));
       this.#meshes.set(node, state);
+      this.#changed = true;
+    }
+
+    if (this.#shadowLight && mesh.castShadow && state.fitted === undefined)
+      state.fitted = casterOf(geometry);
+    const caster =
+      this.#shadowLight &&
+      mesh.castShadow &&
+      state.fitted &&
+      !(
+        this.#shadowLight.position &&
+        // The core can't cast from there, three.js lights the scene anyway
+        C3R.holdsLight(state.fitted, node, this.#shadowLight.position)
+      )
+        ? state.fitted
+        : null;
+    if (state.caster !== caster) {
+      node.shadowCaster = state.caster = caster;
+      this.#changed = true;
+    }
+
+    const shadows =
+      this.#shadowLight && mesh.receiveShadow
+        ? { opacity: this.#shadowOpacity(mesh), blur: this.#shadowLight.blur }
+        : null;
+    if (
+      state.receiver?.shadows?.opacity !== shadows?.opacity ||
+      state.receiver?.shadows?.blur !== shadows?.blur
+    ) {
+      state.receiver ??= new C3R.Material();
+      state.receiver.shadows = shadows;
+      const material = shadows && state.receiver;
+      for (const { polygons } of state.groups)
+        for (const polygon of polygons) polygon.material = material;
+      this.#changed = true;
     }
 
     ranges.forEach((r, i) => {
@@ -410,8 +556,9 @@ export class C3RRenderer {
 
     const target = state.material;
     node.material = target;
-    target.shading = this.#shading ? shadingOf(material) : null;
-    target.specular = this.#specular ? specularOf(material) : null;
+    target.shading = this.shading ? shadingOf(material) : null;
+    target.specular =
+      this.shading && this.specular ? specularOf(material) : null;
 
     const { map } = material;
     const image: unknown = map?.image;

@@ -19,7 +19,7 @@ export { type BakeOptions, Container, type Lights } from "./dom/Container.js";
 export { Polygon, type PolygonOptions } from "./dom/Polygon.js";
 export { ElementObject } from "./dom/ElementObject.js";
 export { Billboard } from "./dom/Billboard.js";
-export type { ShadowCaster } from "./dom/Shadows.js";
+export { holdsLight, type ShadowCaster } from "./dom/Shadows.js";
 export {
   ParticleSystem,
   type ParticleSystemOptions,

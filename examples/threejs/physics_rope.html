@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>c3r - Physics rope</title>
+    <link rel="icon" href="/favicon.svg" />
     <style>
       body {
         margin: 0;
@@ -65,6 +66,7 @@
       import { C3RRenderer } from "c3r-three";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       import Stats from "three/addons/libs/stats.module.js";
+      import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 
       // - Global variables -
 
@@ -88,6 +90,7 @@
       let ropeSoftBody;
       const ropeSegments = [];
       const transformAux1 = new Ammo.btTransform();
+      const ropeAux0 = new THREE.Vector3();
       const ropeAux1 = new THREE.Vector3();
 
       let armMovement = 0;
@@ -136,12 +139,30 @@
 
         const light = new THREE.DirectionalLight(0xffffff, 3);
         light.position.set(-10, 10, 5);
+        light.castShadow = true;
         scene.add(light);
 
         document.body.appendChild(renderer.domElement);
 
         stats = new Stats();
         document.body.appendChild(stats.dom);
+
+        const params = { shading: true, shadows: false, soft: false };
+        const gui = new GUI();
+        const apply = () => {
+          renderer.shading = params.shading;
+          renderer.shadows =
+            params.shadows && (params.soft ? { blur: 0.1 } : true);
+          shadows.enable(params.shading);
+          soft.enable(params.shading && params.shadows);
+        };
+        gui.add(params, "shading").onChange(apply);
+        const shadows = gui.add(params, "shadows").onChange(apply);
+        const soft = gui
+          .add(params, "soft")
+          .name("soft shadows")
+          .onChange(apply);
+        apply();
 
         window.addEventListener("resize", onWindowResize);
       }
@@ -207,6 +228,8 @@
         quat.set(0, 0, 0, 1);
         createRigidBody(ball, ballShape, ballMass, pos, quat);
         ball.userData.physicsBody.setFriction(0.5);
+        // Held by the rope, which doesn't wake it
+        ball.userData.physicsBody.setActivationState(4);
 
         // Wall
         const brickMass = 0.5;
@@ -271,6 +294,8 @@
         const ropeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
         for (let i = 0; i < ropeNumSegments; i++) {
           const segment = new THREE.Mesh(ropeGeometry, ropeMaterial);
+          segment.castShadow = true;
+          segment.receiveShadow = true;
           scene.add(segment);
           ropeSegments.push(segment);
         }
@@ -332,6 +357,8 @@
           quat,
           baseMaterial,
         );
+        // Its motor doesn't wake it
+        arm.userData.physicsBody.setActivationState(4);
 
         // Glue the rope extremes to the ball and the arm
         const influence = 1;
@@ -416,15 +443,12 @@
         const body = new Ammo.btRigidBody(rbInfo);
 
         threeObject.userData.physicsBody = body;
+        threeObject.castShadow = true;
+        threeObject.receiveShadow = true;
 
         scene.add(threeObject);
 
-        if (mass > 0) {
-          rigidBodies.push(threeObject);
-
-          // Disable deactivation
-          body.setActivationState(4);
-        }
+        if (mass > 0) rigidBodies.push(threeObject);
 
         physicsWorld.addRigidBody(body);
       }
@@ -497,10 +521,19 @@
         for (let i = 0; i < ropeSegments.length; i++) {
           const a = nodes.at(i).get_m_x();
           const b = nodes.at(i + 1).get_m_x();
+          ropeAux0.set(a.x(), a.y(), a.z());
           ropeAux1.set(b.x(), b.y(), b.z());
 
           const segment = ropeSegments[i];
-          segment.position.set(a.x(), a.y(), a.z());
+          // A jitter too small to see would still recast shadows
+          const end = (segment.userData.end ??= new THREE.Vector3(Infinity));
+          if (
+            segment.position.distanceTo(ropeAux0) < 1e-3 &&
+            end.distanceTo(ropeAux1) < 1e-3
+          )
+            continue;
+          end.copy(ropeAux1);
+          segment.position.copy(ropeAux0);
           segment.scale.z = segment.position.distanceTo(ropeAux1);
           segment.lookAt(ropeAux1);
         }
@@ -516,7 +549,7 @@
             const q = transformAux1.getRotation();
             const next = [p.x(), p.y(), p.z(), q.x(), q.y(), q.z(), q.w()];
             const current = [...objThree.position, ...objThree.quaternion];
-            // Bodies never sleep here, and a jitter too small to see still restyles
+            // The ball and arm never sleep, and a jitter too small to see still restyles
             if (current.some((v, k) => Math.abs(v - next[k]) > 1e-3)) {
               objThree.position.fromArray(next);
               objThree.quaternion.fromArray(next, 3);

@@ -1501,6 +1501,40 @@ describe("shadows", () => {
     }
   });
 
+  it("casts a caster from its center", async () => {
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10], center: [0, 25, 0] },
+      [0, 25, 0],
+    );
+    await container.bake(cast);
+    for (const p of corners(floor, layerOf(floor).style.clipPath)) {
+      expect(Math.abs(p[0])).toBeCloseTo((5 * 100) / 45, 1);
+      expect(Math.abs(p[2])).toBeCloseTo((5 * 100) / 45, 1);
+    }
+  });
+
+  it("gives no shadow to a polygon a caster only touches from the side", async () => {
+    // Its top in the floor's plane, along its edge
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [105, -5, 0],
+    );
+    floor.material!.shadows = { opacity: 0.5, blur: 2 };
+    await container.bake(cast);
+    expect(floor.domElement.querySelector(".c3r-shadow")).toBeNull();
+  });
+
+  it("keeps a blurred shadow that ends just past a polygon", async () => {
+    const { container, floor } = scene(
+      { shape: "box", size: [10, 10, 10] },
+      [106, 50, 0],
+    );
+    container.lights = { directional: { direction: [0, -1, 0], intensity: 1 } };
+    floor.material!.shadows = { opacity: 0.5, blur: 2 };
+    await container.bake(cast);
+    expect(floor.domElement.querySelector(".c3r-shadow")).not.toBeNull();
+  });
+
   it("keeps shadows as cast until a bake casts them again", async () => {
     const { container, floor, group } = scene(
       { shape: "box", size: [10, 10, 10] },
