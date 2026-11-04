@@ -5,7 +5,7 @@
 <meta name="viewport" content="<%= it.viewport ?? "width=device-width,initial-scale=1" %>">
 <meta http-equiv="Content-Security-Policy" content="script-src 'none'">
 <title><%= it.title %></title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="../../favicon.svg">
 <link rel="stylesheet" href="style.css">
 <style><%~ it.css %></style>
 </head>

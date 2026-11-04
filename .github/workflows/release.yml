@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      pages: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,9 +28,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: examples/dist
       - run: |
           for p in c3r c3r-three; do
             v=$(node -p "require('./packages/$p/package.json').version")
@@ -38,6 +36,12 @@ jobs:
       - run: gh release create "$GITHUB_REF_NAME" packages/c3r/dist/*.js packages/c3r-three/dist/*.js --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+      - id: pages
+        uses: actions/configure-pages@v5
+      - run: node examples/thumbnails.mjs "${{ steps.pages.outputs.base_url }}"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: examples/dist
 
   deploy:
     needs: build
