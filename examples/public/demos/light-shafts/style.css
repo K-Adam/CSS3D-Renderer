@@ -1,0 +1,193 @@
+html {
+  scrollbar-width: none;
+}
+/* Scrolling the page only walks the camera, the scene stays put */
+body {
+  margin: 0;
+  height: 400vh;
+}
+.c3r-container.c3r-container {
+  position: fixed;
+  inset: 0;
+}
+/* Two classes, the library's own rules come later in the page */
+.c3r-polygon-content.c3r-polygon-content {
+  background-color: #0000;
+  background-image: var(--bg, none);
+  background-blend-mode: normal;
+}
+.c3r-polygon-content > * {
+  position: absolute;
+  inset: 0;
+}
+
+/* The window's transom shades a band across the beam */
+.rays {
+  background: linear-gradient(
+    to right,
+    #0000,
+    rgb(255 214 166 / var(--alpha)) 18% 34%,
+    rgb(255 214 166 / calc(var(--alpha) * 0.35)) 38% 44%,
+    rgb(255 214 166 / var(--alpha)) 48% 80%,
+    #0000
+  );
+  mask-image: linear-gradient(to top, #0003, #000 35%);
+  /* The library maps the uv onto the content's own background, the rays follow it */
+  background-size: inherit;
+  background-position: inherit;
+  mask-size: inherit;
+  mask-position: inherit;
+  animation: shimmer var(--period) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes shimmer {
+  to {
+    opacity: 0.5;
+  }
+}
+
+/* The window's transom and mullion cast as darker bands */
+.c3r-polygon-content.pool {
+  background-image: linear-gradient(
+    to right,
+    #0000,
+    var(--sun) 12% 55%,
+    #0000 58% 64%,
+    var(--sun) 67% 94%,
+    #0000
+  );
+  mask-image: linear-gradient(
+    to top,
+    #0000,
+    #000 15% 46%,
+    #0004 50%,
+    #000 54% 85%,
+    #0000
+  );
+}
+
+/* Twice as wide as the plane, the same puffs in each half, so the drift loops without a seam */
+.puffs {
+  right: -100%;
+  background: var(--puffs);
+  /* Clear at the floor, else each sheet draws a line where it meets it */
+  mask-image: linear-gradient(to top, #0000, #000 16%, #0007 45%, #0000 90%);
+  opacity: var(--alpha);
+  animation: drift var(--period) linear var(--delay) infinite;
+}
+.fog > .halo {
+  background: var(--halo);
+}
+@keyframes drift {
+  to {
+    translate: -50%;
+  }
+}
+
+.motes {
+  background: var(--motes);
+  animation:
+    float 11s ease-in-out var(--delay) infinite alternate,
+    twinkle 3.7s ease-in-out var(--delay) infinite alternate;
+}
+@keyframes float {
+  to {
+    translate: 2% -6%;
+  }
+}
+@keyframes twinkle {
+  to {
+    opacity: 0.3;
+  }
+}
+
+/* A slow look around, on the view's own rotate so the camera's custom properties don't restyle
+   the scene every frame */
+@keyframes sway {
+  from {
+    rotate: y -1.5deg;
+  }
+  to {
+    rotate: y 1.5deg;
+  }
+}
+.c3r-view {
+  animation: sway 19s ease-in-out infinite alternate;
+}
+/* Outside transform, so it dollies along the view axis. Lengths out here are in pixels, the scene
+   inside is unit-scaled */
+@keyframes dolly {
+  to {
+    translate: 0 0 var(--dolly);
+  }
+}
+@keyframes fade {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+/* Without the guard an unsupporting browser fills to the last keyframe and stays put */
+@supports (animation-timeline: scroll()) {
+  .c3r-view {
+    animation:
+      dolly linear both,
+      sway 19s ease-in-out infinite alternate;
+    animation-timeline: scroll(root), auto;
+  }
+  .c3r-polygon-content.veil {
+    animation: fade linear both;
+    animation-timeline: scroll(root);
+    animation-range: var(--fade-start) var(--fade-end);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c3r-polygon-content > * {
+    animation: none !important;
+  }
+  @keyframes sway {
+  }
+}
+
+/* Outside the 3D scene, where blending is safe: the eye's own glare and vignette */
+.lens {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, #0000 50%, #0009);
+}
+.lens::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 45% 55% at 12% 30%,
+    rgb(255 200 140 / 0.12),
+    #0000
+  );
+  mix-blend-mode: plus-lighter;
+}
+
+header {
+  position: fixed;
+  left: 16px;
+  top: 10px;
+  color: #e3d6bf;
+  font:
+    13px/1.35 Georgia,
+    serif;
+  text-shadow: 0 0 4px #000;
+}
+h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: normal;
+  color: #fff;
+}
+p {
+  margin: 0;
+}
+@media (max-aspect-ratio: 1/1) {
+  .c3r-perspective {
+    --c3r-camera-fov: 100deg !important;
+  }
+}
