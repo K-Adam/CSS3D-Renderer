@@ -193,6 +193,40 @@ it("keeps a shadow in step when its receiver moves in the scene", async () => {
   container.domElement.remove();
 });
 
+it("moves a group and the camera with the page's scroll", async () => {
+  const page = document.createElement("div");
+  page.style.height = "300vh";
+  document.body.append(page);
+  const container = new Container();
+  document.body.append(container.domElement);
+  const scroll = new Timeline({ scroll: true });
+  const move = (step: Transform) =>
+    new Tween({ keyframes: [step], timeline: scroll });
+  const group = new Group();
+  container.root.addChild(group);
+  const slide = move(Transform.translate([100, 0, 0]));
+  group.tween = slide;
+  const walk = move(Transform.translate([0, 0, -100]));
+  container.camera.tween = walk;
+  const view = container.domElement.querySelector(".c3r-view")!;
+  const at = (element: Element, tween: Tween, axis: string) =>
+    parseFloat(
+      getComputedStyle(element).getPropertyValue(
+        `--${tween.className}-translate3d-${axis}`,
+      ),
+    );
+
+  scrollTo(0, (document.documentElement.scrollHeight - innerHeight) / 2);
+  await new Promise(requestAnimationFrame);
+  await new Promise(requestAnimationFrame);
+  expect(at(group.domElement, slide, "x")).toBeCloseTo(50, 0);
+  expect(at(view, walk, "z")).toBeCloseTo(-50, 0);
+
+  scrollTo(0, 0);
+  container.domElement.remove();
+  page.remove();
+});
+
 it("brings a container baked before it was shown in step with its timeline", async () => {
   const motion = new Timeline();
   const lit = () => {

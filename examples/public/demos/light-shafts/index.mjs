@@ -10,7 +10,7 @@
 } from "../../../demos.mjs";
 
 const HERE = import.meta.dirname;
-const { Container, Transform } = await happyC3R();
+const { Container, Timeline, Transform, Tween } = await happyC3R();
 
 // The nave spans x from -HALF_WIDTH to HALF_WIDTH, y from 0 to HEIGHT, z from BACK to FRONT
 const HALF_WIDTH = 300;
@@ -97,6 +97,10 @@ container.camera.transform = [
   Transform.translate(EYE),
   Transform.rotateX(-0.06),
 ];
+container.camera.tween = new Tween({
+  keyframes: [Transform.translate([0, 0, -DOLLY])],
+  timeline: new Timeline({ scroll: true }),
+});
 
 const RECT_UV = [
   [0, 0],
@@ -357,6 +361,6 @@ for (const { z, top } of dustPlanes) {
 
 const scene = await container.toHTML();
 writePage(HERE, {
-  css: `:root{--dolly:${DOLLY * container.unitScale}px;background:${FOG}}`,
+  css: `:root{background:${FOG}}`,
   scene,
 });

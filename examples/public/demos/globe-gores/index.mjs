@@ -2,8 +2,15 @@ import { join } from "node:path";
 import { happyC3R, load, writePage } from "../../../demos.mjs";
 
 const HERE = import.meta.dirname;
-const { Container, Group, Material, Transform, Tween, ElementObject } =
-  await happyC3R();
+const {
+  Container,
+  Group,
+  Material,
+  Timeline,
+  Transform,
+  Tween,
+  ElementObject,
+} = await happyC3R();
 const { rotateX, rotateY, rotateZ, translate } = Transform;
 const { gores, tex, scale, full, crop } = load(join(HERE, "gores.json"));
 const [TW, TH] = tex;
@@ -93,6 +100,7 @@ const HOLD = 7;
 const FOLD = 43;
 const TURN = 42;
 const REST = 8;
+const page = new Timeline({ scroll: true });
 const phase = (rest, moved, before, during, after) =>
   new Tween({
     from: rest,
@@ -102,6 +110,7 @@ const phase = (rest, moved, before, during, after) =>
       { steps: moved, duration: after },
     ],
     easing: "ease-in-out",
+    timeline: page,
   });
 const fold = (flat, folded) => phase(flat, folded, HOLD, FOLD, TURN + REST);
 

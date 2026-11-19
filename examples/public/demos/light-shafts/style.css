@@ -100,40 +100,14 @@ body {
   }
 }
 
-/* A slow look around, on the view's own rotate so the camera's custom properties don't restyle
-   the scene every frame */
-@keyframes sway {
-  from {
-    rotate: y -1.5deg;
-  }
-  to {
-    rotate: y 1.5deg;
-  }
-}
-.c3r-view {
-  animation: sway 19s ease-in-out infinite alternate;
-}
-/* Outside transform, so it dollies along the view axis. Lengths out here are in pixels, the scene
-   inside is unit-scaled */
-@keyframes dolly {
-  to {
-    translate: 0 0 var(--dolly);
-  }
-}
 @keyframes fade {
   to {
     opacity: 0;
     visibility: hidden;
   }
 }
-/* Without the guard an unsupporting browser fills to the last keyframe and stays put */
+/* Without the guard an unsupporting browser fills to the last keyframe and hides them */
 @supports (animation-timeline: scroll()) {
-  .c3r-view {
-    animation:
-      dolly linear both,
-      sway 19s ease-in-out infinite alternate;
-    animation-timeline: scroll(root), auto;
-  }
   .c3r-polygon-content.veil {
     animation: fade linear both;
     animation-timeline: scroll(root);
@@ -143,8 +117,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .c3r-polygon-content > * {
     animation: none !important;
-  }
-  @keyframes sway {
   }
 }
 

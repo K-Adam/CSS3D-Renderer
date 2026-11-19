@@ -98,6 +98,10 @@ container.lights = {
 };
 container.camera.fov = 60;
 container.camera.transform = Transform.translate(EYE);
+container.camera.tween = new Tween({
+  keyframes: [Transform.translate([0, 0, -DOLLY])],
+  timeline: new Timeline({ scroll: true }),
+});
 const room = new Group();
 container.root.addChild(room);
 
@@ -370,7 +374,4 @@ sprite.addPolygon(withUv(rect("+z", [-30, -30, 0], [30, 30, 0])));
 sprite.material = material("assets/lamp.png");
 
 const scene = await container.toHTML({ shadows: true });
-writePage(HERE, {
-  css: `:root{--dolly:${DOLLY * container.unitScale}px}`,
-  scene,
-});
+writePage(HERE, { scene });

@@ -943,6 +943,59 @@ describe("Tween", () => {
     expect(style.cssText).toBe("");
   });
 
+  it("follows the scroll on a scroll timeline, held at the start without it", () => {
+    using scroll = new Timeline({ scroll: true });
+    using walk = new Tween({
+      keyframes: [Transform.translate([0, 0, -100])],
+      timeline: scroll,
+    });
+    using spin = new Tween({
+      keyframes: [Transform.rotateY(turn)],
+      loop: true,
+    });
+    expect(cssText()).toContain(
+      `.${scroll.className}, .c3r-view { ${scroll.state}: paused; }`,
+    );
+    expect(cssText()).toContain(
+      `@supports (animation-timeline: scroll()) { .${scroll.className}, .c3r-view { ${scroll.state}: running; } }`,
+    );
+
+    const group = new Group();
+    group.clock = true;
+    group.tween = [spin, walk];
+    const { style } = group.domElement;
+    expect(style.animation).toBe(
+      `var(--${spin.className}-animation, none), var(--${walk.className}-animation, none), c3r-time 3600s linear infinite`,
+    );
+    expect(style.getPropertyValue("animation-timeline")).toBe(
+      "auto, scroll(root), auto",
+    );
+    group.tween = spin;
+    expect(style.getPropertyValue("animation-timeline")).toBe("");
+
+    const container = new Container();
+    container.camera.tween = walk;
+    expect(cssText()).toContain("animation-timeline: scroll(root)");
+    container.camera.tween = null;
+
+    expect(() => new Timeline({ scroll: true, paused: true })).toThrow(
+      RangeError,
+    );
+    expect(() => new Timeline({ scroll: true, hover: true })).toThrow(
+      RangeError,
+    );
+    expect(() => (scroll.paused = true)).toThrow(RangeError);
+    for (const options of [{ loop: true }, { delay: 1 }])
+      expect(
+        () =>
+          new Tween({
+            keyframes: [Transform.rotateY(turn)],
+            timeline: scroll,
+            ...options,
+          }),
+      ).toThrow(RangeError);
+  });
+
   it("plays keyframes in sequence, holding what they don't list", () => {
     using sequence = new Tween({
       from: Filter.opacity(0.5),
@@ -1661,6 +1714,11 @@ describe("shadows", () => {
     container.lights = { point: { position: [0, 100, 0], intensity: 1 } };
     group.tween = swing({ hover: true });
     expect(() => container.bake(cast)).toThrow("own hover");
+    group.tween = new Tween({
+      keyframes: [Transform.translate([10, 0, 0])],
+      timeline: new Timeline({ scroll: true }),
+    });
+    expect(() => container.bake(cast)).toThrow("scroll timeline");
   });
 
   it("transitions with a caster that moves on hover", async () => {

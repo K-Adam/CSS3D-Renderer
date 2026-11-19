@@ -6,19 +6,6 @@ body {
   margin: 0;
   height: 300vh;
 }
-/* Outside transform, so it dollies along the view axis. Lengths out here are in pixels, the scene inside is unit-scaled */
-@keyframes dolly {
-  to {
-    translate: 0 0 var(--dolly);
-  }
-}
-/* Without the guard an unsupporting browser fills to the last keyframe and stays zoomed */
-@supports (animation-timeline: scroll()) {
-  .c3r-view {
-    animation: dolly linear both;
-    animation-timeline: scroll(root);
-  }
-}
 .c3r-container.c3r-container {
   position: fixed;
   inset: 0;
