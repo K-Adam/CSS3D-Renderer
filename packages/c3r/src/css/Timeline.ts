@@ -9,6 +9,11 @@ export interface TimelineOptions {
   scroll?: boolean;
 }
 
+// Can't take a tween's or timeline's class, so they share its variables: a
+// camera's view, and the elements that replay its tweens to read the camera
+// without restyling what is between
+export const CAMERA_ELEMENTS = ".c3r-view, .c3r-camera-follower";
+
 const members = new WeakMap<Timeline, Set<string>>();
 const dirty = new Set<Timeline>();
 
@@ -21,9 +26,8 @@ export class Timeline {
 
   #paused = false;
   #rules: CSSRule[] = [];
-  // A camera's view can't take the class, so it shares the state
   #rule: CSSStyleRule | null = insertRule(
-    `.${this.className}, .c3r-view`,
+    `.${this.className}, ${CAMERA_ELEMENTS}`,
     this,
   );
 
@@ -42,7 +46,7 @@ export class Timeline {
       const idle = `.c3r-container:not(:has(.c3r-group${own}:hover), ${own}:hover)`;
       this.#rules.push(
         insertRule(
-          `${idle}${own}, ${idle} ${own}, ${idle} .c3r-view`,
+          `${idle}${own}, ${idle} ${own}, ${idle} :is(${CAMERA_ELEMENTS})`,
           this,
           `{ ${this.state}: paused; }`,
         ),
@@ -60,7 +64,7 @@ export class Timeline {
         insertRule(
           "@supports (animation-timeline: scroll())",
           this,
-          `{ .${this.className}, .c3r-view { ${this.state}: running; } }`,
+          `{ .${this.className}, ${CAMERA_ELEMENTS} { ${this.state}: running; } }`,
         ),
       );
     } else this.paused = paused;

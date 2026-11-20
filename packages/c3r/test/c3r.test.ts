@@ -601,9 +601,9 @@ describe("ElementObject", () => {
 
 // A class rule's declarations, or "" once it is gone
 const ruleOf = (className: string) =>
-  new RegExp(String.raw`\.${className}(, \.c3r-view)? \{[^}]*`).exec(
-    cssText(),
-  )?.[0] ?? "";
+  new RegExp(
+    String.raw`\.${className}(, \.c3r-view, \.c3r-camera-follower)? \{[^}]*`,
+  ).exec(cssText())?.[0] ?? "";
 
 describe("Material", () => {
   it("styles objects through a class rule, removed on dispose", () => {
@@ -954,10 +954,10 @@ describe("Tween", () => {
       loop: true,
     });
     expect(cssText()).toContain(
-      `.${scroll.className}, .c3r-view { ${scroll.state}: paused; }`,
+      `.${scroll.className}, .c3r-view, .c3r-camera-follower { ${scroll.state}: paused; }`,
     );
     expect(cssText()).toContain(
-      `@supports (animation-timeline: scroll()) { .${scroll.className}, .c3r-view { ${scroll.state}: running; } }`,
+      `@supports (animation-timeline: scroll()) { .${scroll.className}, .c3r-view, .c3r-camera-follower { ${scroll.state}: running; } }`,
     );
 
     const group = new Group();
@@ -1113,7 +1113,9 @@ describe("Tween", () => {
 
     using hover = new Tween({ keyframes: [Transform.scale(2)], hover: true });
     expect(() => (camera.tween = [move, hover])).toThrow(RangeError);
-    expect(cssText()).not.toContain(`.${hover.className}, .c3r-view`);
+    expect(cssText()).not.toContain(
+      `.${hover.className}, .c3r-view, .c3r-camera-follower`,
+    );
     expect(camera.tween).toEqual([move, grow]);
     for (const keyframes of [
       [Transform.scale(0)],
@@ -1220,6 +1222,43 @@ describe("Tween", () => {
         Symbol.dispose
       ](),
     ).not.toThrow();
+  });
+});
+
+describe("fog", () => {
+  it("rejects an invalid color or length", () => {
+    const container = new Container();
+    expect(() => (container.fog = { color: [0, 0, 2], length: 1 })).toThrow(
+      RangeError,
+    );
+    expect(() => (container.fog = { color: [0, 0, 0], length: 0 })).toThrow(
+      RangeError,
+    );
+    expect(container.fog).toBeNull();
+  });
+
+  it("adds a fog layer to the polygons of a fogged material", async () => {
+    const container = new Container();
+    container.fog = { color: [0, 0, 1], length: 100 };
+    const group = new Group();
+    group.material = new Material();
+    group.material.fog = true;
+    container.root.addChild(group);
+    const polygon = group.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    await container.bake();
+    expect(
+      polygon.contentElement.querySelector(".c3r-polygon-fog"),
+    ).not.toBeNull();
+    expect(container.domElement.style.getPropertyValue("--c3r-fog-color")).toBe(
+      "0 0 255",
+    );
+    group.material.fog = false;
+    await container.bake();
+    expect(polygon.contentElement.querySelector(".c3r-polygon-fog")).toBeNull();
   });
 });
 

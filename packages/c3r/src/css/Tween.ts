@@ -6,6 +6,7 @@ import { type Filter, filterTexts, filterVariables } from "./Filter.js";
 import { inverseStepValue, type Step, stepOf, stepText } from "./steps.js";
 import { deleteRule, insertRule, plainValue } from "./styles.js";
 import {
+  CAMERA_ELEMENTS,
   joinTimeline,
   leaveTimeline,
   Timeline,
@@ -216,6 +217,8 @@ export function setTweens(
   inverse = false,
   // An inline animation replaces any other, so the group's clock joins the list
   extra = "",
+  // Writes only the animations, for elements that replay them
+  clockOnly = false,
 ): readonly Tween[] {
   const tweens = Object.freeze([...new Set([tween ?? []].flat())]);
   const parts = tweens.map((tween) => {
@@ -250,6 +253,7 @@ export function setTweens(
     ),
   };
   for (const [name, value] of Object.entries(properties)) {
+    if (clockOnly && !name.startsWith("animation")) continue;
     if (value) style?.setProperty(name, value);
     else style?.removeProperty(name);
   }
@@ -381,9 +385,8 @@ export class Tween {
         .join(" ");
     const total = times[times.length - 1];
 
-    // A camera's view can't take the class, so it shares the variables
     this.#rule = insertRule(
-      hover ? `.${this.className}` : `.${this.className}, .c3r-view`,
+      hover ? `.${this.className}` : `.${this.className}, ${CAMERA_ELEMENTS}`,
       this,
     );
     this.#rules.push(this.#rule);

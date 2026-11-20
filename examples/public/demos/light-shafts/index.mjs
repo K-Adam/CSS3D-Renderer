@@ -10,7 +10,7 @@
 } from "../../../demos.mjs";
 
 const HERE = import.meta.dirname;
-const { Container, Timeline, Transform, Tween } = await happyC3R();
+const { Container, Material, Timeline, Transform, Tween } = await happyC3R();
 
 // The nave spans x from -HALF_WIDTH to HALF_WIDTH, y from 0 to HEIGHT, z from BACK to FRONT
 const HALF_WIDTH = 300;
@@ -62,7 +62,6 @@ const WINDOW_ZS = SHEET_ZS.slice(0, -1);
 
 const fogAmount = (z) => 1 - Math.exp(-Math.max(0, EYE[2] - z) / FOG_LENGTH);
 const mix = (a, b, t) => hex(rgb(a).map((v, i) => v + (rgb(b)[i] - v) * t));
-const fogged = (color, z) => mix(color, FOG, fogAmount(z));
 const dimmed = (alpha, z) => alpha * (1 - 0.75 * fogAmount(z));
 const sunlight = (alpha) => `rgb(255 214 166/${alpha.toFixed(3)})`;
 const random = (lo, hi) => lo + Math.random() * (hi - lo);
@@ -101,6 +100,9 @@ container.camera.tween = new Tween({
   keyframes: [Transform.translate([0, 0, -DOLLY])],
   timeline: new Timeline({ scroll: true }),
 });
+container.fog = { color: rgb(FOG).map((v) => v / 255), length: FOG_LENGTH };
+const foggy = new Material();
+foggy.fog = true;
 
 const RECT_UV = [
   [0, 0],
@@ -120,17 +122,15 @@ const addFace = (
     content.style.setProperty(name, value);
   content.innerHTML = html;
   const vertices = points.map((position, i) => ({ position, uv: uvs[i] }));
-  container.root.addPolygon(vertices, {
+  return container.root.addPolygon(vertices, {
     contentElement: content,
     getDomSize: domSize,
   });
 };
-// Opaque faces fade into the fog with distance, baked as a gradient along z
+// Opaque faces, which the library fades into the fog as the camera walks
 const addSurface = (points, color, layers = "") => {
-  const [z0, z1, z3] = [points[0][2], points[1][2], points[3][2]];
-  const [direction, far] = z1 !== z0 ? ["to right", z1] : ["to top", z3];
-  const gradient = `linear-gradient(${direction},${fogged(color, z0)},${fogged(color, far)})`;
-  addFace(points, RECT_UV, "solid", { style: { "--bg": layers + gradient } });
+  const style = { "--bg": `${layers}linear-gradient(${color} 0 0)` };
+  addFace(points, RECT_UV, "solid", { style }).material = foggy;
 };
 // A plane facing the camera, faded out by scrolling before the camera passes it
 const addVeil = (
@@ -153,7 +153,7 @@ const addVeil = (
 };
 const sheet = (z) => rect("+z", [-HALF_WIDTH, 0, z], [HALF_WIDTH, HEIGHT, z]);
 
-// The hall, one segment per bay so the fog gradients stay short
+// The hall, one segment per bay so the fog's few gradient stops stay close
 const JOINTS =
   "repeating-linear-gradient(to right,#0000 0 23px,#0003 23px 25px),";
 for (const [k, z0] of [...BAY_ZS, BACK].entries()) {
@@ -192,8 +192,7 @@ const pillarFaces = BAY_ZS.flatMap((z) =>
 for (const [side, points] of pillarFaces) {
   if (side.endsWith("y") || !facesAny(points, [EYE, END_EYE])) continue;
   // Light from the pools bounces up the sides facing the aisle
-  const alpha = dimmed(ALPHA.bounce, points[0][2]);
-  const bounce = `linear-gradient(to top,${sunlight(alpha)},#0000 40%),`;
+  const bounce = `linear-gradient(to top,${sunlight(ALPHA.bounce)},#0000 40%),`;
   addSurface(points, STONE, side === "+z" ? "" : bounce);
 }
 

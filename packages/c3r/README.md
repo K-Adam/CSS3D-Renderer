@@ -87,6 +87,8 @@ A shaded material's `specular = { intensity, shininess, map? }` adds a white Bli
 
 `point.tween` moves the light after `position`, so a group with that tween stays on it, and each frame restyles the whole scene. A `Transform.matrix` or filter tween throws.
 
+`container.fog = { color, length }` fades polygons whose material has `fog = true` into `color` (0-1) with their depth from the eye, as 1 - exp(-depth / length), from the next `bake()`. It follows the camera's tween, which then restyles every fogged polygon each frame. The layer covers the whole content element, so a hand-built translucent `contentElement` would be fogged in its transparent parts too.
+
 `specular` works under a point light with the same viewer as `directional`. A flat polygon takes it at its center and a curve from three vertices. On a plane it is an oval on a child added to the content element at each `bake()`, more symmetric than the true shape, too dim where a very bright highlight should saturate, and off towards the light at a grazing view.
 
 `group.lightGain`, a number or a `CssValue` that can read `Group.time`, multiplies the point light below the group. Run the `clock` on that group, on the root each frame restyles the scene.

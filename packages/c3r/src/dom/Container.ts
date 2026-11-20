@@ -15,6 +15,7 @@ import {
 } from "../css/Tween.js";
 
 import { ElementObject } from "./ElementObject.js";
+import { setFogged } from "./Fog.js";
 import { Group, touchSubtree } from "./Group.js";
 import { matrixOf, type Object3D, parents } from "./Object3D.js";
 import { measurePolygon, Polygon } from "./Polygon.js";
@@ -35,6 +36,12 @@ export interface Lights {
     // Moves it after position, like a group's. Each frame restyles the scene
     readonly tween?: Tween | readonly Tween[] | null;
   };
+}
+
+// Color 0-1
+export interface Fog {
+  readonly color: ReadonlyVec3;
+  readonly length: number;
 }
 
 export interface BakeOptions {
@@ -63,6 +70,7 @@ export class Container {
   #unitScale = 1;
   #refit: Promise<void> | null = null;
   #lights: Readonly<Lights> | null = null;
+  #fog: Fog | null = null;
   #connected = false;
   #castShadows = false;
 
@@ -172,6 +180,34 @@ export class Container {
       style.setProperty(`--c3r-light-${name}`, String(value));
   }
 
+  get fog(): Fog | null {
+    return this.#fog;
+  }
+
+  set fog(fog: Fog | null) {
+    const { style } = this.domElement;
+    if (!fog) {
+      this.#fog = null;
+      style.removeProperty("--c3r-fog-color");
+      style.removeProperty("--c3r-fog-density");
+      return;
+    }
+    const color = vector(fog.color);
+    if (!color.every((c) => c >= 0 && c <= 1))
+      throw new RangeError(`Invalid fog color ${color}`);
+    if (!(fog.length > 0 && Number.isFinite(fog.length)))
+      throw new RangeError(`Invalid fog length ${fog.length}`);
+    this.#fog = Object.freeze({
+      color: Object.freeze(color),
+      length: fog.length,
+    });
+    style.setProperty(
+      "--c3r-fog-color",
+      color.map((c) => Math.round(c * 255)).join(" "),
+    );
+    style.setProperty("--c3r-fog-density", String(1 / fog.length));
+  }
+
   get width(): number {
     return this.#width;
   }
@@ -220,6 +256,7 @@ export class Container {
       specular: Specular | null,
       diffuseMap: string | null,
       shadows: Shadows | null,
+      fogged: boolean,
     ) => {
       if (node.domElement.style.display === "none") return;
       // Like the CSS variables: an image or a color replaces, null inherits
@@ -235,9 +272,11 @@ export class Container {
       specular = material?.specular ?? specular;
       if (material?.diffuse) diffuseMap = material.diffuse.map || null;
       shadows = material?.shadows ?? shadows;
+      fogged = material?.fog ?? fogged;
       if (node instanceof Group && node.shadowCaster) casters.push(node);
       if (node instanceof Polygon) {
         polygons.push({ polygon: node, shadows });
+        setFogged(node, fogged);
         setShaded(
           node,
           shading,
@@ -265,7 +304,17 @@ export class Container {
         if (scale > 0) density = Math.max(density, 1 / scale);
       } else if (node instanceof Group) {
         for (const child of node.children)
-          visit(child, m, image, cells, shading, specular, diffuseMap, shadows);
+          visit(
+            child,
+            m,
+            image,
+            cells,
+            shading,
+            specular,
+            diffuseMap,
+            shadows,
+            fogged,
+          );
       }
     };
     visit(
@@ -277,6 +326,7 @@ export class Container {
       null,
       null,
       null,
+      false,
     );
     // Sizes and matrices are final once every image is in
     if (!loading.length) {
@@ -294,8 +344,9 @@ export class Container {
       if (isConnected && !this.#connected) {
         touchSubtree(this.#root);
         touchTweens(this.#lights?.point?.tween ?? null);
-        touchTweens(this.#camera.tween);
       }
+      // Fog layers added since replay the camera from their own start
+      touchTweens(this.#camera.tween);
       this.#connected = isConnected;
       syncTimelines();
     }
