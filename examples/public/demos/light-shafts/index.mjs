@@ -41,6 +41,8 @@ const STONE = "#433b33";
 const FLOOR = "#312b25";
 const FOG = "#1c2130";
 const FOG_LENGTH = 1100;
+const AMBIENT = 0.7;
+const SUN_FILL = 0.35;
 // The glass shines through the fog, so it takes on only this much of it
 const GLASS_FOG = 0.3;
 // Each light's alpha before the fog dims it
@@ -101,8 +103,15 @@ container.camera.tween = new Tween({
   timeline: new Timeline({ scroll: true }),
 });
 container.fog = { color: rgb(FOG).map((v) => v / 255), length: FOG_LENGTH };
-const foggy = new Material();
-foggy.fog = true;
+// Weak since the sun only gets in through the windows, and along the beams so the window wall
+// falls dark
+container.lights = {
+  ambient: { intensity: AMBIENT },
+  directional: { direction: [RUN, -1, 0], intensity: SUN_FILL },
+};
+const surface = new Material();
+surface.fog = true;
+surface.shading = "flat";
 
 const RECT_UV = [
   [0, 0],
@@ -127,10 +136,10 @@ const addFace = (
     getDomSize: domSize,
   });
 };
-// Opaque faces, which the library fades into the fog as the camera walks
+// Opaque faces, which the library lights and fades into the fog as the camera walks
 const addSurface = (points, color, layers = "") => {
   const style = { "--bg": `${layers}linear-gradient(${color} 0 0)` };
-  addFace(points, RECT_UV, "solid", { style }).material = foggy;
+  addFace(points, RECT_UV, "solid", { style }).material = surface;
 };
 // A plane facing the camera, faded out by scrolling before the camera passes it
 const addVeil = (
