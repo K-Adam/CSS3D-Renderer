@@ -1,0 +1,70 @@
+html {
+  scrollbar-width: none;
+}
+/* Scrolling the page only walks the camera, the scene stays put */
+body {
+  margin: 0;
+  height: 300vh;
+}
+.c3r-container.c3r-container {
+  position: fixed;
+  inset: 0;
+}
+
+/* Two classes, the library's own rules come later in the page and would paint it white */
+.c3r-polygon-content.water {
+  background: none;
+}
+.waves {
+  position: absolute;
+  inset: 0 -100% 0 0;
+  background: url(assets/waves.png) 0 var(--offset) / var(--tile);
+  animation: drift var(--period) linear infinite;
+}
+/* The waves thin out towards the far edge of the far strip */
+.fades > .waves {
+  mask-image: linear-gradient(#0000, #000 70%);
+}
+.waves + .waves {
+  animation-direction: reverse;
+}
+@keyframes drift {
+  to {
+    translate: calc(-1 * var(--drift));
+  }
+}
+/* The second of the camera's tweens is its sway, the first follows the scroll */
+@media (prefers-reduced-motion: reduce) {
+  .waves {
+    animation: none;
+  }
+  .c3r-view {
+    --c3r-tween-1-animation: none !important;
+  }
+}
+
+header {
+  position: fixed;
+  left: 16px;
+  top: 10px;
+  color: #26303f;
+  font:
+    13px/1.35 Georgia,
+    serif;
+}
+h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: normal;
+}
+p {
+  margin: 0;
+}
+header a {
+  color: inherit;
+}
+@media (max-aspect-ratio: 1/1) {
+  .c3r-perspective {
+    --c3r-camera-fov: 90deg !important;
+  }
+}
