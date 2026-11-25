@@ -137,7 +137,7 @@ solid(
   [W, DOOR_H + CASE, DOOR_Z1 + CASE],
   RIM,
 );
-// The reveal runs through the wall's thickness, faces only: a box would show through in Firefox
+// The reveal runs through the wall's thickness
 const REVEAL = "#d9cfba";
 quad(root, "+z", [W, 0, DOOR_Z0], [W + T, DOOR_H, DOOR_Z0], REVEAL);
 quad(root, "-z", [W, 0, DOOR_Z1], [W + T, DOOR_H, DOOR_Z1], REVEAL);
@@ -378,12 +378,13 @@ const addDrawer = (id, label, content, furnish) => {
   const drawer = new Group();
   drawer.domElement.classList.add("slide", `s-${id}`);
   at.addChild(drawer);
-  // In two, split where the note stands: Firefox paints a floor crossing its plane over it
-  for (const [z0, z1] of [
-    [CAB_FRONT - NOTE_Z, CAB_FRONT],
-    [back, CAB_FRONT - NOTE_Z],
-  ])
-    quad(drawer, "+y", [DRAWER_X0, y0, z0], [DRAWER_X1, y0, z1], "#5d3f28");
+  quad(
+    drawer,
+    "+y",
+    [DRAWER_X0, y0, back],
+    [DRAWER_X1, y0, CAB_FRONT],
+    "#5d3f28",
+  );
   const SIDE = "#7c5635";
   quad(
     drawer,
