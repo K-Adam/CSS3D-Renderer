@@ -5,7 +5,14 @@ export interface TimelineOptions {
   // Plays only while a group in the container runs one of its tweens and is
   // hovered, or the container itself when it runs the light's
   hover?: boolean;
+  // Follows the page's scroll instead of the clock
+  scroll?: boolean;
 }
+
+// Can't take a tween's or timeline's class, so they share its variables: a
+// camera's view, and the elements that replay its tweens to read the camera
+// without restyling what is between
+export const CAMERA_ELEMENTS = ".c3r-view, .c3r-camera-follower";
 
 const members = new WeakMap<Timeline, Set<string>>();
 const dirty = new Set<Timeline>();
@@ -15,16 +22,23 @@ let nextId = 0;
 // Tweens that pause, hover and start as one
 export class Timeline {
   readonly className = `c3r-timeline-${nextId++}`;
+  readonly scroll: boolean;
 
   #paused = false;
   #rules: CSSRule[] = [];
-  // A camera's view can't take the class, so it shares the state
   #rule: CSSStyleRule | null = insertRule(
-    `.${this.className}, .c3r-view`,
+    `.${this.className}, ${CAMERA_ELEMENTS}`,
     this,
   );
 
-  constructor({ paused = false, hover = false }: TimelineOptions = {}) {
+  constructor({
+    paused = false,
+    hover = false,
+    scroll = false,
+  }: TimelineOptions = {}) {
+    if (scroll && (paused || hover))
+      throw new RangeError("A scroll timeline can't pause or play on hover");
+    this.scroll = scroll;
     this.#rules.push(this.#rule!);
     members.set(this, new Set());
     if (hover) {
@@ -32,7 +46,7 @@ export class Timeline {
       const idle = `.c3r-container:not(:has(.c3r-group${own}:hover), ${own}:hover)`;
       this.#rules.push(
         insertRule(
-          `${idle}${own}, ${idle} ${own}, ${idle} .c3r-view`,
+          `${idle}${own}, ${idle} ${own}, ${idle} :is(${CAMERA_ELEMENTS})`,
           this,
           `{ ${this.state}: paused; }`,
         ),
@@ -42,7 +56,18 @@ export class Timeline {
         insertRule(`.c3r-group${own}`, this, "{ pointer-events: auto; }"),
       );
     }
-    this.paused = paused;
+    if (scroll) {
+      // Held at the first pose where scroll timelines are missing, the clock
+      // would play it to the end
+      this.#rule!.style.setProperty(this.state, "paused");
+      this.#rules.push(
+        insertRule(
+          "@supports (animation-timeline: scroll())",
+          this,
+          `{ .${this.className}, ${CAMERA_ELEMENTS} { ${this.state}: running; } }`,
+        ),
+      );
+    } else this.paused = paused;
   }
 
   get state(): string {
@@ -54,6 +79,7 @@ export class Timeline {
   }
 
   set paused(paused: boolean) {
+    if (this.scroll) throw new RangeError("A scroll timeline can't pause");
     this.#paused = paused;
     this.#rule?.style.setProperty(this.state, paused ? "paused" : "running");
   }

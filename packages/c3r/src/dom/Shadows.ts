@@ -492,6 +492,8 @@ function driverOf(tweens: readonly Tween[]): Driver {
     };
   }
   const timeline = [...timelines][0] as Timeline;
+  if (timeline.scroll)
+    throw new RangeError("A shadow can't follow a scroll timeline");
   const period = periodOf(tweens);
   const keys = tweens.flatMap((tween) => {
     const cycle = tweenCycle(tween);

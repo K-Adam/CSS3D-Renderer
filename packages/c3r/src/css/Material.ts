@@ -57,6 +57,9 @@ export class Material {
 
   #rule: CSSStyleRule | null = insertRule(`.${this.className}`, this);
 
+  // From the next bake, null inherits
+  fog: boolean | null = null;
+
   // An rgba color, 0-1, or an image url; either hides the other from a parent
   get background(): ReadonlyVec4 | string | null {
     return this.#background;

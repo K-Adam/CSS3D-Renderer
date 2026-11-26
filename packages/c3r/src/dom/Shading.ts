@@ -22,7 +22,7 @@ function staticNormal(matrix: ReadonlyMat4): CssMatrix {
   return new CssMatrix(mat3.multiplyScalar(m, m, 1 / size));
 }
 
-const stepsOf = (tween: Tween | readonly Tween[] | null) =>
+export const stepsOf = (tween: Tween | readonly Tween[] | null) =>
   [tween ?? []].flat().flatMap((t) => transformSteps(t));
 
 const normalOf = (
@@ -176,7 +176,7 @@ const FOLD = {
   polygonsRead: true,
 };
 
-const CONTENT = "> .c3r-polygon-clip > .c3r-polygon-content";
+export const CONTENT = "> .c3r-polygon-clip > .c3r-polygon-content";
 
 const SPECULAR_STOPS = 8;
 

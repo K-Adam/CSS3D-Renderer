@@ -11,20 +11,6 @@ body {
   position: fixed;
   inset: 0;
 }
-/* Outside transform, so it dollies along the view axis. Lengths out here are in pixels, the scene
-   inside is unit-scaled */
-@keyframes dolly {
-  to {
-    translate: 0 0 var(--dolly);
-  }
-}
-/* Without the guard an unsupporting browser fills to the last keyframe and stays zoomed */
-@supports (animation-timeline: scroll()) {
-  .c3r-view {
-    animation: dolly linear both;
-    animation-timeline: scroll(root);
-  }
-}
 /* A page parsed in chunks starts its animations up to half a second apart, which would throw the
    shadows off the pillar for good. This holds them all until the last element arrives */
 body:not(:has(> header)) * {

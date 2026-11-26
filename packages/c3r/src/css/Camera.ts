@@ -12,7 +12,8 @@ import {
   ownTransform,
   type Transform,
 } from "./Transform.js";
-import { setTweens, type Tween } from "./Tween.js";
+import { joinTimeline } from "./Timeline.js";
+import { setTweens, timelineOf, type Tween } from "./Tween.js";
 
 let nextId = 0;
 
@@ -32,6 +33,12 @@ export abstract class Camera {
   // Changes every frame
   #viewRule: CSSStyleRule | null = insertRule(
     `.${this.className} > .c3r-view`,
+    this,
+  );
+  // Replays the tweens on elements that read the camera, without the view's
+  // matrix and inputs
+  #followerRule: CSSStyleRule | null = insertRule(
+    `.${this.className} .c3r-camera-follower:not(.${this.className} .c3r-container *)`,
     this,
   );
 
@@ -62,6 +69,14 @@ export abstract class Camera {
 
   set tween(tween: Tween | readonly Tween[] | null) {
     const tweens = setTweens(this.#viewRule?.style, tween, true);
+    // Only the clock, a value read from the animated variables would restyle
+    // the slow way on every follower
+    setTweens(this.#followerRule?.style, tween, true, "", true);
+    // So a bake brings followers that start later in step with the view
+    for (const t of tweens) {
+      const timeline = timelineOf(t);
+      if (timeline && !timeline.scroll) joinTimeline(timeline, t.className);
+    }
     this.#tween = Array.isArray(tween) ? tweens : tween;
     this.#refresh();
   }
@@ -76,8 +91,9 @@ export abstract class Camera {
   // Not from the constructor, an input rule may read a subclass's fields,
   // which exist once it sets its params
   #refresh(): void {
-    const style = this.#viewRule?.style;
-    if (style) refreshCamera(this, style);
+    const view = this.#viewRule?.style;
+    const follower = this.#followerRule?.style;
+    if (view && follower) refreshCamera(this, view, follower);
   }
 
   // Rewriting an unchanged rule would still restyle the whole scene
@@ -92,6 +108,7 @@ export abstract class Camera {
     forgetCamera(this);
     deleteRule(this.#paramsRule);
     deleteRule(this.#viewRule);
-    this.#paramsRule = this.#viewRule = null;
+    deleteRule(this.#followerRule);
+    this.#paramsRule = this.#viewRule = this.#followerRule = null;
   }
 }

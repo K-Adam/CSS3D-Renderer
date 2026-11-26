@@ -1,5 +1,5 @@
 import type { Camera } from "../css/Camera.js";
-import type { Composite, CssVector } from "../css/CssMatrix.js";
+import { type Composite, CssVector } from "../css/CssMatrix.js";
 import { cssVar, CssValue, textOf } from "../css/CssValue.js";
 import { deleteRule, insertRule, plainValue } from "../css/styles.js";
 
@@ -23,6 +23,9 @@ export interface AccumulatorOptions<
   polygonsRead?: boolean;
   combine: (parent: T, input: I) => T;
   input?: (node: Object3D | Camera) => I | null;
+  // Numbers from the camera alone, as --name-camera-k on its followers, so a
+  // camera move restyles only the readers inside them
+  camera?: { size: number; value: (camera: Camera) => CssVector };
 }
 
 type AnyAccumulator = Accumulator<any, any>;
@@ -35,6 +38,21 @@ const textsOf = (count: number, value: CssValue | Composite): string[] => {
   if (components.length !== count)
     throw new TypeError("A value must have the shape of the identity");
   return components.map(textOf);
+};
+
+// A failing rule is reported and leaves no texts
+const reported = (
+  count: number,
+  value: () => CssValue | Composite | null,
+): string[] => {
+  try {
+    const result = value();
+    return result === null ? [] : textsOf(count, result);
+  } catch (error) {
+    if (typeof reportError === "function") reportError(error);
+    else console.error(error);
+    return [];
+  }
 };
 
 const propertiesOf = (
@@ -55,13 +73,15 @@ const properties = new Set<string>();
 const released = new FinalizationRegistry((names: string[]) => {
   for (const p of names) properties.delete(p);
   for (const camera of live(cameras))
-    for (const p of names) cameraStyles.get(camera)!.removeProperty(p);
+    for (const style of [cameraStyles, followerStyles])
+      for (const p of names) style.get(camera)!.removeProperty(p);
 });
 
 // Weak, so neither keeps the other alive
 const inputs = new Set<WeakRef<AnyAccumulator>>();
 const cameras = new Set<WeakRef<Camera>>();
 const cameraStyles = new WeakMap<Camera, CSSStyleDeclaration>();
+const followerStyles = new WeakMap<Camera, CSSStyleDeclaration>();
 
 const live = <T extends object>(refs: Set<WeakRef<T>>): T[] => {
   const alive: T[] = [];
@@ -93,15 +113,18 @@ export const refreshInput = (node: Object3D): void => {
 export const refreshCamera = (
   camera: Camera,
   style: CSSStyleDeclaration,
+  follower: CSSStyleDeclaration,
 ): void => {
   if (!cameraStyles.has(camera)) cameras.add(new WeakRef(camera));
   cameraStyles.set(camera, style);
+  followerStyles.set(camera, follower);
   for (const acc of live(inputs)) write(acc, camera, style);
 };
 
 // Firefox throws on writing to a deleted rule's style
 export const forgetCamera = (camera: Camera): void => {
   cameraStyles.delete(camera);
+  followerStyles.delete(camera);
   for (const ref of cameras) if (ref.deref() === camera) cameras.delete(ref);
 };
 
@@ -126,6 +149,7 @@ function validate(
   syntax: string,
   identity: CssValue | CssVector,
   inputIdentity: CssValue | Composite,
+  cameraProperties: readonly string[],
 ): void {
   if (!/^[a-z_][\w-]*$/i.test(name))
     throw new RangeError(
@@ -134,6 +158,7 @@ function validate(
   const names = [
     ...propertiesOf(name, identity),
     ...propertiesOf(name, inputIdentity, "-input"),
+    ...cameraProperties,
   ];
   if (names.some((p) => properties.has(p)))
     throw new RangeError(`${name} is in use, dispose its Accumulator first`);
@@ -158,9 +183,13 @@ export class Accumulator<
   readonly className = `c3r-accumulator-${nextId++}`;
 
   readonly result: T;
+  // The camera option's numbers, as read on its view and followers
+  readonly camera: CssVector | undefined;
 
   readonly #names: readonly string[];
   readonly #inputProperties: readonly string[];
+  readonly #cameraProperties: readonly string[];
+  readonly #cameraValue: ((camera: Camera) => CssVector) | undefined;
   readonly #input: AccumulatorOptions<T, I>["input"];
   readonly #start: string;
   readonly #weakSelf: WeakRef<AnyAccumulator> = new WeakRef(this);
@@ -184,10 +213,18 @@ export class Accumulator<
     const { combine, input } = options;
     const inputIdentity: CssValue | Composite =
       options.inputIdentity ?? identity;
-    validate(name, syntax, identity, inputIdentity);
+    const cameraProperties = Array.from(
+      { length: options.camera?.size ?? 0 },
+      (_, k) => `--${name}-camera-${k}`,
+    );
+    validate(name, syntax, identity, inputIdentity, cameraProperties);
     const resultProperties = propertiesOf(name, identity);
     const inputProperties = propertiesOf(name, inputIdentity, "-input");
-    const names = [...resultProperties, ...inputProperties];
+    const names = [
+      ...resultProperties,
+      ...inputProperties,
+      ...cameraProperties,
+    ];
     const initials = componentsOf(identity).map(textOf);
     const slot = (i: number, k: number) => `--${this.className}-${i}-${k}`;
     const flag = `--${this.className}-odd`;
@@ -236,6 +273,10 @@ export class Accumulator<
       componentsOf(inputIdentity).forEach((initial, k) =>
         register(inputProperties[k], false, textOf(initial)),
       );
+      // Inherited from the follower, a reader that animates itself restyles
+      // several times slower than one that inherits
+      for (const property of cameraProperties)
+        register(property, true, initials[0]);
       // Emulates `--name: combine(inherit(--name), var(--name-input))` until
       // Firefox ships inherit() and Chrome enables it, then the parent ref
       // turns into it: a node reads its parent's slot and writes the other,
@@ -265,8 +306,13 @@ export class Accumulator<
     }
     for (const p of names) properties.add(p);
     this.result = refs<T>(identity, resultProperties);
+    this.camera = cameraProperties.length
+      ? new CssVector(cameraProperties.map((p) => cssVar(p, syntax)))
+      : undefined;
     this.#names = names;
     this.#inputProperties = inputProperties;
+    this.#cameraProperties = cameraProperties;
+    this.#cameraValue = options.camera?.value;
     this.#input = input;
     const starts = resultProperties
       .map((p, k) => `${p}: var(${slot(0, k)});`)
@@ -309,17 +355,19 @@ export class Accumulator<
   // A failing rule leaves the identity, so the tree stays consistent
   #write(node: Object3D | Camera, style: CSSStyleDeclaration): void {
     if (!this.#input || !this.#rules.length) return;
-    let texts: string[] = [];
-    try {
-      const result = this.#input(node);
-      if (result !== null)
-        texts = textsOf(this.#inputProperties.length, result);
-    } catch (error) {
-      if (typeof reportError === "function") reportError(error);
-      else console.error(error);
-    }
+    const input = this.#input;
+    const texts = reported(this.#inputProperties.length, () => input(node));
     this.#inputProperties.forEach((p, k) =>
       style.setProperty(p, texts[k] ?? ""),
+    );
+    const follower = followerStyles.get(node as Camera);
+    const cameraValue = this.#cameraValue;
+    if (!cameraValue || !follower) return;
+    const values = reported(this.#cameraProperties.length, () =>
+      cameraValue(node as Camera),
+    );
+    this.#cameraProperties.forEach((p, k) =>
+      follower.setProperty(p, values[k] ?? ""),
     );
   }
 
@@ -363,7 +411,10 @@ export class Accumulator<
     for (const p of this.#names) properties.delete(p);
     inputs.delete(this.#weakSelf);
     if (this.#input)
-      for (const camera of live(cameras))
+      for (const camera of live(cameras)) {
         this.#clearInput(cameraStyles.get(camera)!);
+        for (const p of this.#cameraProperties)
+          followerStyles.get(camera)!.removeProperty(p);
+      }
   }
 }

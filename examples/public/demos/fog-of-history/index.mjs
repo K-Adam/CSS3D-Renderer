@@ -17,7 +17,7 @@ import {
 } from "../../../demos.mjs";
 
 const HERE = import.meta.dirname;
-const { Container, Group, Transform } = await happyC3R();
+const { Container, Group, Timeline, Transform, Tween } = await happyC3R();
 const items = load(path.join(HERE, "hextris.json"));
 const tiles = load(path.join(HERE, "hexmeta.json"));
 const LIGHT = { ambient: 0.62, intensity: 0.62, direction: [-0.5, -1, -0.45] };
@@ -120,6 +120,10 @@ const unhidden = (tris) => {
 
 const container = new Container();
 container.camera.transform = Transform.targetTo(EYE, FOCUS);
+container.camera.tween = new Tween({
+  keyframes: [Transform.translate([0, 0, -DOLLY])],
+  timeline: new Timeline({ scroll: true }),
+});
 
 const pan = new Group();
 pan.domElement.classList.add("pan");
@@ -172,7 +176,6 @@ const pans = tiles.map((tile) => {
   return `html:has(#t${tile.tag}:target) .pan{transform:translate3d(${(-x).toFixed(1)}px,0,${(-z).toFixed(1)}px)}`;
 });
 const scene = await container.toHTML();
-const css = `:root{--dolly:${DOLLY * container.unitScale}px}
-@media (orientation:portrait){.c3r-container.c3r-container>.c3r-view{${cameraView(PORTRAIT_EYE, FOCUS)}}}
+const css = `@media (orientation:portrait){.c3r-container.c3r-container>.c3r-view{${cameraView(PORTRAIT_EYE, FOCUS)}}}
 ${pans.join("\n")}`;
 writePage(HERE, { css, targets, scene });

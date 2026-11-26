@@ -24,12 +24,6 @@ const TARGET = [0, 130, -40];
 const CODE = "1847";
 // How far scrolling moves the camera towards its target
 const DOLLY = 350;
-const ZOOMED_EYE = vec3.scaleAndAdd(
-  [],
-  EYE,
-  vec3.normalize([], vec3.sub([], TARGET, EYE)),
-  DOLLY,
-);
 
 const container = new Container();
 container.camera.transform = Transform.targetTo(EYE, TARGET);
@@ -74,16 +68,16 @@ const MON_FRONT = MON_BACK + 8;
 const BEZEL_Y = DESK_TOP + 30;
 const SCREEN_Y = BEZEL_Y + BEZEL + SCREEN_H / 2;
 
-// The views this page can reach, so a face turned away from all of them skips the DOM
+// The views this page can reach
 const POSES = {
   home: [EYE, TARGET],
-  zoomed: [ZOOMED_EYE, TARGET],
   drawer: [
     [110, 470, 330],
     [130, 30, -230],
   ],
+  // Far enough back that the full dolly still stops short of the screen
   screen: [
-    [MON_X, SCREEN_Y + 15, MON_FRONT + 287],
+    [MON_X, SCREEN_Y + 15, MON_FRONT + 440],
     [MON_X, SCREEN_Y, MON_FRONT - 33],
   ],
   door: [
@@ -91,7 +85,17 @@ const POSES = {
     [190, 110, 0],
   ],
 };
-const POSE_EYES = Object.values(POSES).map(([eye]) => eye);
+// Scrolling moves each eye DOLLY closer. A face turned away from every eye, near and far,
+// skips the DOM
+const POSE_EYES = Object.values(POSES).flatMap(([eye, target]) => [
+  eye,
+  vec3.scaleAndAdd(
+    [],
+    eye,
+    vec3.normalize([], vec3.sub([], target, eye)),
+    DOLLY,
+  ),
+]);
 // A box that never moves can drop the faces no pose sees
 const solid = (lo, hi, color) => {
   for (const pts of Object.values(boxFaces(lo, hi)))
@@ -133,7 +137,7 @@ solid(
   [W, DOOR_H + CASE, DOOR_Z1 + CASE],
   RIM,
 );
-// The reveal runs through the wall's thickness, faces only: a box would show through in Firefox
+// The reveal runs through the wall's thickness
 const REVEAL = "#d9cfba";
 quad(root, "+z", [W, 0, DOOR_Z0], [W + T, DOOR_H, DOOR_Z0], REVEAL);
 quad(root, "-z", [W, 0, DOOR_Z1], [W + T, DOOR_H, DOOR_Z1], REVEAL);
@@ -374,12 +378,13 @@ const addDrawer = (id, label, content, furnish) => {
   const drawer = new Group();
   drawer.domElement.classList.add("slide", `s-${id}`);
   at.addChild(drawer);
-  // In two, split where the note stands: Firefox paints a floor crossing its plane over it
-  for (const [z0, z1] of [
-    [CAB_FRONT - NOTE_Z, CAB_FRONT],
-    [back, CAB_FRONT - NOTE_Z],
-  ])
-    quad(drawer, "+y", [DRAWER_X0, y0, z0], [DRAWER_X1, y0, z1], "#5d3f28");
+  quad(
+    drawer,
+    "+y",
+    [DRAWER_X0, y0, back],
+    [DRAWER_X1, y0, CAB_FRONT],
+    "#5d3f28",
+  );
   const SIDE = "#7c5635";
   quad(
     drawer,
@@ -454,10 +459,13 @@ sticky.setAttribute("aria-label", "A sticky note asks where the code went");
 place(root, sticky, Transform.translate([-10, 310, -D + 1]), 0.9);
 
 const camera = (sel, [eye, target]) =>
-  `${sel} .c3r-container>.c3r-view{${cameraView(eye, target)};animation:none}`;
+  `${sel} .c3r-container>.c3r-view{${cameraView(eye, target)}}`;
 const scene = await container.toHTML();
-// Values from the scene, the rest is in style.css
-const css = `:root{--dolly:${DOLLY * container.unitScale}px;--note-z:${NOTE_Z}px}
+// Values from the scene, the rest is in style.css. The dolly is outside transform, so it moves
+// along the view axis of every pose and the pose transitions leave it alone. Its length is
+// written out because Firefox steps a var() keyframe, in pixels as the scene inside is unit-scaled
+const css = `@keyframes dolly{to{translate:0 0 ${DOLLY * container.unitScale}px}}
+:root{--note-z:${NOTE_Z}px}
 ${camera("html:has(details[open])", POSES.drawer)}
 ${camera("html:has(#code:focus)", POSES.screen)}
 ${camera("html:has(#code:valid)", POSES.door)}

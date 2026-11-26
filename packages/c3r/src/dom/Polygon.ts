@@ -170,6 +170,7 @@ const PAST_CLIP = 2;
 
 // Friend access for Shading
 export let setGlint: (polygon: Polygon, glint: boolean) => void;
+export let setFogLayer: (polygon: Polygon, fogged: boolean) => void;
 
 export let setSmooth: (
   polygon: Polygon,
@@ -179,9 +180,12 @@ export let setSmooth: (
   mapped: boolean,
 ) => void;
 
-const FIELD = ["center", "x", "y"].flatMap((name) =>
-  ["x", "y", "z"].map((k) => `--c3r-normal-${name}-${k}`),
-);
+const fieldNames = (prefix: string) =>
+  ["center", "x", "y"].flatMap((name) =>
+    ["x", "y", "z"].map((k) => `--c3r-${prefix}-${name}-${k}`),
+  );
+const NORMAL_FIELD = fieldNames("normal");
+const POSITION_FIELD = fieldNames("position");
 
 export class Polygon extends Object3D {
   readonly vertices: readonly Vertex[]; // vertices in CCW
@@ -213,6 +217,7 @@ export class Polygon extends Object3D {
   #planar: boolean;
   #lit: "radial" | "vertex" | null = null;
   #glint: HTMLElement | null = null;
+  #fog: HTMLElement | null = null;
   #mapped = false;
 
   constructor(
@@ -304,6 +309,7 @@ export class Polygon extends Object3D {
   static {
     measurePolygon = (polygon, size) => polygon.#measure(size);
     setGlint = (polygon, glint) => polygon.#setGlint(glint);
+    setFogLayer = (polygon, fogged) => polygon.#setFog(fogged);
     setSmooth = (polygon, smooth, hasImage, point, mapped) =>
       polygon.#setSmooth(smooth, hasImage, point, mapped);
   }
@@ -321,6 +327,23 @@ export class Polygon extends Object3D {
       this.#glint?.remove();
       this.#glint = null;
     }
+  }
+
+  #setFog(fogged: boolean): void {
+    if (fogged === !!this.#fog) return;
+    if (fogged) {
+      // The follower replays the camera and hands it down, the layer inside
+      // computes from what it inherits, which is the cheap way to restyle
+      this.#fog = document.createElement("div");
+      this.#fog.classList.add("c3r-camera-follower");
+      this.#fog.appendChild(document.createElement("div")).className =
+        "c3r-polygon-fog";
+      this.contentElement.appendChild(this.#fog);
+    } else {
+      this.#fog!.remove();
+      this.#fog = null;
+    }
+    this.#updateContent();
   }
 
   #setSmooth(
@@ -351,20 +374,36 @@ export class Polygon extends Object3D {
   }
 
   // Around the content box's center, which a gradient line runs through
-  #writeNormalField(contentPoints: readonly ReadonlyVec2[]): void {
+  #writeFields(contentPoints: readonly ReadonlyVec2[]): void {
     const points = contentPoints.map(([u, v]) =>
       vec2.fromValues(
         (u - 0.5) * this.#blockWidth,
         (v - 0.5) * this.#blockHeight,
       ),
     );
+    const { style } = this.domElement;
+    if (this.#fog) {
+      const field = normalField(
+        points,
+        this.vertices.map((v) => v.position),
+      );
+      POSITION_FIELD.forEach((name, i) =>
+        style.setProperty(name, String(field[i])),
+      );
+    }
+    if (this.#smooth) this.#writeNormalField(points);
+  }
+
+  #writeNormalField(points: readonly ReadonlyVec2[]): void {
     const face = newellNormal(this.vertices);
     const { style } = this.domElement;
     style.setProperty("--c3r-normal-width", String(this.#blockWidth));
     style.setProperty("--c3r-normal-height", String(this.#blockHeight));
     const normals = vertexNormals(this.vertices, face);
     const field = normalField(points, normals);
-    FIELD.forEach((name, i) => style.setProperty(name, String(field[i])));
+    NORMAL_FIELD.forEach((name, i) =>
+      style.setProperty(name, String(field[i])),
+    );
     if (this.#lit === "radial") this.#writePlane(points);
     if (this.#lit === "vertex") this.#writeVertices(points, normals);
   }
@@ -628,7 +667,7 @@ export class Polygon extends Object3D {
       style.removeProperty("transform");
       style.removeProperty("--c3r-uv-position");
       style.removeProperty("--c3r-uv-size");
-      if (this.#smooth) this.#writeNormalField(this.#vertexPoints);
+      this.#writeFields(this.#vertexPoints);
       return;
     }
 
@@ -735,9 +774,9 @@ export class Polygon extends Object3D {
       `translate(${TX[6] * 100}%,${TX[7] * 100}%)` +
       `matrix(${[TX[0], TX[1] * bh, TX[3] / bh, TX[4], 0, 0].join()})`;
 
-    if (!this.#smooth) return;
+    if (!this.#smooth && !this.#fog) return;
     const toContent = mat3.invert(mat3.create(), TX) ?? mat3.create();
-    this.#writeNormalField(
+    this.#writeFields(
       this.#vertexPoints.map((p) =>
         vec2.transformMat3(vec2.create(), p, toContent),
       ),

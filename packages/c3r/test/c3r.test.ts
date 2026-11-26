@@ -601,9 +601,9 @@ describe("ElementObject", () => {
 
 // A class rule's declarations, or "" once it is gone
 const ruleOf = (className: string) =>
-  new RegExp(String.raw`\.${className}(, \.c3r-view)? \{[^}]*`).exec(
-    cssText(),
-  )?.[0] ?? "";
+  new RegExp(
+    String.raw`\.${className}(, \.c3r-view, \.c3r-camera-follower)? \{[^}]*`,
+  ).exec(cssText())?.[0] ?? "";
 
 describe("Material", () => {
   it("styles objects through a class rule, removed on dispose", () => {
@@ -943,6 +943,59 @@ describe("Tween", () => {
     expect(style.cssText).toBe("");
   });
 
+  it("follows the scroll on a scroll timeline, held at the start without it", () => {
+    using scroll = new Timeline({ scroll: true });
+    using walk = new Tween({
+      keyframes: [Transform.translate([0, 0, -100])],
+      timeline: scroll,
+    });
+    using spin = new Tween({
+      keyframes: [Transform.rotateY(turn)],
+      loop: true,
+    });
+    expect(cssText()).toContain(
+      `.${scroll.className}, .c3r-view, .c3r-camera-follower { ${scroll.state}: paused; }`,
+    );
+    expect(cssText()).toContain(
+      `@supports (animation-timeline: scroll()) { .${scroll.className}, .c3r-view, .c3r-camera-follower { ${scroll.state}: running; } }`,
+    );
+
+    const group = new Group();
+    group.clock = true;
+    group.tween = [spin, walk];
+    const { style } = group.domElement;
+    expect(style.animation).toBe(
+      `var(--${spin.className}-animation, none), var(--${walk.className}-animation, none), c3r-time 3600s linear infinite`,
+    );
+    expect(style.getPropertyValue("animation-timeline")).toBe(
+      "auto, scroll(root), auto",
+    );
+    group.tween = spin;
+    expect(style.getPropertyValue("animation-timeline")).toBe("");
+
+    const container = new Container();
+    container.camera.tween = walk;
+    expect(cssText()).toContain("animation-timeline: scroll(root)");
+    container.camera.tween = null;
+
+    expect(() => new Timeline({ scroll: true, paused: true })).toThrow(
+      RangeError,
+    );
+    expect(() => new Timeline({ scroll: true, hover: true })).toThrow(
+      RangeError,
+    );
+    expect(() => (scroll.paused = true)).toThrow(RangeError);
+    for (const options of [{ loop: true }, { delay: 1 }])
+      expect(
+        () =>
+          new Tween({
+            keyframes: [Transform.rotateY(turn)],
+            timeline: scroll,
+            ...options,
+          }),
+      ).toThrow(RangeError);
+  });
+
   it("plays keyframes in sequence, holding what they don't list", () => {
     using sequence = new Tween({
       from: Filter.opacity(0.5),
@@ -1060,7 +1113,9 @@ describe("Tween", () => {
 
     using hover = new Tween({ keyframes: [Transform.scale(2)], hover: true });
     expect(() => (camera.tween = [move, hover])).toThrow(RangeError);
-    expect(cssText()).not.toContain(`.${hover.className}, .c3r-view`);
+    expect(cssText()).not.toContain(
+      `.${hover.className}, .c3r-view, .c3r-camera-follower`,
+    );
     expect(camera.tween).toEqual([move, grow]);
     for (const keyframes of [
       [Transform.scale(0)],
@@ -1167,6 +1222,43 @@ describe("Tween", () => {
         Symbol.dispose
       ](),
     ).not.toThrow();
+  });
+});
+
+describe("fog", () => {
+  it("rejects an invalid color or length", () => {
+    const container = new Container();
+    expect(() => (container.fog = { color: [0, 0, 2], length: 1 })).toThrow(
+      RangeError,
+    );
+    expect(() => (container.fog = { color: [0, 0, 0], length: 0 })).toThrow(
+      RangeError,
+    );
+    expect(container.fog).toBeNull();
+  });
+
+  it("adds a fog layer to the polygons of a fogged material", async () => {
+    const container = new Container();
+    container.fog = { color: [0, 0, 1], length: 100 };
+    const group = new Group();
+    group.material = new Material();
+    group.material.fog = true;
+    container.root.addChild(group);
+    const polygon = group.addPolygon([
+      vertex(0, 0, 0),
+      vertex(1, 0, 0),
+      vertex(0, 1, 0),
+    ]);
+    await container.bake();
+    expect(
+      polygon.contentElement.querySelector(".c3r-polygon-fog"),
+    ).not.toBeNull();
+    expect(container.domElement.style.getPropertyValue("--c3r-fog-color")).toBe(
+      "0 0 255",
+    );
+    group.material.fog = false;
+    await container.bake();
+    expect(polygon.contentElement.querySelector(".c3r-polygon-fog")).toBeNull();
   });
 });
 
@@ -1661,6 +1753,11 @@ describe("shadows", () => {
     container.lights = { point: { position: [0, 100, 0], intensity: 1 } };
     group.tween = swing({ hover: true });
     expect(() => container.bake(cast)).toThrow("own hover");
+    group.tween = new Tween({
+      keyframes: [Transform.translate([10, 0, 0])],
+      timeline: new Timeline({ scroll: true }),
+    });
+    expect(() => container.bake(cast)).toThrow("scroll timeline");
   });
 
   it("transitions with a caster that moves on hover", async () => {

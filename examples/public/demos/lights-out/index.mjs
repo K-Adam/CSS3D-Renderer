@@ -98,6 +98,10 @@ container.lights = {
 };
 container.camera.fov = 60;
 container.camera.transform = Transform.translate(EYE);
+container.camera.tween = new Tween({
+  keyframes: [Transform.translate([0, 0, -DOLLY])],
+  timeline: new Timeline({ scroll: true }),
+});
 const room = new Group();
 container.root.addChild(room);
 
@@ -339,13 +343,9 @@ const addPillar = () => {
     ["+z", "+x", "-x"].map((side) => rect(side, lo, hi));
   const collar = (y0, y1) =>
     visibleSides([collarX[0], y0, collarZ[0]], [collarX[1], y1, collarZ[1]]);
-  // Front, left and right strips around the shaft. A whole cap would cut through the shaft, and
-  // Firefox sorts it on top
-  const ring = (y, side) => [
-    rect(side, [collarX[0], y, shaftHi[2]], [collarX[1], y, collarZ[1]]),
-    rect(side, [collarX[0], y, shaftLo[2]], [shaftLo[0], y, shaftHi[2]]),
-    rect(side, [shaftHi[0], y, shaftLo[2]], [collarX[1], y, shaftHi[2]]),
-  ];
+  // A whole cap, the shaft hides the part inside it
+  const cap = (y, side) =>
+    rect(side, [collarX[0], y, collarZ[0]], [collarX[1], y, collarZ[1]]);
   // Flat, smooth on these small faces cost about a third of the frame rate
   const collars = new Group();
   pillar.addChild(collars);
@@ -353,9 +353,9 @@ const addPillar = () => {
   addTiled(pillar, visibleSides(shaftLo, shaftHi));
   addTiled(collars, [
     ...collar(0, COLLAR_H),
-    ...ring(COLLAR_H, "+y"),
+    cap(COLLAR_H, "+y"),
     ...collar(HEIGHT - COLLAR_H, HEIGHT),
-    ...ring(HEIGHT - COLLAR_H, "-y"),
+    cap(HEIGHT - COLLAR_H, "-y"),
   ]);
 };
 addPillar();
@@ -370,7 +370,4 @@ sprite.addPolygon(withUv(rect("+z", [-30, -30, 0], [30, 30, 0])));
 sprite.material = material("assets/lamp.png");
 
 const scene = await container.toHTML({ shadows: true });
-writePage(HERE, {
-  css: `:root{--dolly:${DOLLY * container.unitScale}px}`,
-  scene,
-});
+writePage(HERE, { scene });

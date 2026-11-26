@@ -1,0 +1,4 @@
+<% layout("@layout", { title: "Light Shafts" }) %>
+<%~ it.scene %>
+<div class="lens"></div>
+<header><h1>Light Shafts</h1><p>Scroll to walk down the nave. The sunbeams, haze and dust are gradients on flat planes.</p></header>

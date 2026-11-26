@@ -17,7 +17,7 @@ import { Container, Polygon } from "c3r";
 Or with a script tag, using [GitHub Releases](https://github.com/K-Adam/CSS3D-Renderer/releases) or a CDN:
 
 ```html
-<script src="https://unpkg.com/c3r@0.6/dist/c3r.min.js"></script>
+<script src="https://unpkg.com/c3r@0.7/dist/c3r.min.js"></script>
 ```
 
 It bundles gl-matrix and exposes a `C3R` global.
@@ -67,7 +67,7 @@ A `Material`, `Tween`, `Timeline` or camera is a class rule in one shared styles
 
 A `transform` array applies in order, like CSS. A tween animates a group after its `transform`, from rest or from the `from` steps, and a group's tweens apply in array order. Its keyframes play in sequence, `duration` seconds each unless written as `{ steps, duration }`, and `easing` applies to each; a keyframe is one step or an array of steps, and what it doesn't list holds. Transforms apply in the order they first appear, `from` first. Angles are radians and may exceed a half turn. A `Transform.matrix` keyframe tweens its translation, rotation and scale separately, and can't have shear, perspective or a zero scale. `Filter` steps apply to the polygons and `ElementObject` elements, and a nested group's filters replace its parent's. With `hover`, a `loop` plays only while hovered; any other tween takes one keyframe and eases to it and back. Setting `paused` later pauses everything on the tween's timeline. A hover transition can't pause, so it stops responding to hover instead. It runs on the main thread and `bake()` ignores its scale. Use a negative `delay`, in seconds, to offset the phase.
 
-A `Timeline({ paused, hover })` passed as `timeline` makes tweens move as one, and they take `paused` and `hover` from it. `hover` plays them while one of their groups is hovered, or the container when it runs the light's, and `bake()` brings a tween that joins later in step. A tween without one gets its own, and a hover transition can't join one.
+A `Timeline({ paused, hover })` passed as `timeline` makes tweens move as one, and they take `paused` and `hover` from it. `hover` plays them while one of their groups is hovered, or the container when it runs the light's, and `bake()` brings a tween that joins later in step. A tween without one gets its own, and a hover transition can't join one. `Timeline({ scroll: true })` plays its tweens, the camera's too, along the page's scroll, with keyframe durations as shares of it. Its tweens can't loop or wait, and where scroll timelines are missing they hold their first keyframe.
 
 A group's `clock` runs `Group.time`, in seconds, for its own and its descendants' materials. It wraps hourly and restyles the subtree every frame, so it is off by default. Filters other than `hueRotate` and `tint` also take a `CssValue`, such as `Filter.opacity(CssValue.fn("sin", Group.time))`, which a tween can't animate.
 
@@ -86,6 +86,8 @@ A shaded material's `specular = { intensity, shininess, map? }` adds a white Bli
 `lights = { ambient, point: { position, intensity } }` replaces `directional` with a light in world space, falling off with the squared distance. Setting both throws, and switching takes effect at the next `bake()`. `"flat"` gives each polygon the shade at its center, unlike three.js, which lights a flat face per pixel. `"smooth"` draws the exact falloff on a plane. On a curve, including a plane joined to one by smooth edges, it interpolates the light at three vertices, so a large polygon close to the light goes too dim or bright. `addMesh(mesh, { splitCurved: true })` avoids seams on merged polygons with differing normals, at twice the polygons on a cylinder. A point light ignores a group's `Transform.matrix` tween and a `Billboard`'s facing, gets distances wrong under a scale that isn't uniform, and on a plane doesn't follow sheared uvs.
 
 `point.tween` moves the light after `position`, so a group with that tween stays on it, and each frame restyles the whole scene. A `Transform.matrix` or filter tween throws.
+
+`container.fog = { color, length }` fades polygons whose material has `fog = true` into `color` (0-1) with their depth from the eye, as 1 - exp(-depth / length), from the next `bake()`. It follows the camera's tween, which then restyles every fogged polygon each frame. The layer covers the whole content element, so a hand-built translucent `contentElement` would be fogged in its transparent parts too.
 
 `specular` works under a point light with the same viewer as `directional`. A flat polygon takes it at its center and a curve from three vertices. On a plane it is an oval on a child added to the content element at each `bake()`, more symmetric than the true shape, too dim where a very bright highlight should saturate, and off towards the light at a grazing view.
 

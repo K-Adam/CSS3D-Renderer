@@ -6,6 +6,7 @@ import { type Filter, filterTexts, filterVariables } from "./Filter.js";
 import { inverseStepValue, type Step, stepOf, stepText } from "./steps.js";
 import { deleteRule, insertRule, plainValue } from "./styles.js";
 import {
+  CAMERA_ELEMENTS,
   joinTimeline,
   leaveTimeline,
   Timeline,
@@ -36,11 +37,14 @@ interface Style {
   filter?: string;
   layers?: string;
   animation?: string;
+  timeline?: string;
   transition?: string;
   hover?: boolean;
 }
 
 const styles = new WeakMap<Tween, Style>();
+
+const SCROLL = "scroll(root)";
 
 type AnimatedStep = { step: Step; args: string[] };
 const animatedSteps = new WeakMap<Tween, AnimatedStep[]>();
@@ -213,6 +217,8 @@ export function setTweens(
   inverse = false,
   // An inline animation replaces any other, so the group's clock joins the list
   extra = "",
+  // Writes only the animations, for elements that replay them
+  clockOnly = false,
 ): readonly Tween[] {
   const tweens = Object.freeze([...new Set([tween ?? []].flat())]);
   const parts = tweens.map((tween) => {
@@ -225,11 +231,20 @@ export function setTweens(
   });
   const list = (key: keyof Style, separator: string, from = parts) =>
     from.flatMap((part) => part[key] ?? []).join(separator);
+  // One per animation, in its order
+  const animationTimelines = [
+    ...parts.flatMap((part) => part.timeline ?? []),
+    ...(extra ? ["auto"] : []),
+  ];
   const properties = {
     "--c3r-tween-transform": inverse
       ? list("inverse", " ", parts.toReversed())
       : list("transform", " "),
     animation: [list("animation", ", "), extra].filter(Boolean).join(", "),
+    // After the shorthand, which resets it
+    "animation-timeline": animationTimelines.includes(SCROLL)
+      ? animationTimelines.join(", ")
+      : "",
     transition: list("transition", ", "),
     ...filterVariables(
       "--c3r-tween-",
@@ -238,6 +253,7 @@ export function setTweens(
     ),
   };
   for (const [name, value] of Object.entries(properties)) {
+    if (clockOnly && !name.startsWith("animation")) continue;
     if (value) style?.setProperty(name, value);
     else style?.removeProperty(name);
   }
@@ -344,6 +360,8 @@ export class Tween {
       throw new RangeError(
         "A tween on a timeline takes its pause and hover from it, and can't move on hover",
       );
+    if (timeline?.scroll && (loop || delay))
+      throw new RangeError("A tween on the scroll can't loop or wait");
 
     // Its own properties, so tweens on one element don't clash
     const track = `--${this.className}`;
@@ -367,9 +385,8 @@ export class Tween {
         .join(" ");
     const total = times[times.length - 1];
 
-    // A camera's view can't take the class, so it shares the variables
     this.#rule = insertRule(
-      hover ? `.${this.className}` : `.${this.className}, .c3r-view`,
+      hover ? `.${this.className}` : `.${this.className}, ${CAMERA_ELEMENTS}`,
       this,
     );
     this.#rules.push(this.#rule);
@@ -437,7 +454,9 @@ export class Tween {
       timelines.set(this, own);
       // Shared ones start together. A private loop does too, but a group
       // hovered on its own keeps its own time and a one-shot plays from its start
-      if (timeline || (loop && !hover)) joinTimeline(own, this.className);
+      // The scroll keeps its own in step
+      if ((timeline && !timeline.scroll) || (loop && !hover))
+        joinTimeline(own, this.className);
       const count = loop ? "infinite" : 1;
       const direction = alternate ? "alternate" : "normal";
       style.setProperty(
@@ -445,6 +464,7 @@ export class Tween {
         `${this.className} ${total}s ${timing} ${count} ${direction} both var(${own.state}, running)`,
       );
       part.animation = `var(${track}-animation, none)`;
+      part.timeline = own.scroll ? SCROLL : "auto";
       if (hover) {
         // Each group plays while it is hovered itself, over the timeline's rule
         this.#hoverRule = insertRule(

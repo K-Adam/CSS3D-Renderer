@@ -22,10 +22,6 @@ html .c3r-container {
 html .label {
   backface-visibility: hidden;
 }
-.c3r-group[style*="animation"],
-.c3r-view {
-  animation-timeline: scroll(root) !important;
-}
 .label {
   display: block;
   background: none;
